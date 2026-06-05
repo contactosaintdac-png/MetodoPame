@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const data = await resend.emails.send({
       from: 'Método Pame <no-reply@metodopame.com.br>',
-      to: ['admin@metodopame.com.br'], // Substituir pelo email real da Pame
+      to: [process.env.ADMIN_EMAIL || 'admin@metodopame.com.br'],
       subject: `Nova Reserva: ${clientName} - MÉTODO PAME`,
       html: htmlContent,
     });
