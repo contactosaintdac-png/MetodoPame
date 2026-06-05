@@ -15,11 +15,11 @@ export default function Sidebar({ currentScreen, onScreenChange }: SidebarProps)
   const { user } = useAuth();
 
   const navItems = [
-    { id: 'welcome', label: 'Home Detail', icon: 'home_pin' },
-    { id: 'triage', label: 'Avaliação da Residência', icon: 'assignment_ind' },
+    ...(user ? [] : [{ id: 'welcome', label: 'Home Detail', icon: 'home_pin' } as const]),
+    ...(user ? [] : [{ id: 'triage', label: 'Avaliação da Residência', icon: 'assignment_ind' } as const]),
     { id: 'pricing', label: 'Pricing', icon: 'payments' },
-    ...(user ? [{ id: 'minha-area', label: 'Minha Área', icon: 'person' }] : []),
-  ] as const;
+    ...(user ? [{ id: 'minha-area', label: 'Minha Área', icon: 'person' } as const] : []),
+  ];
 
   return (
     <nav className="hidden md:flex flex-col p-6 h-full bg-[#faf1fa] shadow-[inset_-2px_0_10px_rgba(112,48,129,0.03)] w-72 flex-shrink-0 z-40 relative">

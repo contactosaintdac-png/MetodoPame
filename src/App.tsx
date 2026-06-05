@@ -142,8 +142,8 @@ export default function App() {
                   className="absolute top-[72px] left-0 w-full bg-[#faf1fa] shadow-xl border-b border-[#efe5ee] py-5 px-6 flex flex-col gap-3 z-50"
                 >
                   {[
-                    { id: 'welcome', label: 'Home Detail', icon: 'home_pin' },
-                    { id: 'triage', label: 'Avaliação da Residência', icon: 'assignment_ind' },
+                    ...(user ? [] : [{ id: 'welcome', label: 'Home Detail', icon: 'home_pin' }]),
+                    ...(user ? [] : [{ id: 'triage', label: 'Avaliação da Residência', icon: 'assignment_ind' }]),
                     { id: 'pricing', label: 'Pricing Matrix', icon: 'payments' },
                     ...(user ? [{ id: 'minha-area', label: 'Minha Área', icon: 'person' }] : []),
                   ].map((item) => (
