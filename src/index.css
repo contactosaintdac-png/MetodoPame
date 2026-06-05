@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  
+  /* Atomsfera PAME 2.0 / Silk & Stone Palette */
+  --color-primary: #561668;
+  --color-primary-container: #703081;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #eca1fb;
+  --color-inverse-primary: #f2afff;
+  
+  --color-secondary: #5d5e60;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #e0dfe1;
+  --color-on-secondary-container: #626264;
+  
+  --color-tertiary: #38333d;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #4f4a54;
+  --color-on-tertiary-container: #c2bac6;
+  
+  --color-background: #fff7fd;
+  --color-on-background: #1e1a20;
+  
+  --color-surface: #fff7fd;
+  --color-on-surface: #1e1a20;
+  --color-on-surface-variant: #4e434e;
+  
+  --color-surface-dim: #e0d7e0;
+  --color-surface-bright: #fff7fd;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #faf1fa;
+  --color-surface-container: #f4ebf4;
+  --color-surface-container-high: #efe5ee;
+  --color-surface-container-highest: #e9e0e8;
+  --color-surface-variant: #e9e0e8;
+  
+  --color-outline: #80737f;
+  --color-outline-variant: #d1c2d0;
+  
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+}
+
+@layer utilities {
+  /* Silk Soft Neumorphic utilities adjusted for Atmosfera PAME 2.0 Palette */
+  .neu-raised {
+    box-shadow: 6px 6px 12px #d9cbd9, -6px -6px 12px #ffffff;
+  }
+  
+  .neu-pressed {
+    box-shadow: inset 4px 4px 8px #d9cbd9, inset -4px -4px 8px #ffffff;
+  }
+  
+  .neu-button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 4px 8px #d9cbd9, -4px -4px 8px #ffffff;
+  }
+  
+  .neu-button:active {
+    box-shadow: inset 2px 2px 5px #d9cbd9, inset -2px -2px 5px #ffffff;
+  }
+  
+  .neu-hover:hover {
+    box-shadow: 2px 2px 5px #d9cbd9, -2px -2px 5px #ffffff;
+    transform: translateY(1px);
+  }
+  
+  .neu-active:active {
+    box-shadow: inset 4px 4px 8px #d9cbd9, inset -4px -4px 8px #ffffff;
+  }
+  
+  .silk-shadow {
+    box-shadow: 0 4px 20px -2px rgba(112, 48, 129, 0.08), 0 2px 8px -2px rgba(112, 48, 129, 0.04);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #faf1fa;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1c2d0;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #80737f;
+}
