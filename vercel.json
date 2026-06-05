@@ -4,5 +4,11 @@
       "path": "/api/send-reminder",
       "schedule": "0 10 * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/|assets/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
