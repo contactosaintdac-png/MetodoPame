@@ -33,8 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: [process.env.ADMIN_EMAIL || 'admin@metodopame.com.br'],
+      from: 'Método Pame <no-reply@metodopame.com>',
+      to: [process.env.ADMIN_EMAIL || 'admin@metodopame.com'],
       subject: `Nova Reserva: ${clientName} - MÉTODO PAME`,
       html: htmlContent,
     });
