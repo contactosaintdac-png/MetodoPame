@@ -37,15 +37,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   `;
 
   try {
-    const data = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: 'Método Pame <no-reply@metodopame.com.br>',
       to: [employeeEmail],
       subject: `Novo Serviço Alocado (${date}) — MÉTODO PAME`,
       html: htmlContent,
     });
 
+    if (error) {
+      console.error('Resend API Error:', JSON.stringify(error, null, 2));
+      return res.status(400).json({ error });
+    }
+
     res.status(200).json(data);
-  } catch (error) {
-    res.status(500).json({ error });
+  } catch (err) {
+    console.error('Unexpected Server Error:', err);
+    res.status(500).json({ error: err });
   }
 }
