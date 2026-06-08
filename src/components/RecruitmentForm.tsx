@@ -5,6 +5,8 @@
 
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ApplicationScreen } from '../types';
 
 interface RecruitmentFormProps {
@@ -13,6 +15,7 @@ interface RecruitmentFormProps {
 
 export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps) {
   const [fullName, setFullName] = useState('');
+  const [dob, setDob] = useState('');
   const [cpf, setCpf] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [experience, setExperience] = useState('');
@@ -31,12 +34,29 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
     }
   };
 
-  const handleFormSubmit = (e: FormEvent) => {
+  const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API registration delay
-    setTimeout(() => {
+    try {
+      const newEmp = {
+        name: fullName,
+        cpf: cpf,
+        whatsapp: whatsapp,
+        experience: experience,
+        zones: zones,
+        skills: skills,
+        references: references,
+        role: 'Especialista em Limpeza',
+        active: true,
+        assignedServices: 0,
+        weeklyAvailability: { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [] },
+        photoURL: \`https://ui-avatars.com/api/?name=\${encodeURIComponent(fullName)}&background=561668&color=fff\`,
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'employees'), newEmp);
+
       setIsLoading(false);
       setIsSuccess(true);
       
@@ -49,10 +69,13 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
       setZones('');
       setSkills('');
       setReferences('');
-      setUploadedFile(null);
       setUploadedPhoto(null);
       setUploadedFile(null);
-    }, 1500);
+    } catch (error) {
+      console.error("Erro ao registrar especialista:", error);
+      alert("Ocorreu um erro ao enviar sua avaliação. Tente novamente.");
+      setIsLoading(false);
+    }
   };
 
   return (
