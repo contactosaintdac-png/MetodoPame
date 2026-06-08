@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, addDoc, updateDoc, doc, serverTimestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup } from 'firebase/firestore';
 import { notifyEmployeeRemoval, notifyEmployeeAssignment } from '../lib/NotificationService';
 
 export interface Employee {
@@ -139,12 +139,76 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   };
 
   const handleDeleteEmployee = async (empId: string) => {
-    if (confirm("Tem certeza que deseja desativar/excluir esta especialista?")) {
+    if (confirm("Tem certeza que deseja desativar (ocultar) esta especialista? Ela não será apagada da base de dados.")) {
       try {
         await updateDoc(doc(db, 'employees', empId), { active: false });
         fetchEmployees();
       } catch (err) {
         console.error(err);
+      }
+    }
+  };
+
+  const handleHardDeleteEmployee = async (empId: string) => {
+    if (confirm("🚨 ATENÇÃO: Tem certeza que deseja DELETAR DEFINITIVAMENTE esta especialista? Essa ação não pode ser desfeita.")) {
+      try {
+        await deleteDoc(doc(db, 'employees', empId));
+        fetchEmployees();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const handleDeleteBooking = async (bookingRef: any) => {
+    if (confirm("🚨 ATENÇÃO: Tem certeza que deseja DELETAR DEFINITIVAMENTE este agendamento? Essa ação não pode ser desfeita.")) {
+      try {
+        await deleteDoc(bookingRef);
+        fetchEmployees();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const handleDeleteAllBookings = async () => {
+    if (confirm("🚨 PERIGO EXTREMO: Você está prestes a DELETAR TODAS AS RESERVAS do sistema. Digite 'CONFIRMAR' para continuar.")) {
+      const userInput = prompt("Digite CONFIRMAR para apagar todas as reservas:");
+      if (userInput === "CONFIRMAR") {
+        setLoading(true);
+        try {
+          for (const b of bookings) {
+            await deleteDoc(b.ref);
+          }
+          alert("Todas as reservas foram apagadas com sucesso.");
+          fetchEmployees();
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao apagar reservas. Verifique o console.");
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
+  };
+
+  const handleDeleteAllEmployees = async () => {
+    if (confirm("🚨 PERIGO EXTREMO: Você está prestes a DELETAR TODAS AS ESPECIALISTAS do sistema. Digite 'CONFIRMAR' para continuar.")) {
+      const userInput = prompt("Digite CONFIRMAR para apagar todas as especialistas:");
+      if (userInput === "CONFIRMAR") {
+        setLoading(true);
+        try {
+          for (const emp of employees) {
+            await deleteDoc(doc(db, 'employees', emp.id));
+          }
+          alert("Todas as especialistas foram apagadas com sucesso.");
+          fetchEmployees();
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao apagar especialistas. Verifique o console.");
+        } finally {
+          setLoading(false);
+        }
       }
     }
   };
@@ -267,9 +331,16 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       <button 
                         onClick={() => handleDeleteEmployee(emp.id)}
                         className="w-8 h-8 rounded-full bg-[#f4ebf4] text-[#d9534f] flex items-center justify-center hover:bg-[#ffebee] transition-colors"
-                        title="Desativar"
+                        title="Ocultar/Desativar"
                       >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                        <span className="material-symbols-outlined text-[16px]">visibility_off</span>
+                      </button>
+                      <button 
+                        onClick={() => handleHardDeleteEmployee(emp.id)}
+                        className="w-8 h-8 rounded-full bg-[#ffebee] text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
+                        title="Deletar Permanentemente"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">delete_forever</span>
                       </button>
                     </div>
 
@@ -410,6 +481,12 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                             >
                               Reatribuir Rápido
                             </button>
+                            <button 
+                              onClick={() => handleDeleteBooking(b.ref)}
+                              className="text-red-600 font-bold text-[11px] uppercase tracking-wider hover:underline ml-2 border-l border-[#efe5ee] pl-3"
+                            >
+                              Deletar
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -420,6 +497,35 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             )}
           </div>
         )}
+      </section>
+
+      {/* Danger Zone */}
+      <section className="mt-12">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-xl font-extrabold text-red-700 mb-2 flex items-center gap-2">
+            <span className="material-symbols-outlined">warning</span>
+            Danger Zone
+          </h2>
+          <p className="text-red-900/80 text-sm mb-6">Ações nesta área são irreversíveis e afetam o banco de dados de produção diretamente. Tenha cuidado.</p>
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button 
+              onClick={handleDeleteAllBookings}
+              className="bg-red-600 hover:bg-red-700 transition-colors text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
+              Apagar TODAS as Reservas
+            </button>
+            
+            <button 
+              onClick={handleDeleteAllEmployees}
+              className="bg-red-600 hover:bg-red-700 transition-colors text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[16px]">group_remove</span>
+              Apagar TODAS as Especialistas
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Add Employee Modal */}
