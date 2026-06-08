@@ -19,7 +19,6 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
   const [cpf, setCpf] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [experience, setExperience] = useState('');
-  const [zones, setZones] = useState('');
   const [skills, setSkills] = useState('');
   const [references, setReferences] = useState('');
   const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
@@ -44,11 +43,11 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
         cpf: cpf,
         whatsapp: whatsapp,
         experience: experience,
-        zones: zones,
         skills: skills,
         references: references,
         role: 'Especialista em Limpeza',
-        active: true,
+        active: false,
+        status: 'pending',
         assignedServices: 0,
         weeklyAvailability: { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [] },
         photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=561668&color=fff`,
@@ -66,7 +65,6 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
       setCpf('');
       setWhatsapp('');
       setExperience('');
-      setZones('');
       setSkills('');
       setReferences('');
       setUploadedPhoto(null);
@@ -239,28 +237,7 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
                   </div>
                 </div>
 
-                {/* Zonas de Tijucas */}
-                <div className="flex flex-col gap-1.5">
-                  <label 
-                    className={`font-sans text-[11px] font-extrabold tracking-widest uppercase ml-1 transition-colors ${
-                      isFocused === 'zones' ? 'text-[#561668]' : 'text-[#703081]'
-                    }`}
-                    htmlFor="zones"
-                  >
-                    Zonas de Atendimento (Tijucas)
-                  </label>
-                  <input
-                    id="zones"
-                    type="text"
-                    required
-                    placeholder="Ex: Centro, Praça, XV de Novembro..."
-                    value={zones}
-                    onFocus={() => setIsFocused('zones')}
-                    onBlur={() => setIsFocused(null)}
-                    onChange={(e) => setZones(e.target.value)}
-                    className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl font-sans text-sm text-[#1e1a20] placeholder-[#80737f] focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                  />
-                </div>
+
 
                 {/* Habilidades Específicas */}
                 <div className="flex flex-col gap-1.5">

@@ -14,6 +14,7 @@ export interface Employee {
   email?: string;
   zones?: string;
   active?: boolean;
+  status?: 'pending' | 'active' | 'rejected';
   assignedServices: number;
   weeklyAvailability: {
     [dayIndex: number]: ('meio_manha' | 'meio_tarde' | 'completo')[];
@@ -22,9 +23,9 @@ export interface Employee {
 
 const DAYS_OF_WEEK = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const SHIFTS = [
-  { id: 'meio_manha', label: 'Meio Turno Manhã' },
-  { id: 'meio_tarde', label: 'Meio Turno Tarde' },
-  { id: 'completo', label: 'Turno Completo' },
+  { id: 'meio_manha', label: 'Manhã' },
+  { id: 'meio_tarde', label: 'Tarde' },
+  { id: 'completo', label: 'Integral' },
 ];
 
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
@@ -33,7 +34,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'employees' | 'bookings'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'pending' | 'bookings'>('employees');
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -135,6 +136,26 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
       fetchEmployees();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleApproveCandidate = async (empId: string) => {
+    try {
+      await updateDoc(doc(db, 'employees', empId), { status: 'active', active: true });
+      fetchEmployees();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRejectCandidate = async (empId: string) => {
+    if (confirm("Tem certeza que deseja rejeitar e apagar esta candidatura?")) {
+      try {
+        await deleteDoc(doc(db, 'employees', empId));
+        fetchEmployees();
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -268,16 +289,27 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
         </div>
       </header>
       
-      <div className="flex gap-4 mb-8 border-b border-[#efe5ee]">
+      <div className="flex gap-4 mb-8 border-b border-[#efe5ee] overflow-x-auto hide-scrollbar">
         <button 
           onClick={() => setActiveTab('employees')}
-          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === 'employees' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
+          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap ${activeTab === 'employees' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
         >
           Equipe
         </button>
         <button 
+          onClick={() => setActiveTab('pending')}
+          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'pending' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
+        >
+          Novas Candidaturas
+          {employees.filter(e => e.status === 'pending').length > 0 && (
+            <span className="bg-[#561668] text-white text-[10px] px-2 py-0.5 rounded-full">
+              {employees.filter(e => e.status === 'pending').length}
+            </span>
+          )}
+        </button>
+        <button 
           onClick={() => setActiveTab('bookings')}
-          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === 'bookings' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
+          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap ${activeTab === 'bookings' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
         >
           Agendamentos
         </button>
@@ -300,17 +332,95 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
               <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center text-[#80737f]">
                 Carregando base de dados...
               </div>
-            ) : employees.length === 0 ? (
+            ) : employees.filter(e => e.active !== false && e.status !== 'pending').length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center flex flex-col items-center">
                 <span className="material-symbols-outlined text-4xl text-[#d1c2d0] mb-3">group_off</span>
-                <p className="text-[#80737f] font-medium">Nenhuma especialista cadastrada ainda.</p>
+                <p className="text-[#80737f] font-medium">Nenhuma especialista cadastrada ou ativa ainda.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {employees.filter(e => e.active !== false).map(emp => (
+                {employees.filter(e => e.active !== false && e.status !== 'pending').map(emp => (
                   <div key={emp.id} className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-5 flex flex-col gap-4 relative">
                     
-                    <div className="absolute top-4 right-4 flex gap-2">
+                    <div className="flex items-start justify-between border-b border-[#efe5ee]/50 pb-4">
+                      <div className="flex gap-4 items-center">
+                        <img src={emp.photoURL} alt={emp.name} className="w-14 h-14 rounded-full border-2 border-[#faf1fa]" />
+                        <div>
+                          <h3 className="font-extrabold text-lg text-[#1e1a20]">{emp.name}</h3>
+                          <p className="text-xs text-[#80737f] font-bold uppercase tracking-wider">{emp.role}</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col justify-between h-full">
+                        <div>
+                          <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold">Carga (Mês)</p>
+                          <p className="font-black text-2xl text-[#561668]">{emp.assignedServices}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-1">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-sm font-bold text-[#561668]">Disponibilidade Semanal</h4>
+                      </div>
+                      
+                      <div className="overflow-x-auto border border-[#efe5ee] rounded-xl">
+                        <table className="w-full text-[10px] text-center font-bold">
+                          <thead className="bg-[#f8f9fa] text-[#80737f] uppercase tracking-widest border-b border-[#efe5ee]">
+                            <tr>
+                              <th className="p-2 border-r border-[#efe5ee] text-left">Dia</th>
+                              {SHIFTS.map(shift => (
+                                <th key={shift.id} className="p-2">{shift.label}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {DAYS_OF_WEEK.map((dayName, idx) => {
+                              return (
+                                <tr key={dayName} className="border-b border-[#efe5ee] last:border-0 hover:bg-[#faf1fa]/30 transition-colors">
+                                  <td className="p-2 border-r border-[#efe5ee] text-left text-[#561668] uppercase tracking-widest bg-[#f8f9fa] w-24">
+                                    {dayName.slice(0, 3)}
+                                  </td>
+                                  {SHIFTS.map(shift => {
+                                    const isSelected = emp.weeklyAvailability && emp.weeklyAvailability[idx]?.includes(shift.id as any);
+                                    return (
+                                      <td key={shift.id} className="p-1">
+                                        <button
+                                          onClick={() => toggleAvailability(emp.id, idx, shift.id, emp.weeklyAvailability || {})}
+                                          className={`w-6 h-6 rounded flex items-center justify-center mx-auto transition-colors ${
+                                            isSelected 
+                                              ? 'bg-[#561668] text-white' 
+                                              : 'bg-transparent border border-[#d1c2d0] text-transparent hover:border-[#561668]/50'
+                                          }`}
+                                        >
+                                          {isSelected && <span className="material-symbols-outlined text-[14px]">check</span>}
+                                        </button>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 pt-4 border-t border-[#efe5ee]/50">
+                      <h4 className="text-sm font-bold text-[#561668] mb-2">Últimos Serviços Atendidos</h4>
+                      <div className="flex flex-col gap-2">
+                        {bookings.filter(b => b.assignedEmployeeId === emp.id).slice(0, 3).map((b, i) => (
+                          <div key={i} className="text-xs flex justify-between items-center bg-[#faf1fa] p-2 rounded">
+                            <span className="font-semibold text-[#1e1a20]">{b.name}</span>
+                            <span className="text-[#80737f]">{b.date} • {b.format === 'meio' ? 'Meio Turno' : 'Turno Completo'}</span>
+                          </div>
+                        ))}
+                        {bookings.filter(b => b.assignedEmployeeId === emp.id).length === 0 && (
+                          <span className="text-xs text-[#80737f] italic">Nenhum serviço registrado ainda.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-2 pt-4 border-t border-[#efe5ee]/50 flex justify-end gap-2">
                       <button 
                         onClick={() => {
                           setEditingEmployee(emp);
@@ -344,71 +454,58 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       </button>
                     </div>
 
-                    <div className="flex items-start justify-between border-b border-[#efe5ee]/50 pb-4 pr-20">
-                      <div className="flex gap-4 items-center">
-                        <img src={emp.photoURL} alt={emp.name} className="w-14 h-14 rounded-full border-2 border-[#faf1fa]" />
-                        <div>
-                          <h3 className="font-extrabold text-lg text-[#1e1a20]">{emp.name}</h3>
-                          <p className="text-xs text-[#80737f] font-bold uppercase tracking-wider">{emp.role}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold">Carga (Mês)</p>
-                        <p className="font-black text-2xl text-[#561668]">{emp.assignedServices}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'pending' && (
+          <div className="w-full">
+            <h2 className="text-xl font-extrabold text-[#561668] mb-6">Novas Candidaturas Pendentes</h2>
+            
+            {loading ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center text-[#80737f]">
+                Carregando base de dados...
+              </div>
+            ) : employees.filter(e => e.status === 'pending').length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center flex flex-col items-center">
+                <span className="material-symbols-outlined text-4xl text-[#d1c2d0] mb-3">inbox</span>
+                <p className="text-[#80737f] font-medium">Não há candidaturas pendentes de aprovação.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {employees.filter(e => e.status === 'pending').map(emp => (
+                  <div key={emp.id} className="bg-[#fffdfa] rounded-2xl shadow-sm border-2 border-yellow-200/50 p-5 flex flex-col gap-4">
+                    <div className="flex gap-4 items-center">
+                      <img src={emp.photoURL} alt={emp.name} className="w-14 h-14 rounded-full border-2 border-yellow-100" />
+                      <div>
+                        <h3 className="font-extrabold text-lg text-[#1e1a20] leading-tight">{emp.name}</h3>
+                        <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider bg-yellow-100/50 inline-block px-2 py-0.5 rounded-full mt-1">
+                          Aguardando Avaliação
+                        </p>
                       </div>
                     </div>
 
-                    <div className="mt-1">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-sm font-bold text-[#561668]">Disponibilidade Semanal</h4>
-                        <span className="text-[10px] text-[#80737f] italic">// TODO: Integrar vista de auto-gestión en el portal /equipe</span>
-                      </div>
-                      
-                      <div className="flex flex-col gap-2">
-                        {DAYS_OF_WEEK.map((dayName, idx) => {
-                          const isActive = emp.weeklyAvailability && emp.weeklyAvailability[idx] && emp.weeklyAvailability[idx].length > 0;
-                          return (
-                            <div key={dayName} className="flex flex-col md:flex-row md:items-center gap-2 bg-[#f8f9fa] p-2.5 rounded-xl border border-[#efe5ee]">
-                              <span className={`w-24 text-xs font-bold uppercase tracking-widest ${isActive ? 'text-[#561668]' : 'text-[#a397a2]'}`}>
-                                {dayName}
-                              </span>
-                              <div className="flex flex-wrap gap-2 flex-1">
-                                {SHIFTS.map(shift => {
-                                  const isSelected = emp.weeklyAvailability && emp.weeklyAvailability[idx]?.includes(shift.id as any);
-                                  return (
-                                    <button
-                                      key={shift.id}
-                                      onClick={() => toggleAvailability(emp.id, idx, shift.id, emp.weeklyAvailability || {})}
-                                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                                        isSelected 
-                                          ? 'bg-[#561668] text-white' 
-                                          : 'bg-white text-[#80737f] border border-[#d1c2d0] hover:border-[#561668]/50'
-                                      }`}
-                                    >
-                                      {shift.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
+                    <div className="text-xs text-[#4e434e] flex flex-col gap-1 bg-white p-3 rounded-xl border border-[#efe5ee]">
+                      <p><strong className="text-[#561668]">CPF:</strong> {emp.cpf || 'Não informado'}</p>
+                      <p><strong className="text-[#561668]">WhatsApp:</strong> {emp.whatsapp || 'Não informado'}</p>
                     </div>
 
-                    <div className="mt-2 pt-4 border-t border-[#efe5ee]/50">
-                      <h4 className="text-sm font-bold text-[#561668] mb-2">Últimos Serviços Atendidos</h4>
-                      <div className="flex flex-col gap-2">
-                        {bookings.filter(b => b.assignedEmployeeId === emp.id).slice(0, 3).map((b, i) => (
-                          <div key={i} className="text-xs flex justify-between items-center bg-[#faf1fa] p-2 rounded">
-                            <span className="font-semibold text-[#1e1a20]">{b.name}</span>
-                            <span className="text-[#80737f]">{b.date} • {b.format === 'meio' ? 'Meio Turno' : 'Turno Completo'}</span>
-                          </div>
-                        ))}
-                        {bookings.filter(b => b.assignedEmployeeId === emp.id).length === 0 && (
-                          <span className="text-xs text-[#80737f] italic">Nenhum serviço registrado ainda.</span>
-                        )}
-                      </div>
+                    <div className="flex gap-2 mt-auto pt-2">
+                      <button 
+                        onClick={() => handleRejectCandidate(emp.id)}
+                        className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors border border-red-200"
+                      >
+                        Rejeitar
+                      </button>
+                      <button 
+                        onClick={() => handleApproveCandidate(emp.id)}
+                        className="flex-1 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
+                      >
+                        Aprovar
+                      </button>
                     </div>
                   </div>
                 ))}
