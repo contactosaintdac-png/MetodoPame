@@ -51,7 +51,7 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
         active: true,
         assignedServices: 0,
         weeklyAvailability: { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [] },
-        photoURL: \`https://ui-avatars.com/api/?name=\${encodeURIComponent(fullName)}&background=561668&color=fff\`,
+        photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=561668&color=fff`,
         createdAt: serverTimestamp()
       };
 
