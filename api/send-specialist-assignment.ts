@@ -38,14 +38,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Método Pame <no-reply@metodopame.com.br>',
+      from: 'onboarding@resend.dev',
       to: [employeeEmail],
       subject: `Novo Serviço Alocado (${date}) — MÉTODO PAME`,
       html: htmlContent,
     });
 
     if (error) {
-      console.error('Resend API Error:', JSON.stringify(error, null, 2));
+      console.error(JSON.stringify(error));
       return res.status(400).json({ error });
     }
 
