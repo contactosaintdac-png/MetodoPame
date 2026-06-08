@@ -11,23 +11,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { clientName, date, shift, totalPrice, employeeName, addons } = req.body;
 
   const htmlContent = `
-    <div style="font-family: Arial, sans-serif; background-color: #ffffff; color: #1e1a20; padding: 40px; max-width: 600px; margin: 0 auto; border: 1px solid #efe5ee; border-radius: 16px;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #561668; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 2px;">MÉTODO PAME</h1>
-      </div>
-      <h2 style="font-size: 18px; font-weight: bold; color: #561668; margin-bottom: 16px;">Nova Reserva Confirmada</h2>
-      
-      <div style="background-color: #faf1fa; border: 1px solid #efe5ee; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Cliente:</strong> ${clientName}</p>
-        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Data:</strong> ${date}</p>
-        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Turno:</strong> ${shift}</p>
-        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Valor:</strong> R$ ${totalPrice}</p>
-        <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Especialista Designada:</strong> ${employeeName}</p>
-        ${addons && addons.length > 0 ? `<p style="margin: 0 0 0 0; font-size: 14px;"><strong>Adicionais:</strong> ${addons.join(', ')}</p>` : ''}
-      </div>
+    <div style="background-color: #F8F6F8; padding: 40px 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e1a20;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #EBE5EB; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
+        
+        <div style="padding: 40px 40px 30px 40px; text-align: center; border-bottom: 1px solid #F0EAF0;">
+          <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 700; color: #561668; letter-spacing: 3px; text-transform: uppercase;">MÉTODO PAME</h1>
+          <div style="height: 2px; width: 40px; background-color: #C5A059; margin: 16px auto 0 auto;"></div>
+        </div>
+        
+        <div style="padding: 40px;">
+          <h2 style="margin: 0 0 20px 0; font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: normal; color: #1e1a20;">Nova Reserva Exclusiva</h2>
+          <p style="margin: 0 0 30px 0; font-size: 14px; line-height: 1.8; color: #4e434e;">
+            Um novo agendamento foi confirmado no sistema. Abaixo estão os detalhes para o seu controle.
+          </p>
+          
+          <div style="background-color: #FAF8FA; border: 1px solid #F0EAF0; border-radius: 4px; padding: 30px;">
+            <h3 style="margin: 0 0 20px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: #80737f;">Dados do Cliente e Serviço</h3>
+            
+            <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px; color: #1e1a20; line-height: 2;">
+              <tr>
+                <td style="color: #80737f; padding-right: 20px; width: 120px;">Cliente:</td>
+                <td style="font-weight: 500;">${clientName}</td>
+              </tr>
+              <tr>
+                <td style="color: #80737f; padding-right: 20px;">Data:</td>
+                <td style="font-weight: 500;">${date}</td>
+              </tr>
+              <tr>
+                <td style="color: #80737f; padding-right: 20px;">Turno:</td>
+                <td style="font-weight: 500;">${shift}</td>
+              </tr>
+              <tr>
+                <td style="color: #80737f; padding-right: 20px;">Faturamento:</td>
+                <td style="font-weight: 500; color: #561668;">R$ ${totalPrice}</td>
+              </tr>
+              <tr>
+                <td style="color: #80737f; padding-right: 20px;">Especialista:</td>
+                <td style="font-weight: 500;">${employeeName}</td>
+              </tr>
+              ${addons && addons.length > 0 ? \`
+              <tr>
+                <td style="color: #80737f; padding-right: 20px;" valign="top">Adicionais:</td>
+                <td style="font-weight: 500; line-height: 1.4; padding-top: 4px;">\${addons.join('<br>')}</td>
+              </tr>\` : ''}
+            </table>
+          </div>
+        </div>
+        
+        <div style="background-color: #561668; padding: 30px 40px; text-align: center;">
+          <p style="margin: 0; font-size: 11px; color: #EBE5EB; letter-spacing: 1px; text-transform: uppercase;">Sistema de Gestão Interna</p>
+        </div>
 
-      <hr style="border: none; border-top: 1px solid #efe5ee; margin: 40px 0 20px 0;" />
-      <p style="text-align: center; font-size: 12px; color: #80737f; margin: 0;">Sistema de Gestão - Método Pame</p>
+      </div>
     </div>
   `;
 
