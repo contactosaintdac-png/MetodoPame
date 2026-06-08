@@ -265,17 +265,6 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         console.error("Error blocking slot", e);
       }
     }
-    
-    try {
-      await createPreference({
-        title: `Faxina MÉTODO PAME — ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`,
-        totalValue: totalPrice,
-        clientName: bookingName,
-      });
-    } catch (err) {
-      console.error(err);
-    }
-    
     try {
       await createPameCalendarEvent({
         clientName: bookingName + (assignedEmployee ? ` (${assignedEmployee.name})` : ''),
@@ -307,6 +296,26 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
       } catch (error) {
         console.error("Erro ao salvar histórico do usuário logado:", error);
       }
+    }
+
+    try {
+      const pref = await createPreference({
+        title: `Faxina MÉTODO PAME — ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`,
+        totalValue: totalPrice,
+        clientName: bookingName,
+        clientEmail: user?.email || undefined
+      });
+
+      if (pref && pref.init_point) {
+        window.location.href = pref.init_point;
+      } else {
+        throw new Error("No init_point received from backend");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error al iniciar el pago. Tu reserva fue guardada, pero no pudimos redirigirte a Mercado Pago.");
+      setIsSaving(false);
+      setModalStep('success'); // Fallback in case redirect fails
     }
   };
 

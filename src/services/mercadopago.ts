@@ -6,41 +6,25 @@ export interface PaymentPayload {
 }
 
 export const createPreference = async (payload: PaymentPayload) => {
-  // Placeholders for environment variables
-  const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
-  const accessToken = import.meta.env.VITE_MP_ACCESS_TOKEN;
+  try {
+    const response = await fetch('/api/create-preference', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-  console.log("==========================================");
-  console.log("💳 MOCK: Criando preferência no Mercado Pago");
-  console.log("Public Key:", publicKey || "PLACEHOLDER");
-  console.log("Access Token:", accessToken ? "***KEY_PRESENT***" : "PLACEHOLDER");
-  console.log("Payload:", {
-    items: [
-      {
-        title: payload.title,
-        unit_price: payload.totalValue,
-        quantity: 1,
-      }
-    ],
-    payer: {
-      name: payload.clientName,
-      email: payload.clientEmail || "cliente@exemplo.com",
-    },
-    back_urls: {
-      success: window.location.origin + "/success",
-      failure: window.location.origin + "/failure",
-      pending: window.location.origin + "/pending"
-    },
-    auto_return: "approved"
-  });
-  console.log("==========================================");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error("Payment API Error:", errorData);
+      throw new Error(errorData?.error || "Error al comunicarse con el servidor de pagos.");
+    }
 
-  // Em produção, isso deve ser substituído por uma chamada à sua Cloud Function!
-  // Simulando delay de rede para UX
-  return new Promise(resolve => 
-    setTimeout(() => resolve({ 
-      id: "mock_preference_id", 
-      init_point: "https://www.mercadopago.com.br/mock-checkout" 
-    }), 1500)
-  );
+    const data = await response.json();
+    return data; // Returns { id, init_point, sandbox_init_point }
+  } catch (error) {
+    console.error("Error en el servicio de Mercado Pago:", error);
+    throw error;
+  }
 };
