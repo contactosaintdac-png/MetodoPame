@@ -95,6 +95,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   };
 
   const totalPrice = getDynamicPricing(selectedFormat, selectedPlanMode).total;
+  const savings = selectedFormat === 'meio' ? currentPrices.meioSavings : currentPrices.completoSavings;
 
   const getShiftId = () => selectedFormat === 'completo' ? 'completo' : `meio_${shiftTime}`;
 
