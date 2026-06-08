@@ -59,41 +59,42 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
     );
   };
 
-  const getPricingLogic = (format: 'meio' | 'completo', mode: 'avulso' | 'mensal') => {
-    if (format === 'meio') {
-      if (mode === 'avulso') {
-        return { total: 350, employee: 200, pameProfit: 150, sessions: 1 };
-      } else {
-        return { total: 1200, employee: 800, pameProfit: 400, sessions: 4 }; // 300 per session, employee gets 200
-      }
-    } else {
-      if (mode === 'avulso') {
-        return { total: 450, employee: 300, pameProfit: 150, sessions: 1 };
-      } else {
-        return { total: 1500, employee: 1200, pameProfit: 300, sessions: 4 }; // 375 per session, employee gets 300
-      }
+  const getDynamicPricing = (format: 'meio' | 'completo', mode: 'avulso' | 'mensal') => {
+    const isMensal = mode === 'mensal';
+    const sessions = isMensal ? 4 : 1;
+    const baseSession = format === 'meio' ? 350 : 450;
+    
+    // Dimensiones de residencia: Casa base 3Q 2B 1A
+    const extraRooms = Math.max(0, triageData.rooms - 3);
+    const extraBaths = Math.max(0, triageData.baths - 2);
+    const extraFloors = Math.max(0, triageData.floors - 1);
+    const sizeFeePerSession = (extraRooms * 50) + (extraBaths * 30) + (extraFloors * 80);
+    
+    const luxuryCareFeePerSession = surfaceCount * 30;
+    const addonsPricePerSession = activeAddons.length * 50;
+
+    const perSession = baseSession + sizeFeePerSession + luxuryCareFeePerSession + addonsPricePerSession;
+    let total = perSession * sessions;
+    
+    let discount = 0;
+    if (isMensal) {
+       discount = format === 'meio' ? 200 : 300;
+       total -= discount;
     }
+    
+    return { total, discount };
   };
 
-  const pricingLogic = getPricingLogic(selectedFormat, selectedPlanMode);
-  
-  const getSavings = (format: 'meio' | 'completo', mode: 'avulso' | 'mensal') => {
-    if (mode === 'avulso') return 0;
-    // For Meio Turno: Individual is 350. Package is 1200 (4 * 350 = 1400 -> saves 200)
-    // For Turno Completo: Individual is 450. Package is 1500 (4 * 450 = 1800 -> saves 300)
-    return format === 'meio' ? 200 : 300;
+  const currentPrices = {
+    meioAvulso: getDynamicPricing('meio', 'avulso').total,
+    meioMensal: getDynamicPricing('meio', 'mensal').total,
+    meioSavings: getDynamicPricing('meio', 'mensal').discount,
+    completoAvulso: getDynamicPricing('completo', 'avulso').total,
+    completoMensal: getDynamicPricing('completo', 'mensal').total,
+    completoSavings: getDynamicPricing('completo', 'mensal').discount,
   };
 
-  const basePrice = pricingLogic.total;
-  const savings = getSavings(selectedFormat, selectedPlanMode);
-  // Optional admin debug view for internal calculation
-  const employeePay = pricingLogic.employee;
-  const pameNetProfit = pricingLogic.pameProfit;
-
-  const addonsPrice = activeAddons.length * 50;
-  const luxuryCareFee = surfaceCount * 30; // Adding R$30 for custom fine-finishes luxury care
-  // TODO: Implementar precio dinámico por dimensiones de residencia (triageData.rooms, triageData.baths, triageData.floors)
-  const totalPrice = basePrice + addonsPrice + luxuryCareFee;
+  const totalPrice = getDynamicPricing(selectedFormat, selectedPlanMode).total;
 
   const getShiftId = () => selectedFormat === 'completo' ? 'completo' : `meio_${shiftTime}`;
 
@@ -427,7 +428,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="font-sans text-2xl font-extrabold text-[#561668]">R$ 350</span>
+                    <span className="font-sans text-2xl font-extrabold text-[#561668]">R$ {currentPrices.meioAvulso.toLocaleString('pt-BR')}</span>
                   </div>
                 </div>
                 
@@ -438,7 +439,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                 >
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[#561668] text-base">info</span>
-                    <span className="font-sans text-xs text-[#561668] font-bold">Considere o Pacote Mensal e economize R$ 200</span>
+                    <span className="font-sans text-xs text-[#561668] font-bold">Considere o Pacote Mensal e economize R$ {currentPrices.meioSavings.toLocaleString('pt-BR')}</span>
                   </div>
                   <span className="material-symbols-outlined text-[#561668] text-base">arrow_forward</span>
                 </div>
@@ -458,7 +459,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                     <p className="font-sans text-xs text-[#4e434e] mt-1 font-semibold tracking-wide">4 sessões por mês</p>
                   </div>
                   <div className="text-right">
-                    <span className="font-sans text-2xl font-extrabold text-[#561668]">R$ 1.200</span>
+                    <span className="font-sans text-2xl font-extrabold text-[#561668]">R$ {currentPrices.meioMensal.toLocaleString('pt-BR')}</span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center pt-1">
@@ -466,7 +467,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                     Economia Real
                   </span>
                   <span className="bg-[#561668] text-white text-xs font-bold px-3 py-1 rounded-full">
-                    R$ 200/mês
+                    R$ {currentPrices.meioSavings.toLocaleString('pt-BR')}/mês
                   </span>
                 </div>
               </div>
@@ -502,7 +503,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="font-sans text-2xl font-extrabold text-[#561668]">R$ 450</span>
+                    <span className="font-sans text-2xl font-extrabold text-[#561668]">R$ {currentPrices.completoAvulso.toLocaleString('pt-BR')}</span>
                   </div>
                 </div>
 
@@ -513,7 +514,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                 >
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[#561668] text-base">info</span>
-                    <span className="font-sans text-xs text-[#561668] font-bold">Considere o Pacote Mensal e economize R$ 300</span>
+                    <span className="font-sans text-xs text-[#561668] font-bold">Considere o Pacote Mensal e economize R$ {currentPrices.completoSavings.toLocaleString('pt-BR')}</span>
                   </div>
                   <span className="material-symbols-outlined text-[#561668] text-base">arrow_forward</span>
                 </div>
@@ -539,7 +540,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                       <p className="font-sans text-sm text-[#4e434e] mt-0.5 font-medium">4 sessões por mês</p>
                     </div>
                     <div className="text-right whitespace-nowrap">
-                      <span className="font-sans text-3xl font-black text-[#561668] leading-none">R$ 1.500</span>
+                      <span className="font-sans text-3xl font-black text-[#561668] leading-none">R$ {currentPrices.completoMensal.toLocaleString('pt-BR')}</span>
                     </div>
                   </div>
 
@@ -548,7 +549,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                       Economia Real Extraordinária
                     </span>
                     <span className="bg-[#703081] text-white text-xs font-black px-3 py-1 rounded-full whitespace-nowrap shadow-sm">
-                      R$ 300/mês
+                      R$ {currentPrices.completoSavings.toLocaleString('pt-BR')}/mês
                     </span>
                   </div>
 
