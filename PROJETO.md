@@ -112,23 +112,27 @@ A partir de la casa base, cada elemento adicional suma:
 
 ## 7. Autenticación y roles
 
-### Clientes
-- Login con **Google Auth (Gmail)** — un clic, sin contraseña
-- Opcional — pueden contratar sin registrarse (guest checkout)
-- Al loguearse sin reservas previas → van a la Avaliação da Residência
-- Al loguearse con reservas → van directo a Minha Área
-- **Nunca acceden a `/equipe`**
+### Flujo de Validación y Gating de Rutas
+La aplicación ejecuta una validación de cargo (`userRole`) mediante Firestore inmediatamente después del inicio de sesión (en `App.tsx`):
+- Si el e-mail está en la colección `employees` con `status == 'active'`, el cargo es `specialist`.
+- Si el e-mail es `metodopame.homedetail@gmail.com` o `contactosaintdac@gmail.com` (desarrollador), el cargo es `admin`.
+- Cualquier otro usuario autenticado (mediante Google Auth) es calificado como `client`.
 
-### Funcionárias
-- Login con **email + contraseña generada por el sistema**
-- Las credenciales las crea Pame desde el panel admin
-- Acceso solo en `/equipe`
-- **Nunca ven precios ni datos comerciales**
-- **Nunca acceden al flujo del cliente**
+### Clientes
+- Login con **Google Auth (Gmail)** — un clic, sin contraseña.
+- Opcional — pueden contratar sin registrarse (guest checkout).
+- Al loguearse sin reservas previas → van a la Avaliação da Residência.
+- Al loguearse con reservas → van directo a Minha Área.
+- **Seguridad estricta:** Si intentan acceder a `/admin`, son redirigidos automáticamente a la pantalla de bienvenida. En `/equipe`, se muestra un banner advirtiendo que ya tienen sesión de cliente iniciada.
+
+### Funcionárias (Especialistas)
+- Login con **email + contraseña generada por el sistema** (creada por Pame desde `/admin`).
+- Acceso exclusivo en `/equipe`.
+- **Seguridad estricta:** NUNCA pueden acceder al flujo de clientes ni ver precios. Si intentan ingresar a `/`, `/pricing` o `/minha-area`, la aplicación las redirige inmediatamente a `/equipe` de vuelta a su panel.
 
 ### Administrador (Pame + Dev)
-- Acceso a `/admin`
-- Ve todo — reservas, clientes, funcionárias, reportes financieros
+- Acceso a `/admin` protegido para `metodopame.homedetail@gmail.com` y `contactosaintdac@gmail.com`.
+- Ve todo — reservas, clientes, funcionárias, reportes financieros.
 
 ---
 
@@ -256,15 +260,16 @@ FIREBASE_PRIVATE_KEY=
 
 ## 15. Google Calendar
 
-**Estado actual:** Integrado como MOCK con placeholders.
+**Estado actual:** **Totalmente integrado y activo**.
 
-**TODO futuro:** Activar con service account real.
-
-**Importante seguridad:** La service account NO puede estar en el frontend. Mover a Vercel Functions cuando se active.
+**Arquitectura de seguridad:** El frontend llama al endpoint seguro `/api/create-calendar-event`. Esta Vercel Function firma digitalmente las solicitudes (RS256) usando una **Service Account de Google Cloud** cargada de manera segura mediante variables de entorno en el backend (`GOOGLE_SERVICE_ACCOUNT_KEY` y `GOOGLE_CALENDAR_ID`), manteniendo las llaves privadas a salvo.
+*Si las variables de entorno no están configuradas (por ejemplo, en desarrollo local), la API simula el agendamiento de forma exitosa sin interrumpir la experiencia de usuario (graceful fallback).*
 
 **Eventos que crea el sistema:**
-- En el calendario de Pame: automático al confirmar reserva (con todos los detalles)
-- En el calendario del cliente: botón "Adicionar à minha agenda" (Opción A — link manual, sin permisos extra)
+- En el calendario real de Pame:
+  - Automático al confirmar una reserva (con todos los detalles del cliente, turno, aditivos y especialista asignada).
+  - Automático al agendar un **Café Virtual** (candidata a especialista) desde la pantalla de éxito del formulario `/equipe`.
+- En el calendario del cliente: botón "Adicionar à minha agenda" (link de plantilla manual para Google Calendar personal, sin requerir permisos).
 
 ---
 
@@ -296,18 +301,19 @@ FIREBASE_PRIVATE_KEY=
 - ~~**Diagnosticar error de Resend** — modificar funciones en `/api/` para loguear error completo~~ (Resuelto, emails funcionando)
 - ~~**Implementar precios dinámicos** — buscar `// TODO: Implementar precio dinámico` en PricingMatrix.tsx~~ (Resuelto, lógica matemática en vivo)
 - ~~**Verificar el dominio `www.metodopame.com` en Resend**~~ (Resuelto)
+- ~~**Café Virtual com a Pame** — agregar pantalla de confirmación al final del formulario de funcionárias con agendamiento de videollamada y grabación en base de datos.~~ (Resuelto, selector visual de slots)
+- ~~**Activar Google Calendar con service account real**~~ (Resuelto, Vercel Serverless Function `/api/create-calendar-event` segura e integrada)
+- ~~**Isolamento de Ecosistemas (Gating)** — separación de flujos estricta cliente vs especialista en frontend y protección de admin para múltiples correos.~~ (Resuelto)
 
 ### 🟡 Importante
-1. **Café Virtual com a Pame** — agregar pantalla de confirmación al final del formulario de funcionárias con agendamiento de videollamada. En panel admin: botón para aprobar/rechazar candidatura.
+1. Sistema de evaluaciones (estrellas) del cliente sobre el servicio.
 
 ### 🔵 Para más adelante
-2. Activar Google Calendar con service account real (actualmente es un simulador)
-3. Sistema de evaluaciones (estrellas) del cliente sobre el servicio
-4. Que las funcionárias gestionen su propia disponibilidad desde su celular en `/equipe`
-5. Conectar WhatsApp Business API para notificaciones
+2. Que las funcionárias gestionen su propia disponibilidad desde su celular en `/equipe`.
+3. Conectar WhatsApp Business API para notificaciones de reservas y recordatorios.
 
 ### 🌌 Visión a largo plazo (Objetivo a futuro)
-6. Modelo de expansión tipo Uber para limpieza (abarcar más zonas y escalar operaciones)
+4. Modelo de expansión tipo Uber para limpieza (abarcar más zonas y escalar operaciones).
 
 ---
 
