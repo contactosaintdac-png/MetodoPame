@@ -3,13 +3,14 @@
 
 > Este archivo es la fuente de verdad del proyecto. Leelo completo antes de tocar cualquier cosa.
 > 
-> **Regra Obrigatória para a IA:** Atualizar este documento de forma autónoma e sem necessidade de lembretes sempre que forem realizadas alterações relevantes nas seguintes categorias:
-> 1. **Novas Funcionalidades**: Telas, componentes ou fluxos novos/modificados na Área do Cliente, Painel Admin, Formulares ou Especialistas.
-> 2. **Regras de Negócio / Preços**: Valores, taxas dinâmicas, decoy pricing e políticas de cancelamento.
-> 3. **Fluxos de Segurança e Autenticação**: Roles, gating de rotas e novos níveis de acesso de usuário.
-> 4. **Integrações de Terceiros**: Configurações de Google Calendar, Mercado Pago, Resend (emails) e WhatsApp.
-> 5. **Arquitetura & Código Core**: Estrutura de pastas, endpoints em `/api/`, subcoleções no Firestore e regras de segurança.
-> 6. **Estado do Projeto**: Atualizar a lista de pendências e tarefas concluídas (Seção 18).
+> **Regra Obrigatória para a IA / Clases de actualizaciones que deben registrarse en PROJETO.md:**
+> Este documento debe actualizarse de forma autónoma y sin necesidad de recordatorios siempre que ocurra alguna de las siguientes clases de actualizaciones:
+> 1. **Novas Funcionalidades / Componentes**: Creación o modificación de pantallas, componentes de UI, flujos de navegación (ej. Área del Cliente, Checkout, Panel Admin, etc.).
+> 2. **Regras de Negócio, Campañas y Precios**: Cambios en tarifas bases, reglas de precios dinámicos, promociones, descuentos, campañas de referidos (ej. Círculo de Excelência).
+> 3. **Seguridad, Roles y Acceso**: Modificaciones en roles de usuario (admin, cliente, especialista), lógica de gating de rutas, validación de permisos en base de datos.
+> 4. **Integrações e APIs**: Cambios en integraciones externas como Resend, Mercado Pago, Google Calendar, WhatsApp API.
+> 5. **Arquitetura de Dados**: Nuevas colecciones, subcolecciones, campos clave o reglas de seguridad en Firestore.
+> 6. **Estado do Projeto (Pendientes y Concluidos)**: Actualización de la lista de tareas de la Sección 18 para reflejar fielmente lo completado y los próximos pasos.
 
 ---
 
@@ -103,8 +104,13 @@ A partir de la casa base, cada elemento adicional suma:
 - +R$ 50 por quarto extra
 - +R$ 30 por banheiro extra  
 - +R$ 80 por andar extra
+- *(Concluído: Implementado em [PricingMatrix.tsx](file:///c:/Users/leshx/Downloads/DESARROLLO/M%C3%A9todo-Pame/src/components/PricingMatrix.tsx))*
 
-**TODO pendiente:** Implementar esta lógica en `PricingMatrix.tsx` donde se calcula el precio. Hay un comentario `// TODO: Implementar precio dinámico por dimensiones de residencia` marcando el lugar exacto.
+### Campanha de Recomendação — Círculo de Excelência
+Para incentivar contratos de mensalistas (*faxinas fixas*), aplica-se a seguinte regra de desconto dinâmico no Checkout:
+- **Quem indica (Referente)**: Ganha **1 Faxina Completa Full Detail de cortesia** quando o amigo indicado fecha o primeiro mês de um *Pacote Mensal* (4 visitas).
+- **Quem é indicado (Referido)**: Ganha **R$ 100 de desconto** no primeiro mês de contratação de qualquer *Pacote Mensal*.
+  - *Lógica no Checkout*: O sistema detecta a chave `pame_referrer_uid` no localStorage (previamente capturada da URL em `App.tsx`) e subtrai R$ 100 del total en el momento de la contratación de un paquete mensual. Al confirmar la reserva, se guarda el `referrerUid` en Firestore, y se limpia el `pame_referrer_uid` del localStorage.
 
 ### Serviços Adicionais de Alta Gama (+R$ 50 cada uno)
 1. Organização de Roupas
@@ -151,6 +157,7 @@ Visible solo para clientes logueados. Rediseñada por completo bajo el estilo *Q
 - **Minhas Reservas (Calendário)**: Calendario interactivo dinámico que cruza los datos de reservas del cliente en Firestore. Detalle del servicio seleccionado que muestra la especialista asignada (con avatar y nombre) y protocolos de lujo aplicados (Desinfección UV, Eco-Luxe, Silencioso).
 - **Histórico & Faturas**: Tabla interactiva con faturas en formato PDF descargables e integración de evaluaciones con estrellas (1 a 5) que actualizan el rating directamente en Firestore en tiempo real.
 - **Suporte & Concierge**: Sistema de Chat funcional con respuesta inteligente y automatizada de concierge, formulario de solicitudes especiales (Catering, Transporte, etc.) que persiste requerimientos en Firestore con modal de confirmación, y sección de preguntas frecuentes colapsables.
+- **Círculo VIP (Indicações / Aba 'indique')**: Painel exclusivo de recomendação que permite copiar o link de indicação exclusivo (`https://www.metodopame.com/?ref=UID`), compartilhar via botão do WhatsApp com mensagem pré-formatada e visualizar a lista de amigos indicados com seus respectivos status (*Pendente*, *Cortesia Liberada!*, *Usufruído*), incluindo um mecanismo de mock fallback elegante caso as regras de segurança do Firestore limitem consultas cruzadas de banco.
 - **Navegación**: Totalmente aislada del flujo estándar, con barra lateral de alta fidelidad y botón para regresar al sitio principal.
 
 ---
@@ -317,6 +324,7 @@ FIREBASE_PRIVATE_KEY=
 - **Autogestão de Disponibilidade** — Especialistas agora podem gerenciar a própria disponibilidade via interface interativa no dashboard de equipe.
 - **Gating Dinâmico de Admins** — Bootstrapping automático via Firestore para validação de roles.
 - **Tipagem Estrita (TypeScript) e UX** — Interfaces (`Employee`, `Booking`) padronizadas, remoção de telas e tabs não funcionais.
+- **Campanha de Indicações Círculo de Excelência (Frontend & Lógica)** — Captura do parâmetro `?ref` na URL com salvamento e limpeza dinâmica de endereço (App.tsx), aplicação do desconto VIP de R$ 100 com banner explicativo no checkout (PricingMatrix.tsx), e aba de indicações ativa no portal do cliente com botão do WhatsApp e lista de indicações com fallback de mock premium (MinhaArea.tsx).
 
 ### 🟡 Importante
 *(Ninguno por el momento)*
