@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Check if the authenticated user's email is in the admin whitelist
+    function isAdmin() {
+      return request.auth != null && 
+        (request.auth.token.email == 'metodopame.homedetail@gmail.com' || 
+         request.auth.token.email == 'contactosaintdac@gmail.com');
+    }
+
+    // Check if the authenticated user is the owner of the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Rules for Specialists (Employees)
+    match /employees/{employeeId} {
+      // Anyone can submit a recruitment application form
+      // But it MUST be submitted as status='pending' and active=false for safety
+      allow create: if request.resource.data.status == 'pending' 
+                    && request.resource.data.active == false;
+      
+      // Admins have full access
+      allow read, write: if isAdmin();
+      
+      // Active specialists can read their own profile data
+      allow read: if request.auth != null && request.auth.token.email == resource.data.email;
+    }
+
+    // Rules for Clients and bookings
+    match /users/{userId} {
+      allow read, write: if isAdmin() || isOwner(userId);
+      
+      match /profile/triage {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+      
+      match /bookings/{bookingId} {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+      
+      match /concierge_requests/{requestId} {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+    }
+
+    // Rules for Specialist calendars / schedules
+    match /employee_schedules/{employeeId}/blocks/{dateStr} {
+      // Clients need to query availability in real-time during triage booking
+      allow read: if true;
+      // Only admins can manually block/unblock slots
+      allow write: if isAdmin();
+    }
+  }
+}

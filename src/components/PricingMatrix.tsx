@@ -10,7 +10,7 @@ import { PAME_ADDONS } from '../data';
 import { useAuth } from '../contexts/AuthContext';
 import { db, auth } from '../lib/firebase';
 import { createPameCalendarEvent, generateClientCalendarUrl } from '../lib/calendar';
-import { collection, addDoc, serverTimestamp, getDocs, doc, getDoc, updateDoc, setDoc, query } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, doc, getDoc, updateDoc, setDoc, query, runTransaction } from 'firebase/firestore';
 import PaymentPending from './PaymentPending';
 import { createPreference } from '../services/mercadopago';
 import { notifyClientAssignment, notifyAdminNewBooking, notifyEmployeeAssignment } from '../lib/NotificationService';
@@ -217,17 +217,41 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
       setAssignedEmployeeName(assignedEmployee.name);
       try {
         const datesToBlock = selectedPlanMode === 'mensal' ? monthlyDates : [bookingDateState];
-        for (let dateStr of datesToBlock) {
-          const blockRef = doc(db, 'employee_schedules', assignedEmployee.id, 'blocks', dateStr);
-          const blockSnap = await getDoc(blockRef);
-          if (blockSnap.exists()) {
-            await updateDoc(blockRef, { shifts: [...(blockSnap.data().shifts || []), shiftId] });
-          } else {
-            await setDoc(blockRef, { shifts: [shiftId] });
+        
+        await runTransaction(db, async (transaction) => {
+          // 1. Reads
+          const blockRefsAndSnaps = [];
+          for (let dateStr of datesToBlock) {
+            const blockRef = doc(db, 'employee_schedules', assignedEmployee.id, 'blocks', dateStr);
+            const blockSnap = await transaction.get(blockRef);
+            blockRefsAndSnaps.push({ ref: blockRef, snap: blockSnap });
           }
-        }
-        await updateDoc(doc(db, 'employees', assignedEmployee.id), {
-          assignedServices: (assignedEmployee.assignedServices || 0) + (selectedPlanMode === 'mensal' ? 4 : 1)
+          const empRef = doc(db, 'employees', assignedEmployee.id);
+          const empSnap = await transaction.get(empRef);
+
+          // 2. Verify availability
+          for (let item of blockRefsAndSnaps) {
+            if (item.snap.exists()) {
+              const shifts = item.snap.data().shifts || [];
+              if (shifts.includes(shiftId)) {
+                throw new Error("Slot ocupado");
+              }
+            }
+          }
+
+          // 3. Writes
+          for (let item of blockRefsAndSnaps) {
+            if (item.snap.exists()) {
+              transaction.update(item.ref, { shifts: [...(item.snap.data().shifts || []), shiftId] });
+            } else {
+              transaction.set(item.ref, { shifts: [shiftId] });
+            }
+          }
+
+          const currentAssigned = empSnap.exists() ? (empSnap.data().assignedServices || 0) : 0;
+          transaction.update(empRef, {
+            assignedServices: currentAssigned + (selectedPlanMode === 'mensal' ? 4 : 1)
+          });
         });
         
         const addonsList = PAME_ADDONS.filter(a => activeAddons.includes(a.id)).map(a => a.name);
@@ -302,8 +326,10 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
 
     try {
       const pref = await createPreference({
-        title: `Faxina MÉTODO PAME — ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`,
-        totalValue: totalPrice,
+        format: selectedFormat,
+        mode: selectedPlanMode,
+        triageData: triageData,
+        activeAddons: activeAddons,
         clientName: bookingName,
         clientEmail: user?.email || undefined
       });

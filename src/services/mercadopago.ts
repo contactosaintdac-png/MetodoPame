@@ -1,6 +1,10 @@
+import { TriageData } from '../types';
+
 export interface PaymentPayload {
-  title: string;
-  totalValue: number;
+  format: 'meio' | 'completo';
+  mode: 'avulso' | 'mensal';
+  triageData: TriageData;
+  activeAddons: string[];
   clientName: string;
   clientEmail?: string;
 }
