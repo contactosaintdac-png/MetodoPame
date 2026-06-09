@@ -2,6 +2,14 @@
 ## MÉTODO PAME | Home Detail
 
 > Este archivo es la fuente de verdad del proyecto. Leelo completo antes de tocar cualquier cosa.
+> 
+> **Regra Obrigatória para a IA:** Atualizar este documento de forma autónoma e sem necessidade de lembretes sempre que forem realizadas alterações relevantes nas seguintes categorias:
+> 1. **Novas Funcionalidades**: Telas, componentes ou fluxos novos/modificados na Área do Cliente, Painel Admin, Formulares ou Especialistas.
+> 2. **Regras de Negócio / Preços**: Valores, taxas dinâmicas, decoy pricing e políticas de cancelamento.
+> 3. **Fluxos de Segurança e Autenticação**: Roles, gating de rotas e novos níveis de acesso de usuário.
+> 4. **Integrações de Terceiros**: Configurações de Google Calendar, Mercado Pago, Resend (emails) e WhatsApp.
+> 5. **Arquitetura & Código Core**: Estrutura de pastas, endpoints em `/api/`, subcoleções no Firestore e regras de segurança.
+> 6. **Estado do Projeto**: Atualizar a lista de pendências e tarefas concluídas (Seção 18).
 
 ---
 
