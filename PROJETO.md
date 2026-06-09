@@ -138,13 +138,12 @@ La aplicación ejecuta una validación de cargo (`userRole`) mediante Firestore 
 
 ## 8. Área do Cliente (`/minha-area`)
 
-Visible solo para clientes logueados. Contiene:
-- Próximo serviço agendado (con foto y nombre de la especialista)
-- Historial completo de servicios
-- Status del paquete activo (mensal/avulso, sesiones restantes)
-- Datos de la residencia (editables — cambios aplican solo a nuevas reservas)
-- Botón de acceso directo a la Matriz de Investimento
-- Botón "Adicionar à minha agenda" → Google Calendar personal del cliente (Opción A: link manual, sin permisos extra)
+Visible solo para clientes logueados. Rediseñada por completo bajo el estilo *Quiet Luxury / Silk & Stone* en 4 secciones unificadas (Abas):
+- **Painel Geral (Dashboard)**: Bienvenida al cliente, estado de membresía, acceso rápido a faturas recientes, recomendaciones de servicios y acceso directo al agendamiento o pricing.
+- **Minhas Reservas (Calendário)**: Calendario interactivo dinámico que cruza los datos de reservas del cliente en Firestore. Detalle del servicio seleccionado que muestra la especialista asignada (con avatar y nombre) y protocolos de lujo aplicados (Desinfección UV, Eco-Luxe, Silencioso).
+- **Histórico & Faturas**: Tabla interactiva con faturas en formato PDF descargables e integración de evaluaciones con estrellas (1 a 5) que actualizan el rating directamente en Firestore en tiempo real.
+- **Suporte & Concierge**: Sistema de Chat funcional con respuesta inteligente y automatizada de concierge, formulario de solicitudes especiales (Catering, Transporte, etc.) que persiste requerimientos en Firestore con modal de confirmación, y sección de preguntas frecuentes colapsables.
+- **Navegación**: Totalmente aislada del flujo estándar, con barra lateral de alta fidelidad y botón para regresar al sitio principal.
 
 ---
 
@@ -304,13 +303,15 @@ FIREBASE_PRIVATE_KEY=
 - ~~**Café Virtual com a Pame** — agregar pantalla de confirmación al final del formulario de funcionárias con agendamiento de videollamada y grabación en base de datos.~~ (Resuelto, selector visual de slots)
 - ~~**Activar Google Calendar con service account real**~~ (Resuelto, Vercel Serverless Function `/api/create-calendar-event` segura e integrada)
 - ~~**Isolamento de Ecosistemas (Gating)** — separación de flujos estricta cliente vs especialista en frontend y protección de admin para múltiples correos.~~ (Resuelto)
+- ~~**Sistema de evaluaciones (estrellas) del cliente sobre el servicio**~~ (Resuelto, persistencia directa en Firestore)
+- ~~**Renovación Premium de la Área del Cliente (`/minha-area`)**~~ (Resuelto, integración de las 4 pantallas del Stitch con interactividad completa)
 
 ### 🟡 Importante
-1. Sistema de evaluaciones (estrellas) del cliente sobre el servicio.
+*(Ninguno por el momento)*
 
 ### 🔵 Para más adelante
-2. Que las funcionárias gestionen su propia disponibilidad desde su celular en `/equipe`.
-3. Conectar WhatsApp Business API para notificaciones de reservas y recordatorios.
+1. Que las funcionárias gestionen su própria disponibilidad desde su celular en `/equipe`.
+2. Conectar WhatsApp Business API para notificaciones de reservas y recordatorios.
 
 ### 🌌 Visión a largo plazo (Objetivo a futuro)
 4. Modelo de expansión tipo Uber para limpieza (abarcar más zonas y escalar operaciones).

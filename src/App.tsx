@@ -193,6 +193,11 @@ export default function App() {
           onScreenChange={handleScreenChange}
         />
 
+      ) : currentScreen === 'minha-area' ? (
+        <div className="w-full h-screen overflow-y-auto bg-[#fff7fd]">
+          <MinhaArea onScreenChange={handleScreenChange} />
+        </div>
+
       ) : (
         /* Standard Layout — client flow */
         <>
@@ -259,9 +264,6 @@ export default function App() {
               >
                 {currentScreen === 'pricing' && (
                   <PricingMatrix triageData={triageData} onTriageDataChange={setTriageData} onScreenChange={handleScreenChange} />
-                )}
-                {currentScreen === 'minha-area' && (
-                  <MinhaArea onScreenChange={handleScreenChange} />
                 )}
               </motion.div>
             </AnimatePresence>
