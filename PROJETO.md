@@ -199,7 +199,7 @@ Campos obligatorios:
 Acceso exclusivo para Pame y el desarrollador. Funcionalidades:
 - Dashboard: reservas del día, ingresos, servicios pendientes
 - Gestión de pedidos: ver, editar, cancelar reservas (Modo Dios)
-- Designación de funcionárias: matching manual o revisar asignación automática
+- Visualização da Agenda: alternância dinâmica entre Vista de Lista e Calendário Mensal com badges interativos coloridos (lilás para atribuídos, vermelho/salmão para não atribuídos).
 - Agenda general: Google Calendar integrado
 - Gestión de clientes: perfiles, historial, paquetes activos
 - Gestión de funcionárias: fichas, disponibilidad, credenciales, historial, activar/desactivar/eliminar
@@ -305,6 +305,7 @@ FIREBASE_PRIVATE_KEY=
 - ~~**Isolamento de Ecosistemas (Gating)** — separación de flujos estricta cliente vs especialista en frontend y protección de admin para múltiples correos.~~ (Resuelto)
 - ~~**Sistema de evaluaciones (estrellas) del cliente sobre el servicio**~~ (Resuelto, persistencia directa en Firestore)
 - ~~**Renovación Premium de la Área del Cliente (`/minha-area`)**~~ (Resuelto, integración de las 4 pantallas del Stitch con interactividad completa)
+- ~~**Calendário no Painel do Administrador (Maestro de Agendas)**~~ (Resuelto, toggle dinâmico lista/calendário com controle de meses e badges inteligentes)
 
 ### 🟡 Importante
 *(Ninguno por el momento)*
