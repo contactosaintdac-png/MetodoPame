@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collectionGroup, query, where, orderBy, getDocs } from 'firebase/firestore';
-import type { Employee } from './AdminPanel';
+import { collectionGroup, query, where, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
+import type { Employee, Booking } from '../types';
 
 // ─────────────────────────────────────────────
 //  TYPES
@@ -126,7 +126,42 @@ interface Props {
 export default function EspecialistaDashboard({ employee }: Props) {
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab]           = useState<EspecialistaTab>('dashboard');
-  const [myBookings, setMyBookings]         = useState<any[]>([]);
+  const [myBookings, setMyBookings]         = useState<Booking[]>([]);
+  const [localAvailability, setLocalAvailability] = useState(employee?.weeklyAvailability || {});
+  const [savingAvailability, setSavingAvailability] = useState(false);
+
+  useEffect(() => {
+    if (employee?.weeklyAvailability) {
+      setLocalAvailability(employee.weeklyAvailability);
+    }
+  }, [employee]);
+
+  const toggleAvailability = (dayIdx: number, shiftId: string) => {
+    const currentDay = localAvailability[dayIdx] || [];
+    const newDay = currentDay.includes(shiftId as any)
+      ? currentDay.filter(s => s !== shiftId)
+      : [...currentDay, shiftId as any];
+      
+    setLocalAvailability({
+      ...localAvailability,
+      [dayIdx]: newDay
+    });
+  };
+
+  const saveAvailability = async () => {
+    if (!employee?.id) return;
+    setSavingAvailability(true);
+    try {
+      const empRef = doc(db, 'employees', employee.id);
+      await updateDoc(empRef, { weeklyAvailability: localAvailability });
+      alert('Disponibilidade salva com sucesso!');
+    } catch (err) {
+      console.error('Erro ao salvar disponibilidade:', err);
+      alert('Erro ao salvar disponibilidade.');
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [expandedProtocol, setExpandedProtocol] = useState<number | null>(null);
 
@@ -587,39 +622,51 @@ export default function EspecialistaDashboard({ employee }: Props) {
                 </div>
 
                 {/* Availability Grid */}
-                {employee?.weeklyAvailability && (
-                  <div>
-                    <h3 className="text-sm font-bold text-[#561668] uppercase tracking-widest mb-3">Disponibilidade Semanal</h3>
-                    <div className="silk-inset rounded-2xl overflow-x-auto">
-                      <table className="w-full text-[10px] text-center font-bold">
-                        <thead className="text-[#80737f] uppercase tracking-widest border-b border-[#e9e0e8]">
-                          <tr>
-                            <th className="p-2 border-r border-[#e9e0e8] text-left">Dia</th>
-                            {SHIFTS.map(s => <th key={s.id} className="p-2">{s.label}</th>)}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {DAYS_OF_WEEK_SHORT.map((dayName, idx) => (
-                            <tr key={dayName} className="border-b border-[#e9e0e8] last:border-0">
-                              <td className="p-2 border-r border-[#e9e0e8] text-left text-[#561668] uppercase tracking-widest bg-[#faf1fa]/50 w-16">{dayName}</td>
-                              {SHIFTS.map(shift => {
-                                const isAvail = employee.weeklyAvailability?.[idx]?.includes(shift.id as any);
-                                return (
-                                  <td key={shift.id} className="p-1">
-                                    <div className={`w-6 h-6 rounded mx-auto flex items-center justify-center ${isAvail ? 'text-white' : 'border border-[#d1c2d0]'}`} style={isAvail ? { background: '#561668' } : {}}>
-                                      {isAvail && <span className="material-symbols-outlined text-[12px]">check</span>}
-                                    </div>
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="text-[10px] text-[#80737f] mt-2 text-center">Disponibilidade gerenciada pela coordenação</p>
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-[#561668] uppercase tracking-widest">Disponibilidade Semanal</h3>
+                    <button 
+                      onClick={saveAvailability}
+                      disabled={savingAvailability}
+                      className="text-[10px] uppercase tracking-widest font-bold bg-[#561668] text-white px-3 py-1 rounded-full flex items-center gap-1 hover:bg-[#703081] transition-colors disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">save</span>
+                      {savingAvailability ? 'Salvando...' : 'Salvar'}
+                    </button>
                   </div>
-                )}
+                  <div className="silk-inset rounded-2xl overflow-x-auto">
+                    <table className="w-full text-[10px] text-center font-bold">
+                      <thead className="text-[#80737f] uppercase tracking-widest border-b border-[#e9e0e8]">
+                        <tr>
+                          <th className="p-2 border-r border-[#e9e0e8] text-left">Dia</th>
+                          {SHIFTS.map(s => <th key={s.id} className="p-2">{s.label}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {DAYS_OF_WEEK_SHORT.map((dayName, idx) => (
+                          <tr key={dayName} className="border-b border-[#e9e0e8] last:border-0">
+                            <td className="p-2 border-r border-[#e9e0e8] text-left text-[#561668] uppercase tracking-widest bg-[#faf1fa]/50 w-16">{dayName}</td>
+                            {SHIFTS.map(shift => {
+                              const isAvail = localAvailability[idx]?.includes(shift.id as any);
+                              return (
+                                <td key={shift.id} className="p-1">
+                                  <button 
+                                    onClick={() => toggleAvailability(idx, shift.id)}
+                                    className={`w-6 h-6 rounded mx-auto flex items-center justify-center transition-all ${isAvail ? 'text-white' : 'border border-[#d1c2d0] hover:border-[#561668]'}`} 
+                                    style={isAvail ? { background: '#561668' } : {}}
+                                  >
+                                    {isAvail && <span className="material-symbols-outlined text-[12px]">check</span>}
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-[#80737f] mt-2 text-center">Modifique e salve sua disponibilidade.</p>
+                </div>
               </div>
             </div>
 

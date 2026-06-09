@@ -15,7 +15,7 @@ import Sidebar from './components/Sidebar';
 import MinhaArea from './components/MinhaArea';
 import AdminPanel from './components/AdminPanel';
 import { useAuth } from './contexts/AuthContext';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 const getInitialScreen = (): ApplicationScreen => {
@@ -28,7 +28,7 @@ const getInitialScreen = (): ApplicationScreen => {
   return 'welcome';
 };
 
-const ADMIN_EMAILS = ['metodopame.homedetail@gmail.com', 'contactosaintdac@gmail.com'];
+const FOUNDER_EMAILS = ['metodopame.homedetail@gmail.com', 'contactosaintdac@gmail.com'];
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ApplicationScreen>(getInitialScreen);
@@ -37,6 +37,19 @@ export default function App() {
   const { user, loading } = useAuth();
   const [userRole, setUserRole] = useState<'client' | 'specialist' | 'admin' | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
+ 
+  // Capture referral code if present in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      localStorage.setItem('pame_referrer_uid', ref);
+      params.delete('ref');
+      const cleanSearch = params.toString();
+      const newPath = window.location.pathname + (cleanSearch ? '?' + cleanSearch : '');
+      window.history.replaceState({}, '', newPath);
+    }
+  }, []);
 
   // Determine user role when authentication status resolves
   useEffect(() => {
@@ -51,12 +64,21 @@ export default function App() {
     const determineRole = async () => {
       try {
         setRoleLoading(true);
-        if (user.email && ADMIN_EMAILS.includes(user.email)) {
+        
+        // 1. Check admin status via Firestore or Founder list
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if ((userSnap.exists() && userSnap.data().role === 'admin') || (user.email && FOUNDER_EMAILS.includes(user.email))) {
+          if (!userSnap.exists() || userSnap.data().role !== 'admin') {
+            await setDoc(userRef, { email: user.email, role: 'admin' }, { merge: true });
+          }
           setUserRole('admin');
           setRoleLoading(false);
           return;
         }
 
+        // 2. Check for active specialist
         if (user.email) {
           const q = query(
             collection(db, 'employees'),

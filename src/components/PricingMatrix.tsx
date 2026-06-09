@@ -29,6 +29,9 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   );
   // Use fallback so if somehow it is empty it defaults safely
   const selectedPlanMode = triageData.frequency === 'monthly' ? 'mensal' : 'avulso';
+  const [hasReferrerDiscount] = useState<boolean>(() => {
+    return !!(typeof window !== 'undefined' && localStorage.getItem('pame_referrer_uid'));
+  });
   
   const [activeAddons, setActiveAddons] = useState<string[]>([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -80,6 +83,9 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
     if (isMensal) {
        discount = format === 'meio' ? 200 : 300;
        total -= discount;
+       if (hasReferrerDiscount) {
+         total -= 100;
+       }
     }
     
     return { total, discount };

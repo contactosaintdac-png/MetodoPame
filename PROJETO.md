@@ -314,13 +314,15 @@ FIREBASE_PRIVATE_KEY=
 - ~~**Sistema de evaluaciones (estrellas) del cliente sobre el servicio**~~ (Resuelto, persistencia directa en Firestore)
 - ~~**Renovación Premium de la Área del Cliente (`/minha-area`)**~~ (Resuelto, integración de las 4 pantallas del Stitch con interactividad completa)
 - ~~**Calendário no Painel do Administrador (Maestro de Agendas)**~~ (Resuelto, toggle dinâmico lista/calendário com controle de meses e badges inteligentes)
+- **Autogestão de Disponibilidade** — Especialistas agora podem gerenciar a própria disponibilidade via interface interativa no dashboard de equipe.
+- **Gating Dinâmico de Admins** — Bootstrapping automático via Firestore para validação de roles.
+- **Tipagem Estrita (TypeScript) e UX** — Interfaces (`Employee`, `Booking`) padronizadas, remoção de telas e tabs não funcionais.
 
 ### 🟡 Importante
 *(Ninguno por el momento)*
 
 ### 🔵 Para más adelante
-1. Que las funcionárias gestionen su própria disponibilidad desde su celular en `/equipe`.
-2. Conectar WhatsApp Business API para notificaciones de reservas y recordatorios.
+1. Conectar WhatsApp Business API para notificaciones de reservas y recordatorios.
 
 ### 🌌 Visión a largo plazo (Objetivo a futuro)
 4. Modelo de expansión tipo Uber para limpieza (abarcar más zonas y escalar operaciones).

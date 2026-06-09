@@ -4,22 +4,7 @@ import { db } from '../lib/firebase';
 import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup } from 'firebase/firestore';
 import { notifyEmployeeRemoval, notifyEmployeeAssignment } from '../lib/NotificationService';
 
-export interface Employee {
-  id: string;
-  name: string;
-  photoURL: string;
-  role: string;
-  cpf?: string;
-  whatsapp?: string;
-  email?: string;
-  zones?: string;
-  active?: boolean;
-  status?: 'pending' | 'active' | 'rejected';
-  assignedServices: number;
-  weeklyAvailability: {
-    [dayIndex: number]: ('meio_manha' | 'meio_tarde' | 'completo')[];
-  };
-}
+import type { Employee, Booking } from '../types';
 
 const DAYS_OF_WEEK = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const SHIFTS = [
@@ -28,14 +13,13 @@ const SHIFTS = [
   { id: 'completo', label: 'Integral' },
 ];
 
-type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'logistica';
+type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento';
 
 const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard'    },
   { id: 'agenda',       icon: 'calendar_today', label: 'Agenda'     },
   { id: 'equipe',       icon: 'group',        label: 'Equipe'       },
   { id: 'recrutamento', icon: 'badge',         label: 'Recrutamento' },
-  { id: 'logistica',    icon: 'inventory_2',  label: 'Logística'    },
 ];
 
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
@@ -240,7 +224,6 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     agenda:       'Maestro de Agendas',
     equipe:       'Gestão de Equipe',
     recrutamento: 'Recrutamento',
-    logistica:    'Logística e Protocolos',
   }[id]);
 
   // ─── Login screen ─────────────────────────────────────────────────────────────
@@ -1145,54 +1128,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
           </div>
         )}
 
-        {/* ╔══════════════════════════════╗
-            ║   TAB: LOGÍSTICA             ║
-            ╚══════════════════════════════╝ */}
-        {activeTab === 'logistica' && (
-          <div>
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-extrabold text-[#561668]">Logística e Protocolos</h2>
-              <span className="text-[11px] font-bold text-[#80737f] bg-[#e9e0e8] px-3 py-1.5 rounded-full uppercase tracking-widest">Em Desenvolvimento</span>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
-              {[
-                { icon: 'sanitizer',        title: 'Protocolo de Higienização',  desc: 'Superfícies nobres, mármore e granito. Procedimentos certificados com produtos de alto padrão.',                               tags: ['Mármore', 'Granito', 'Vidros']        },
-                { icon: 'cleaning_services', title: 'Equipamentos Premium',       desc: 'Vaporizadores industriais, aspiradores HEPA e lavadoras de baixa pressão para superfícies delicadas.',                          tags: ['Vaporizador', 'HEPA', 'Low-pressure'] },
-                { icon: 'inventory_2',       title: 'Controle de Insumos',        desc: 'Gestão de produtos de limpeza de alta gama. Reposição automática baseada no volume de serviços.',                              tags: ['Estoque', 'Reposição']                },
-                { icon: 'route',             title: 'Roteirização de Equipe',     desc: 'Otimização de rotas para redução de tempo de deslocamento entre residências atendidas em Tijucas.',                            tags: ['Tijucas', 'Rotas']                    },
-                { icon: 'fact_check',        title: 'Checklist de Qualidade',     desc: 'Auditoria interna pós-serviço com 48 pontos de verificação para garantir o padrão Método Pame em cada visita.',               tags: ['QA', '48 pontos']                     },
-                { icon: 'workspace_premium', title: 'Certificações de Equipe',    desc: 'Controle de treinamentos, certificações e especializações de cada especialista para garantir excelência contínua.',            tags: ['Treinamento', 'Cert.']                },
-              ].map((card, i) => (
-                <div key={i} className="silk-lift rounded-3xl p-7 flex flex-col gap-4 hover:scale-[1.02] transition-transform duration-300 cursor-default">
-                  <div className="p-4 rounded-2xl w-fit" style={{ background: '#703081' }}>
-                    <span className="material-symbols-outlined text-[#eca1fb] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>{card.icon}</span>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[#1e1a20] text-base mb-2">{card.title}</h3>
-                    <p className="text-sm text-[#4e434e] leading-relaxed">{card.desc}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-auto pt-2">
-                    {card.tags.map(tag => (
-                      <span key={tag} className="text-[10px] font-bold text-[#561668] bg-[#f4ebf4] px-2.5 py-1 rounded-full uppercase tracking-widest">{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Coming Soon */}
-            <div className="silk-lift rounded-3xl p-10 text-center flex flex-col items-center gap-4">
-              <div className="p-5 rounded-full bg-[#e9e0e8]">
-                <span className="material-symbols-outlined text-[#561668] text-[48px]" style={{ fontVariationSettings: "'FILL' 1" }}>rocket_launch</span>
-              </div>
-              <h3 className="text-xl font-bold text-[#561668]">Módulo completo em breve</h3>
-              <p className="text-[#80737f] max-w-md text-sm leading-relaxed">
-                A gestão de estoque, protocolos digitais e checklist interativo estarão disponíveis na próxima atualização do sistema Método Pame.
-              </p>
-            </div>
-          </div>
-        )}
 
       </main>
 
