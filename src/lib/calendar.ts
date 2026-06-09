@@ -48,33 +48,57 @@ export const generateClientCalendarUrl = (details: BookingDetails) => {
 };
 
 export const createPameCalendarEvent = async (details: BookingDetails) => {
-  // Placeholders for environment variables
-  const calendarId = import.meta.env.VITE_GOOGLE_CALENDAR_ID;
-  const serviceAccountKey = import.meta.env.VITE_GOOGLE_SERVICE_ACCOUNT_KEY;
-
-  console.log("==========================================");
-  console.log("📅 MOCK: Criando evento no Google Calendar da Pame");
-  console.log("Calendar ID:", calendarId || "PLACEHOLDER");
-  console.log("Service Account:", serviceAccountKey ? "***KEY_PRESENT***" : "PLACEHOLDER");
-  console.log("Detalhes do Evento:", details);
-  console.log("==========================================");
-
-  /*
-  // Em produção, isso deve ser substituído por uma chamada à sua Cloud Function:
   try {
-    const response = await fetch('https://us-central1-SEUPROJETO.cloudfunctions.net/createCalendarEvent', {
+    const response = await fetch('/api/create-calendar-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(details)
+      body: JSON.stringify({
+        type: 'booking',
+        details: {
+          clientName: details.clientName,
+          date: details.date instanceof Date ? details.date.toISOString() : new Date(details.date).toISOString(),
+          shift: details.shift,
+          modality: details.modality,
+          addons: details.addons,
+          totalValue: details.totalValue,
+        }
+      })
     });
-    if (!response.ok) throw new Error("Falha ao criar evento");
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Erro ao sincronizar com Google Calendar');
+    }
     return await response.json();
   } catch (error) {
-    console.error("Erro na integração com Calendar:", error);
-    throw error;
+    console.error('Erro na integração com Calendar:', error);
+    return { success: false, error };
   }
-  */
+};
 
-  // Simulando delay de rede
-  return new Promise(resolve => setTimeout(() => resolve(true), 1000));
+export interface CafeVirtualDetails {
+  candidateName: string;
+  date: string;
+  time: string;
+  whatsapp: string;
+}
+
+export const scheduleCafeVirtualEvent = async (details: CafeVirtualDetails) => {
+  try {
+    const response = await fetch('/api/create-calendar-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'cafe-virtual',
+        details
+      })
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Erro ao agendar Café Virtual no Google Calendar');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Erro ao agendar Café Virtual:', error);
+    return { success: false, error };
+  }
 };

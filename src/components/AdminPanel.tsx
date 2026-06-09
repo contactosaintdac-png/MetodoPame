@@ -28,47 +28,51 @@ const SHIFTS = [
   { id: 'completo', label: 'Integral' },
 ];
 
+type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'logistica';
+
+const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
+  { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard'    },
+  { id: 'agenda',       icon: 'calendar_today', label: 'Agenda'     },
+  { id: 'equipe',       icon: 'group',        label: 'Equipe'       },
+  { id: 'recrutamento', icon: 'badge',         label: 'Recrutamento' },
+  { id: 'logistica',    icon: 'inventory_2',  label: 'Logística'    },
+];
+
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
   const { user, signInWithGoogle } = useAuth();
-  
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'employees' | 'pending' | 'bookings'>('employees');
-  
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [newEmpName, setNewEmpName] = useState('');
-  const [newEmpRole, setNewEmpRole] = useState('Especialista em Limpeza');
-  
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [editFormData, setEditFormData] = useState<Partial<Employee>>({});
+
+  const [employees, setEmployees]           = useState<Employee[]>([]);
+  const [bookings, setBookings]             = useState<any[]>([]);
+  const [loading, setLoading]               = useState(true);
+  const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
+
+  const [showAddModal, setShowAddModal]     = useState(false);
+  const [showEditModal, setShowEditModal]   = useState(false);
+  const [newEmpName, setNewEmpName]         = useState('');
+  const [newEmpRole, setNewEmpRole]         = useState('Especialista em Limpeza');
+
+  const [editingEmployee, setEditingEmployee]   = useState<Employee | null>(null);
+  const [editFormData, setEditFormData]         = useState<Partial<Employee>>({});
 
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<any>(null);
-  const [editBookingData, setEditBookingData] = useState<any>({});
+  const [editingBooking, setEditingBooking]             = useState<any>(null);
+  const [editBookingData, setEditBookingData]           = useState<any>({});
 
+  // ─── Data fetching ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (user) {
-      fetchEmployees();
-    }
+    if (user) fetchEmployees();
   }, [user]);
 
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'employees'));
-      const snap = await getDocs(q);
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-      setEmployees(data);
-      
-      // Intentamos obtener los bookings globales
+      const snap = await getDocs(query(collection(db, 'employees')));
+      setEmployees(snap.docs.map(d => ({ id: d.id, ...d.data() } as Employee)));
       try {
-        const bq = query(collectionGroup(db, 'bookings'));
-        const bSnap = await getDocs(bq);
+        const bSnap = await getDocs(query(collectionGroup(db, 'bookings')));
         setBookings(bSnap.docs.map(d => ({ docId: d.id, ref: d.ref, ...d.data() })));
       } catch (e) {
-        console.warn("No se pudo cargar collectionGroup bookings. Requiere index.", e);
+        console.warn('collectionGroup bookings indisponível — necessita index.', e);
       }
     } catch (err) {
       console.error(err);
@@ -77,159 +81,111 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     }
   };
 
+  // ─── Employee Handlers ────────────────────────────────────────────────────────
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmpName) return;
-    
     const newEmp = {
       name: newEmpName,
       photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(newEmpName)}&background=561668&color=fff`,
       role: newEmpRole,
       assignedServices: 0,
-      weeklyAvailability: { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [] }, // Empty initially
-      createdAt: serverTimestamp()
+      weeklyAvailability: { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+      createdAt: serverTimestamp(),
     };
-    
     try {
       await addDoc(collection(db, 'employees'), newEmp);
       setShowAddModal(false);
       setNewEmpName('');
       fetchEmployees();
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const toggleAvailability = async (empId: string, dayIdx: number, shiftId: string, currentAvail: any) => {
-    const dayAvail = currentAvail[dayIdx] || [];
-    let newDayAvail = [...dayAvail];
-    
-    if (newDayAvail.includes(shiftId)) {
-      newDayAvail = newDayAvail.filter((s: string) => s !== shiftId);
-    } else {
-      newDayAvail.push(shiftId);
-    }
-    
+    const dayAvail: string[] = currentAvail[dayIdx] || [];
+    const newDayAvail = dayAvail.includes(shiftId)
+      ? dayAvail.filter((s: string) => s !== shiftId)
+      : [...dayAvail, shiftId];
     const newWeeklyAvail = { ...currentAvail, [dayIdx]: newDayAvail };
-    
-    // Optimistic update
     setEmployees(prev => prev.map(e => e.id === empId ? { ...e, weeklyAvailability: newWeeklyAvail } : e));
-    
     try {
-      await updateDoc(doc(db, 'employees', empId), {
-        weeklyAvailability: newWeeklyAvail
-      });
-    } catch (err) {
-      console.error(err);
-      fetchEmployees(); // revert on fail
-    }
+      await updateDoc(doc(db, 'employees', empId), { weeklyAvailability: newWeeklyAvail });
+    } catch (err) { console.error(err); fetchEmployees(); }
   };
 
   const handleEditEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEmployee) return;
-
     try {
       await updateDoc(doc(db, 'employees', editingEmployee.id), editFormData);
       setShowEditModal(false);
       setEditingEmployee(null);
       fetchEmployees();
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleApproveCandidate = async (empId: string) => {
     try {
       await updateDoc(doc(db, 'employees', empId), { status: 'active', active: true });
       fetchEmployees();
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleRejectCandidate = async (empId: string) => {
-    if (confirm("Tem certeza que deseja rejeitar e apagar esta candidatura?")) {
-      try {
-        await deleteDoc(doc(db, 'employees', empId));
-        fetchEmployees();
-      } catch (err) {
-        console.error(err);
-      }
+    if (confirm('Tem certeza que deseja rejeitar e apagar esta candidatura?')) {
+      try { await deleteDoc(doc(db, 'employees', empId)); fetchEmployees(); }
+      catch (err) { console.error(err); }
     }
   };
 
   const handleDeleteEmployee = async (empId: string) => {
-    if (confirm("Tem certeza que deseja desativar (ocultar) esta especialista? Ela não será apagada da base de dados.")) {
-      try {
-        await updateDoc(doc(db, 'employees', empId), { active: false });
-        fetchEmployees();
-      } catch (err) {
-        console.error(err);
-      }
+    if (confirm('Tem certeza que deseja desativar (ocultar) esta especialista?')) {
+      try { await updateDoc(doc(db, 'employees', empId), { active: false }); fetchEmployees(); }
+      catch (err) { console.error(err); }
     }
   };
 
   const handleHardDeleteEmployee = async (empId: string) => {
-    if (confirm("🚨 ATENÇÃO: Tem certeza que deseja DELETAR DEFINITIVAMENTE esta especialista? Essa ação não pode ser desfeita.")) {
-      try {
-        await deleteDoc(doc(db, 'employees', empId));
-        fetchEmployees();
-      } catch (err) {
-        console.error(err);
-      }
+    if (confirm('🚨 ATENÇÃO: Deletar DEFINITIVAMENTE esta especialista? Esta ação não pode ser desfeita.')) {
+      try { await deleteDoc(doc(db, 'employees', empId)); fetchEmployees(); }
+      catch (err) { console.error(err); }
     }
   };
 
+  // ─── Booking Handlers ─────────────────────────────────────────────────────────
   const handleDeleteBooking = async (bookingRef: any) => {
-    if (confirm("🚨 ATENÇÃO: Tem certeza que deseja DELETAR DEFINITIVAMENTE este agendamento? Essa ação não pode ser desfeita.")) {
-      try {
-        await deleteDoc(bookingRef);
-        fetchEmployees();
-      } catch (err) {
-        console.error(err);
-      }
+    if (confirm('🚨 ATENÇÃO: Deletar DEFINITIVAMENTE este agendamento?')) {
+      try { await deleteDoc(bookingRef); fetchEmployees(); }
+      catch (err) { console.error(err); }
     }
   };
 
   const handleDeleteAllBookings = async () => {
-    if (confirm("🚨 PERIGO EXTREMO: Você está prestes a DELETAR TODAS AS RESERVAS do sistema. Digite 'CONFIRMAR' para continuar.")) {
-      const userInput = prompt("Digite CONFIRMAR para apagar todas as reservas:");
-      if (userInput === "CONFIRMAR") {
+    if (confirm('🚨 PERIGO EXTREMO: Apagar TODAS AS RESERVAS do sistema?')) {
+      const input = prompt('Digite CONFIRMAR para continuar:');
+      if (input === 'CONFIRMAR') {
         setLoading(true);
         try {
-          for (const b of bookings) {
-            await deleteDoc(b.ref);
-          }
-          alert("Todas as reservas foram apagadas com sucesso.");
+          for (const b of bookings) await deleteDoc(b.ref);
+          alert('Todas as reservas foram apagadas.');
           fetchEmployees();
-        } catch (err) {
-          console.error(err);
-          alert("Erro ao apagar reservas. Verifique o console.");
-        } finally {
-          setLoading(false);
-        }
+        } catch (err) { console.error(err); alert('Erro ao apagar reservas.'); }
+        finally { setLoading(false); }
       }
     }
   };
 
   const handleDeleteAllEmployees = async () => {
-    if (confirm("🚨 PERIGO EXTREMO: Você está prestes a DELETAR TODAS AS ESPECIALISTAS do sistema. Digite 'CONFIRMAR' para continuar.")) {
-      const userInput = prompt("Digite CONFIRMAR para apagar todas as especialistas:");
-      if (userInput === "CONFIRMAR") {
+    if (confirm('🚨 PERIGO EXTREMO: Apagar TODAS AS ESPECIALISTAS do sistema?')) {
+      const input = prompt('Digite CONFIRMAR para continuar:');
+      if (input === 'CONFIRMAR') {
         setLoading(true);
         try {
-          for (const emp of employees) {
-            await deleteDoc(doc(db, 'employees', emp.id));
-          }
-          alert("Todas as especialistas foram apagadas com sucesso.");
+          for (const emp of employees) await deleteDoc(doc(db, 'employees', emp.id));
+          alert('Todas as especialistas foram apagadas.');
           fetchEmployees();
-        } catch (err) {
-          console.error(err);
-          alert("Erro ao apagar especialistas. Verifique o console.");
-        } finally {
-          setLoading(false);
-        }
+        } catch (err) { console.error(err); alert('Erro ao apagar especialistas.'); }
+        finally { setLoading(false); }
       }
     }
   };
@@ -237,34 +193,50 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const handleEditBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingBooking) return;
-
     try {
       let finalData = { ...editBookingData };
       if (editBookingData.assignedEmployeeId) {
-        const selectedEmp = employees.find(emp => emp.id === editBookingData.assignedEmployeeId);
-        if (selectedEmp) {
-           finalData.assignedEmployeeName = selectedEmp.name;
-        }
+        const sel = employees.find(emp => emp.id === editBookingData.assignedEmployeeId);
+        if (sel) finalData.assignedEmployeeName = sel.name;
       }
-
       await updateDoc(editingBooking.ref, finalData);
       setShowEditBookingModal(false);
       setEditingBooking(null);
       fetchEmployees();
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
+  // ─── Derived data ─────────────────────────────────────────────────────────────
+  const activeEmployees  = employees.filter(e => e.active !== false && e.status === 'active');
+  const pendingEmployees = employees.filter(e => e.status === 'pending');
+  const today            = new Date();
+  const todayISO         = today.toISOString().split('T')[0];
+  const todayStr         = today.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const todayBookings    = bookings.filter(b => b.date === todayISO);
+  const totalRevenue     = bookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
+
+  const tabTitle = (id: AdminTab) => ({
+    dashboard:    'Admin Dashboard',
+    agenda:       'Maestro de Agendas',
+    equipe:       'Gestão de Equipe',
+    recrutamento: 'Recrutamento',
+    logistica:    'Logística e Protocolos',
+  }[id]);
+
+  // ─── Login screen ─────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#f8f9fa]">
-        <div className="bg-white p-8 rounded-2xl shadow-[4px_4px_15px_rgba(0,0,0,0.05)] max-w-sm w-full text-center border border-[#efe5ee]">
+      <div className="flex items-center justify-center min-h-screen" style={{ background: '#fff7fd', fontFamily: 'Manrope, sans-serif' }}>
+        <div className="silk-lift rounded-3xl p-10 max-w-sm w-full text-center mx-4">
+          <div className="w-20 h-20 rounded-2xl silk-lift-sm mx-auto mb-6 flex items-center justify-center" style={{ background: '#561668' }}>
+            <span className="material-symbols-outlined text-white text-[40px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield_person</span>
+          </div>
           <h1 className="text-2xl font-extrabold text-[#561668] mb-2 tracking-tight">Painel Administrativo</h1>
-          <p className="text-sm text-[#4e434e] mb-8">Acesso restrito à gerência do Método Pame.</p>
-          <button 
+          <p className="text-sm text-[#80737f] mb-8">Acesso restrito à gerência do Método Pame.</p>
+          <button
             onClick={signInWithGoogle}
-            className="w-full py-4 bg-[#561668] hover:bg-[#703081] transition-colors text-white rounded-xl font-bold uppercase tracking-widest text-xs"
+            className="w-full py-4 text-white rounded-2xl font-bold uppercase tracking-widest text-xs silk-lift transition-opacity hover:opacity-90"
+            style={{ background: '#561668' }}
           >
             Entrar com Google
           </button>
@@ -273,238 +245,733 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     );
   }
 
+  // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto font-sans">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-[#d1c2d0]/30 pb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-[#561668] tracking-tight">Dashboard Gerencial</h1>
-          <p className="text-[#80737f] mt-1 text-sm font-medium">Gestão de Funcionárias, Agendas e Designações</p>
+    <div className="flex min-h-screen" style={{ background: '#fff7fd', fontFamily: 'Manrope, sans-serif', color: '#1e1a20' }}>
+
+      {/* ══════════════════════════════════════════
+          SIDEBAR
+      ══════════════════════════════════════════ */}
+      <nav
+        className="h-screen w-64 fixed left-0 top-0 flex flex-col py-8 px-4 z-50"
+        style={{ background: '#faf1fa', boxShadow: '4px 0 24px rgba(226,217,230,1)' }}
+      >
+        {/* Brand */}
+        <div className="flex items-center gap-3 px-2 mb-10">
+          <div className="w-12 h-12 rounded-xl silk-lift-sm flex items-center justify-center flex-shrink-0" style={{ background: '#561668' }}>
+            <span className="material-symbols-outlined text-white text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+          </div>
+          <div>
+            <h1 className="text-[17px] font-bold text-[#561668] leading-tight">Método Pame</h1>
+            <p className="text-[9px] text-[#80737f] uppercase tracking-widest font-bold">Residential Excellence</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3 bg-white p-2 md:p-3 rounded-2xl shadow-sm border border-[#efe5ee]">
-          <img src={user.photoURL || ''} alt="Admin" className="w-10 h-10 rounded-full border-2 border-[#faf1fa]" />
-          <div className="text-right pr-2 hidden md:block">
-            <p className="text-sm font-bold text-[#1e1a20]">{user.displayName}</p>
-            <p className="text-xs text-[#80737f] uppercase tracking-wider font-bold">Administradora</p>
+
+        {/* Nav items */}
+        <div className="flex flex-col gap-1.5 flex-grow">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 w-full ${
+                activeTab === item.id
+                  ? 'text-[#561668] font-bold bg-[#e9e0e8]'
+                  : 'text-[#626264] font-medium hover:bg-[#efe5ee]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[22px] flex-shrink-0">{item.icon}</span>
+              <span className="text-[14px]">{item.label}</span>
+              {item.id === 'recrutamento' && pendingEmployees.length > 0 && (
+                <span className="ml-auto bg-[#561668] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                  {pendingEmployees.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* New Service Request */}
+        <button className="mt-4 mb-8 text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 silk-lift hover:opacity-90 transition-all text-sm" style={{ background: '#561668' }}>
+          <span className="material-symbols-outlined text-[20px]">add_circle</span>
+          Nova Solicitação
+        </button>
+
+        {/* Bottom links */}
+        <div className="flex flex-col gap-1 pt-5 border-t border-[#e9e0e8]">
+          <a className="flex items-center gap-3 px-4 py-2 text-[#d1c2d0] hover:text-[#561668] transition-all text-[11px] font-bold uppercase tracking-widest" href="#">
+            <span className="material-symbols-outlined text-[18px]">settings</span>
+            Configurações
+          </a>
+          <a className="flex items-center gap-3 px-4 py-2 text-[#d1c2d0] hover:text-[#561668] transition-all text-[11px] font-bold uppercase tracking-widest" href="#">
+            <span className="material-symbols-outlined text-[18px]">help</span>
+            Ajuda
+          </a>
+        </div>
+      </nav>
+
+      {/* ══════════════════════════════════════════
+          TOP APP BAR
+      ══════════════════════════════════════════ */}
+      <header
+        className="fixed top-0 right-0 z-40 flex justify-between items-center h-20 px-8"
+        style={{
+          width: 'calc(100% - 16rem)',
+          background: 'rgba(255,247,253,0.85)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(209,194,208,0.3)',
+        }}
+      >
+        <div className="flex flex-col">
+          <h2 className="text-xl font-bold text-[#561668] silk-text-glow">{tabTitle(activeTab)}</h2>
+          <p className="text-[11px] text-[#80737f] font-bold uppercase tracking-widest capitalize">{todayStr}</p>
+        </div>
+        <div className="flex items-center gap-5">
+          {/* Search */}
+          <div className="silk-inset rounded-full px-4 py-2 w-52 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#80737f] text-[18px]">search</span>
+            <input
+              className="bg-transparent border-none outline-none text-sm w-full placeholder:text-[#d1c2d0] text-[#1e1a20]"
+              placeholder="Buscar..."
+              type="text"
+            />
+          </div>
+          {/* Notifications */}
+          <button className="w-10 h-10 flex items-center justify-center rounded-full silk-lift-sm text-[#561668] hover:bg-[#efe5ee] transition-all relative">
+            <span className="material-symbols-outlined">notifications</span>
+            {pendingEmployees.length > 0 && (
+              <span className="absolute top-0 right-0 w-4 h-4 text-white text-[9px] rounded-full flex items-center justify-center font-bold" style={{ background: '#ba1a1a' }}>
+                {pendingEmployees.length}
+              </span>
+            )}
+          </button>
+          {/* User */}
+          <div className="flex items-center gap-3 border-l border-[#e9e0e8] pl-5">
+            <div className="text-right">
+              <p className="text-sm font-bold text-[#1e1a20] leading-tight">{user.displayName || 'Admin Pame'}</p>
+              <p className="text-[10px] text-[#d1c2d0] uppercase tracking-wider font-bold">Diretora</p>
+            </div>
+            <img
+              className="w-10 h-10 rounded-full object-cover silk-lift-sm border-2 border-white"
+              src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'Admin')}&background=561668&color=fff`}
+              alt="Admin"
+            />
           </div>
         </div>
       </header>
-      
-      <div className="flex gap-4 mb-8 border-b border-[#efe5ee] overflow-x-auto hide-scrollbar">
-        <button 
-          onClick={() => setActiveTab('employees')}
-          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap ${activeTab === 'employees' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
-        >
-          Equipe
-        </button>
-        <button 
-          onClick={() => setActiveTab('pending')}
-          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'pending' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
-        >
-          Novas Candidaturas
-          {employees.filter(e => e.status === 'pending').length > 0 && (
-            <span className="bg-[#561668] text-white text-[10px] px-2 py-0.5 rounded-full">
-              {employees.filter(e => e.status === 'pending').length}
-            </span>
-          )}
-        </button>
-        <button 
-          onClick={() => setActiveTab('bookings')}
-          className={`pb-3 px-4 text-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap ${activeTab === 'bookings' ? 'text-[#561668] border-b-2 border-[#561668]' : 'text-[#80737f] hover:text-[#1e1a20]'}`}
-        >
-          Agendamentos
-        </button>
-      </div>
 
-      <section>
-        {activeTab === 'employees' && (
-          <div className="w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-extrabold text-[#561668]">Especialistas (Funcionárias)</h2>
-              <button 
+      {/* ══════════════════════════════════════════
+          MAIN CONTENT
+      ══════════════════════════════════════════ */}
+      <main className="ml-64 flex-1 pt-28 pb-16 px-8 min-h-screen">
+
+        {/* ╔══════════════════════════════╗
+            ║   TAB: DASHBOARD             ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'dashboard' && (
+          <div>
+            {/* KPI Bento Grid */}
+            <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+              {/* Revenue */}
+              <div className="silk-lift rounded-[2rem] p-7 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 rounded-2xl" style={{ background: '#703081' }}>
+                    <span className="material-symbols-outlined text-[#eca1fb] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">+12.5%</span>
+                </div>
+                <div className="mt-5">
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest mb-1">Receita Mensal</p>
+                  <h3 className="text-[36px] font-extrabold text-[#561668] leading-none">
+                    R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Total Services */}
+              <div className="silk-lift rounded-[2rem] p-7 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 rounded-2xl bg-[#e9e0e8]">
+                    <span className="material-symbols-outlined text-[#561668] text-[28px]">task_alt</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#561668] bg-[#fcd7ff] px-2 py-1 rounded-lg">{todayBookings.length} Hoje</span>
+                </div>
+                <div className="mt-5">
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest mb-1">Serviços Totais</p>
+                  <h3 className="text-[36px] font-extrabold text-[#561668] leading-none">{bookings.length}</h3>
+                </div>
+              </div>
+
+              {/* Satisfaction */}
+              <div className="silk-lift rounded-[2rem] p-7 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 rounded-2xl bg-[#e9e0e8]">
+                    <span className="material-symbols-outlined text-[#561668] text-[28px]">stars</span>
+                  </div>
+                  <div className="flex gap-0.5">
+                    {[1,2,3].map(i => (
+                      <span key={i} className="material-symbols-outlined text-[#561668] text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-5">
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest mb-1">Satisfação do Cliente</p>
+                  <h3 className="text-[36px] font-extrabold text-[#561668] leading-none">4.92</h3>
+                </div>
+              </div>
+
+              {/* Active Specialists */}
+              <div className="silk-lift rounded-[2rem] p-7 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 rounded-2xl bg-[#e9e0e8]">
+                    <span className="material-symbols-outlined text-[#561668] text-[28px]">group</span>
+                  </div>
+                  <span className="flex h-3 w-3 bg-green-500 rounded-full animate-pulse"></span>
+                </div>
+                <div className="mt-5">
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest mb-1">Especialistas Ativas</p>
+                  <div className="flex items-end gap-2">
+                    <h3 className="text-[36px] font-extrabold text-[#561668] leading-none">{activeEmployees.length}</h3>
+                    <p className="text-base text-[#80737f] mb-1">/ {employees.filter(e => e.active !== false).length}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Trend Chart + Critical Services */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+              {/* Trend Chart */}
+              <div className="lg:col-span-2 silk-lift rounded-[2rem] p-9 flex flex-col" style={{ minHeight: 400 }}>
+                <div className="flex justify-between items-center mb-7">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#561668]">Tendência de Serviços</h3>
+                    <p className="text-sm text-[#80737f]">Análise de rendimento semestral</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="px-4 py-2 rounded-xl silk-inset text-[11px] text-[#561668] font-bold tracking-widest">SEMANAL</button>
+                    <button className="px-4 py-2 rounded-xl text-[11px] text-[#80737f] font-bold hover:text-[#561668] transition-colors tracking-widest">MENSAL</button>
+                  </div>
+                </div>
+                <div className="flex-grow flex items-end justify-between gap-4 px-4 pb-4">
+                  {[
+                    { label: 'JAN', fill: '60%', outer: '65%', alt: false },
+                    { label: 'FEV', fill: '75%', outer: '78%', alt: true  },
+                    { label: 'MAR', fill: '65%', outer: '70%', alt: false },
+                    { label: 'ABR', fill: '87%', outer: '90%', alt: true  },
+                    { label: 'MAI', fill: '78%', outer: '82%', alt: false },
+                    { label: 'JUN', fill: '92%', outer: '96%', alt: true  },
+                  ].map(bar => (
+                    <div key={bar.label} className="flex flex-col items-center gap-3 w-full">
+                      <div className="w-full rounded-t-full relative silk-inset" style={{ height: bar.outer }}>
+                        <div
+                          className="absolute bottom-0 w-full rounded-t-full progress-glow transition-all duration-700"
+                          style={{ height: bar.fill, background: bar.alt ? '#703081' : '#561668' }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-[#80737f] tracking-widest">{bar.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Critical Services */}
+              <div className="silk-lift rounded-[2rem] p-9 flex flex-col overflow-y-auto" style={{ maxHeight: 400 }}>
+                <div className="flex items-center gap-3 mb-7">
+                  <span className="material-symbols-outlined text-[#ba1a1a]" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                  <h3 className="text-lg font-bold text-[#561668]">Serviços Críticos</h3>
+                </div>
+                <div className="flex flex-col gap-4 flex-grow">
+                  {bookings.filter(b => !b.assignedEmployeeId).slice(0, 3).map((b, i) => (
+                    <div key={i} className="p-5 rounded-2xl silk-inset border-l-4 border-[#ba1a1a] flex flex-col gap-2">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold bg-[#ffdad6] text-[#93000a] px-2 py-0.5 rounded-full uppercase tracking-widest">Sem Atribuir</span>
+                        <span className="text-[11px] text-[#80737f]">{b.date}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-[#561668]">{b.name || 'Cliente'}</h4>
+                      <p className="text-[11px] text-[#80737f]">{b.format === 'meio' ? 'Meio Turno' : 'Turno Completo'}</p>
+                      <button onClick={() => setActiveTab('agenda')} className="text-[11px] font-bold text-[#561668] underline text-left">Ver na Agenda →</button>
+                    </div>
+                  ))}
+                  {bookings.filter(b => !b.assignedEmployeeId).length === 0 && (
+                    <div className="flex flex-col items-center justify-center flex-1 py-8 text-center">
+                      <span className="material-symbols-outlined text-5xl text-[#d1c2d0] mb-3">check_circle</span>
+                      <p className="text-sm text-[#80737f]">Todos os serviços estão atribuídos.</p>
+                    </div>
+                  )}
+                  {pendingEmployees.length > 0 && (
+                    <div className="p-5 rounded-2xl silk-inset border-l-4 border-[#561668] flex flex-col gap-2">
+                      <span className="text-[10px] font-bold bg-[#e9e0e8] text-[#561668] px-2 py-0.5 rounded-full uppercase tracking-widest w-fit">Recrutamento</span>
+                      <h4 className="text-sm font-bold text-[#561668]">{pendingEmployees.length} candidatura(s) pendente(s)</h4>
+                      <button onClick={() => setActiveTab('recrutamento')} className="text-[11px] font-bold text-[#561668] underline text-left">Revisar →</button>
+                    </div>
+                  )}
+                </div>
+                <button className="mt-4 w-full text-center text-sm font-bold text-[#80737f] hover:text-[#561668] transition-all pt-4 border-t border-[#e9e0e8]" onClick={() => setActiveTab('agenda')}>
+                  Ver todos os agendamentos →
+                </button>
+              </div>
+            </div>
+
+            {/* Specialist Status + Feedback */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Specialists */}
+              <div className="silk-lift rounded-[2rem] p-9">
+                <div className="flex justify-between items-center mb-8">
+                  <h3 className="text-lg font-bold text-[#561668]">Estado das Especialistas</h3>
+                  <button onClick={() => setActiveTab('equipe')} className="silk-lift-sm px-4 py-2 rounded-xl text-[11px] font-bold text-[#561668] tracking-widest uppercase">Lista Completa</button>
+                </div>
+                <div className="flex flex-col gap-5">
+                  {activeEmployees.slice(0, 3).length > 0 ? activeEmployees.slice(0, 3).map(emp => (
+                    <div key={emp.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <img className="w-11 h-11 rounded-full object-cover silk-lift-sm" src={emp.photoURL} alt={emp.name} />
+                        <div>
+                          <h4 className="text-sm font-bold text-[#1e1a20] leading-tight">{emp.name}</h4>
+                          <p className="text-[11px] text-[#80737f]">{emp.role} · {bookings.filter(b => b.assignedEmployeeId === emp.id).length} serviços</p>
+                        </div>
+                      </div>
+                      <span className="text-green-600 font-bold text-[10px] bg-green-50 px-2 py-1 rounded-full uppercase tracking-widest">Ativa</span>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-[#80737f] text-center py-8">Nenhuma especialista ativa cadastrada.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Feedback */}
+              <div className="silk-lift rounded-[2rem] p-9 relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl" style={{ background: 'rgba(86,22,104,0.05)' }} />
+                <h3 className="text-lg font-bold text-[#561668] mb-8">Feedback Recente</h3>
+                <div className="flex flex-col gap-5">
+                  {[
+                    { text: '"O Método Pame realmente se nota em cada detalhe. Totalmente recomendado."', who: 'Residência Alarcón', stars: 5 },
+                    { text: '"Excelente pontualidade e profissionalismo. O sistema de gestão é muito eficiente."', who: 'Grupo Imobiliário V&M', stars: 5 },
+                  ].map((rev, i) => (
+                    <div key={i} className="silk-inset p-5 rounded-2xl relative">
+                      <div className="absolute -top-3 -left-2 text-[#561668]/10">
+                        <span className="material-symbols-outlined text-[48px]">format_quote</span>
+                      </div>
+                      <p className="text-sm italic text-[#4e434e] mb-3 relative z-10">{rev.text}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] font-bold text-[#561668]">{rev.who}</span>
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: rev.stars }).map((_, j) => (
+                            <span key={j} className="material-symbols-outlined text-[#561668] text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ╔══════════════════════════════╗
+            ║   TAB: AGENDA                ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'agenda' && (
+          <div>
+            {/* Controls */}
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex p-1 bg-[#f4ebf4] rounded-2xl silk-inset">
+                <button className="px-6 py-2 rounded-xl bg-white text-[#561668] font-bold silk-lift text-sm">Vista de Lista</button>
+              </div>
+              <button
+                onClick={fetchEmployees}
+                className="flex items-center gap-2 px-4 py-2 silk-lift rounded-xl text-[#561668] font-bold text-sm hover:opacity-80 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-[18px]">refresh</span> Atualizar
+              </button>
+            </div>
+
+            <div className="grid grid-cols-12 gap-8">
+              {/* Bookings List */}
+              <div className="col-span-12 lg:col-span-8 silk-lift rounded-[2rem] p-8">
+                <div className="flex justify-between items-center mb-7">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#561668]">Serviços Agendados</h3>
+                    <p className="text-sm text-[#80737f]">{bookings.length} agendamento(s) no total</p>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="text-center py-16 text-[#80737f]">Carregando agendamentos...</div>
+                ) : bookings.length === 0 ? (
+                  <div className="text-center py-16 flex flex-col items-center">
+                    <span className="material-symbols-outlined text-5xl text-[#d1c2d0] mb-3">calendar_today</span>
+                    <p className="text-[#80737f]">Nenhum agendamento encontrado.</p>
+                    <p className="text-sm text-[#d1c2d0] mt-1">Pode requerer configuração de índice no Firestore.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {bookings.map((b, i) => {
+                      const assignedEmp = employees.find(e => e.id === b.assignedEmployeeId);
+                      const statusStyles =
+                        b.status === 'Concluído' ? 'bg-green-50 text-green-700' :
+                        b.status === 'Cancelado' ? 'bg-red-50 text-red-600' :
+                        'bg-[#e9e0e8] text-[#561668]';
+                      const statusDot =
+                        b.status === 'Concluído' ? 'bg-green-500' :
+                        b.status === 'Cancelado' ? 'bg-red-500' :
+                        'bg-[#561668] animate-pulse';
+
+                      return (
+                        <div
+                          key={b.docId || i}
+                          className={`flex items-center gap-5 p-5 rounded-2xl transition-transform duration-200 hover:scale-[1.005] ${
+                            b.assignedEmployeeId ? 'silk-active border-l-4 border-[#561668]' : 'silk-lift'
+                          }`}
+                        >
+                          {/* Time */}
+                          <div className="w-20 text-center flex-shrink-0">
+                            <span className="block text-base font-bold text-[#561668]">{b.time || '—'}</span>
+                            <span className="text-[10px] text-[#80737f] font-bold uppercase">{b.date}</span>
+                          </div>
+                          {/* Info */}
+                          <div className="flex-1 border-l border-[#e9e0e8] pl-5 min-w-0">
+                            <h4 className="font-bold text-[#1e1a20] text-sm truncate">{b.name || 'Cliente'}</h4>
+                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                              <div className="flex items-center gap-1 text-[10px] bg-[#f4ebf4] rounded-full px-2 py-1 text-[#626264] font-bold">
+                                <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                {b.format === 'meio' ? 'Meio Turno' : 'Turno Completo'}
+                              </div>
+                              {b.totalPrice > 0 && (
+                                <div className="text-[10px] bg-[#fcd7ff] text-[#561668] rounded-full px-2 py-1 font-bold">
+                                  R$ {b.totalPrice}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Specialist */}
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            {assignedEmp ? (
+                              <>
+                                <img className="w-9 h-9 rounded-full silk-lift-sm border-2 border-white" src={assignedEmp.photoURL} alt={assignedEmp.name} />
+                                <span className="text-[10px] text-[#80737f] font-bold text-right max-w-[80px] truncate">{assignedEmp.name}</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-9 h-9 rounded-full bg-[#f4ebf4] silk-lift border-2 border-white flex items-center justify-center">
+                                  <span className="material-symbols-outlined text-[#80737f] text-[16px]">person_add</span>
+                                </div>
+                                <span className="text-[10px] text-[#561668] font-bold">Sem atribuir</span>
+                              </>
+                            )}
+                          </div>
+                          {/* Status */}
+                          <div className={`px-3 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 flex-shrink-0 ${statusStyles}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
+                            {b.status || 'Confirmado'}
+                          </div>
+                          {/* Actions */}
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => {
+                                setEditingBooking(b);
+                                setEditBookingData({ name: b.name || '', date: b.date || '', time: b.time || '09:00', format: b.format || 'meio', status: b.status || 'Confirmado', assignedEmployeeId: b.assignedEmployeeId || '', totalPrice: b.totalPrice || 0 });
+                                setShowEditBookingModal(true);
+                              }}
+                              className="text-[#561668] font-bold text-[10px] uppercase tracking-widest hover:underline"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBooking(b.ref)}
+                              className="text-[#ba1a1a] font-bold text-[10px] uppercase tracking-widest hover:underline border-l border-[#e9e0e8] pl-2"
+                            >
+                              Deletar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Sidebar */}
+              <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                {/* Productivity Card */}
+                <div className="rounded-[2rem] p-7 text-white relative overflow-hidden" style={{ background: '#561668' }}>
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <span className="material-symbols-outlined text-[80px]">analytics</span>
+                  </div>
+                  <h3 className="text-base font-bold mb-5 relative z-10">Produtividade</h3>
+                  <div className="grid grid-cols-2 gap-3 relative z-10">
+                    <div className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
+                      <span className="text-[10px] opacity-80 uppercase tracking-widest font-bold block mb-1">Concluídos</span>
+                      <div className="text-2xl font-extrabold">{bookings.filter(b => b.status === 'Concluído').length}</div>
+                    </div>
+                    <div className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
+                      <span className="text-[10px] opacity-80 uppercase tracking-widest font-bold block mb-1">Pendentes</span>
+                      <div className="text-2xl font-extrabold">{bookings.filter(b => !b.assignedEmployeeId).length}</div>
+                    </div>
+                  </div>
+                  <div className="mt-6 relative z-10">
+                    <div className="flex justify-between text-[10px] font-bold mb-2 opacity-80 uppercase tracking-widest">
+                      <span>Progresso</span>
+                      <span>
+                        {bookings.length > 0
+                          ? Math.round((bookings.filter(b => b.status === 'Concluído').length / bookings.length) * 100)
+                          : 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                      <div
+                        className="h-full bg-white rounded-full transition-all duration-700"
+                        style={{ width: `${bookings.length > 0 ? Math.round((bookings.filter(b => b.status === 'Concluído').length / bookings.length) * 100) : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Available Specialists */}
+                <div className="silk-lift rounded-[2rem] p-7">
+                  <h3 className="text-base font-bold text-[#561668] mb-5">Especialistas Disponíveis</h3>
+                  <div className="flex flex-col gap-3">
+                    {activeEmployees.slice(0, 5).length > 0 ? activeEmployees.slice(0, 5).map(emp => (
+                      <div key={emp.id} className="flex items-center justify-between p-4 silk-inset rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <img className="w-9 h-9 rounded-full" src={emp.photoURL} alt={emp.name} />
+                          <div>
+                            <p className="font-bold text-[#1e1a20] text-sm leading-tight">{emp.name}</p>
+                            <p className="text-[10px] text-[#80737f]">{emp.role}</p>
+                          </div>
+                        </div>
+                        <button className="text-[#561668] font-bold text-[11px] hover:underline uppercase tracking-widest">Atribuir</button>
+                      </div>
+                    )) : (
+                      <p className="text-sm text-[#80737f] text-center py-6">Nenhuma especialista ativa.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ╔══════════════════════════════╗
+            ║   TAB: EQUIPE                ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'equipe' && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-extrabold text-[#561668]">Especialistas</h2>
+              <button
                 onClick={() => setShowAddModal(true)}
-                className="bg-[#561668] hover:bg-[#703081] transition-colors text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm"
+                className="text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest silk-lift hover:opacity-90 transition-opacity"
+                style={{ background: '#561668' }}
               >
                 + Nova Especialista
               </button>
             </div>
-            
+
             {loading ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center text-[#80737f]">
-                Carregando base de dados...
-              </div>
+              <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f]">Carregando base de dados...</div>
             ) : employees.filter(e => e.active !== false && e.status !== 'pending').length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center flex flex-col items-center">
-                <span className="material-symbols-outlined text-4xl text-[#d1c2d0] mb-3">group_off</span>
-                <p className="text-[#80737f] font-medium">Nenhuma especialista cadastrada ou ativa ainda.</p>
+              <div className="silk-lift rounded-3xl p-12 text-center flex flex-col items-center">
+                <span className="material-symbols-outlined text-5xl text-[#d1c2d0] mb-3">group_off</span>
+                <p className="text-[#80737f]">Nenhuma especialista cadastrada ou ativa ainda.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {employees.filter(e => e.active !== false && e.status !== 'pending').map(emp => (
-                  <div key={emp.id} className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-5 flex flex-col gap-4 relative">
-                    
-                    <div className="flex items-start justify-between border-b border-[#efe5ee]/50 pb-4">
+                  <div key={emp.id} className="silk-lift rounded-3xl p-6 flex flex-col gap-4">
+                    {/* Header */}
+                    <div className="flex items-start justify-between border-b border-[#e9e0e8]/50 pb-4">
                       <div className="flex gap-4 items-center">
-                        <img src={emp.photoURL} alt={emp.name} className="w-14 h-14 rounded-full border-2 border-[#faf1fa]" />
+                        <img src={emp.photoURL} alt={emp.name} className="w-14 h-14 rounded-full border-2 border-white silk-lift-sm" />
                         <div>
-                          <h3 className="font-extrabold text-lg text-[#1e1a20]">{emp.name}</h3>
-                          <p className="text-xs text-[#80737f] font-bold uppercase tracking-wider">{emp.role}</p>
+                          <h3 className="font-extrabold text-lg text-[#1e1a20] leading-tight">{emp.name}</h3>
+                          <p className="text-[10px] text-[#80737f] font-bold uppercase tracking-widest">{emp.role}</p>
+                          {emp.whatsapp && <p className="text-[11px] text-[#4e434e] mt-0.5">📱 {emp.whatsapp}</p>}
+                          {emp.zones && <p className="text-[11px] text-[#4e434e]">📍 {emp.zones}</p>}
                         </div>
                       </div>
-                      <div className="text-right flex flex-col justify-between h-full">
-                        <div>
-                          <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold">Carga (Mês)</p>
-                          <p className="font-black text-2xl text-[#561668]">{emp.assignedServices}</p>
-                        </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-[9px] text-[#80737f] uppercase tracking-widest font-bold">Carga (Mês)</p>
+                        <p className="font-black text-2xl text-[#561668]">{emp.assignedServices}</p>
                       </div>
                     </div>
 
-                    <div className="mt-1">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-sm font-bold text-[#561668]">Disponibilidade Semanal</h4>
-                      </div>
-                      
-                      <div className="overflow-x-auto border border-[#efe5ee] rounded-xl">
+                    {/* Availability */}
+                    <div>
+                      <h4 className="text-sm font-bold text-[#561668] mb-3">Disponibilidade Semanal</h4>
+                      <div className="overflow-x-auto silk-inset rounded-2xl">
                         <table className="w-full text-[10px] text-center font-bold">
-                          <thead className="bg-[#f8f9fa] text-[#80737f] uppercase tracking-widest border-b border-[#efe5ee]">
+                          <thead className="text-[#80737f] uppercase tracking-widest border-b border-[#e9e0e8]">
                             <tr>
-                              <th className="p-2 border-r border-[#efe5ee] text-left">Dia</th>
-                              {SHIFTS.map(shift => (
-                                <th key={shift.id} className="p-2">{shift.label}</th>
-                              ))}
+                              <th className="p-2 border-r border-[#e9e0e8] text-left">Dia</th>
+                              {SHIFTS.map(s => <th key={s.id} className="p-2">{s.label}</th>)}
                             </tr>
                           </thead>
                           <tbody>
-                            {DAYS_OF_WEEK.map((dayName, idx) => {
-                              return (
-                                <tr key={dayName} className="border-b border-[#efe5ee] last:border-0 hover:bg-[#faf1fa]/30 transition-colors">
-                                  <td className="p-2 border-r border-[#efe5ee] text-left text-[#561668] uppercase tracking-widest bg-[#f8f9fa] w-24">
-                                    {dayName.slice(0, 3)}
-                                  </td>
-                                  {SHIFTS.map(shift => {
-                                    const isSelected = emp.weeklyAvailability && emp.weeklyAvailability[idx]?.includes(shift.id as any);
-                                    return (
-                                      <td key={shift.id} className="p-1">
-                                        <button
-                                          onClick={() => toggleAvailability(emp.id, idx, shift.id, emp.weeklyAvailability || {})}
-                                          className={`w-6 h-6 rounded flex items-center justify-center mx-auto transition-colors ${
-                                            isSelected 
-                                              ? 'bg-[#561668] text-white' 
-                                              : 'bg-transparent border border-[#d1c2d0] text-transparent hover:border-[#561668]/50'
-                                          }`}
-                                        >
-                                          {isSelected && <span className="material-symbols-outlined text-[14px]">check</span>}
-                                        </button>
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              )
-                            })}
+                            {DAYS_OF_WEEK.map((dayName, idx) => (
+                              <tr key={dayName} className="border-b border-[#e9e0e8] last:border-0 hover:bg-[#faf1fa]/30 transition-colors">
+                                <td className="p-2 border-r border-[#e9e0e8] text-left text-[#561668] uppercase tracking-widest bg-[#faf1fa]/50 w-20">{dayName.slice(0, 3)}</td>
+                                {SHIFTS.map(shift => {
+                                  const isSelected = emp.weeklyAvailability?.[idx]?.includes(shift.id as any);
+                                  return (
+                                    <td key={shift.id} className="p-1">
+                                      <button
+                                        onClick={() => toggleAvailability(emp.id, idx, shift.id, emp.weeklyAvailability || {})}
+                                        className={`w-6 h-6 rounded flex items-center justify-center mx-auto transition-all ${
+                                          isSelected
+                                            ? 'text-white'
+                                            : 'border border-[#d1c2d0] text-transparent hover:border-[#561668]/50'
+                                        }`}
+                                        style={isSelected ? { background: '#561668' } : {}}
+                                      >
+                                        {isSelected && <span className="material-symbols-outlined text-[12px]">check</span>}
+                                      </button>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
                     </div>
 
-                    <div className="mt-2 pt-4 border-t border-[#efe5ee]/50">
+                    {/* Recent Services */}
+                    <div className="border-t border-[#e9e0e8]/50 pt-4">
                       <h4 className="text-sm font-bold text-[#561668] mb-2">Últimos Serviços Atendidos</h4>
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5">
                         {bookings.filter(b => b.assignedEmployeeId === emp.id).slice(0, 3).map((b, i) => (
-                          <div key={i} className="text-xs flex justify-between items-center bg-[#faf1fa] p-2 rounded">
+                          <div key={i} className="text-[11px] flex justify-between items-center silk-inset p-2 rounded-xl">
                             <span className="font-semibold text-[#1e1a20]">{b.name}</span>
-                            <span className="text-[#80737f]">{b.date} • {b.format === 'meio' ? 'Meio Turno' : 'Turno Completo'}</span>
+                            <span className="text-[#80737f]">{b.date} · {b.format === 'meio' ? 'Meio Turno' : 'Integral'}</span>
                           </div>
                         ))}
                         {bookings.filter(b => b.assignedEmployeeId === emp.id).length === 0 && (
-                          <span className="text-xs text-[#80737f] italic">Nenhum serviço registrado ainda.</span>
+                          <span className="text-[11px] text-[#80737f] italic">Nenhum serviço registrado ainda.</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="mt-2 pt-4 border-t border-[#efe5ee]/50 flex justify-end gap-2">
-                      <button 
+                    {/* Actions */}
+                    <div className="pt-3 border-t border-[#e9e0e8]/50 flex justify-end gap-2">
+                      <button
                         onClick={() => {
                           setEditingEmployee(emp);
-                          setEditFormData({
-                            name: emp.name,
-                            role: emp.role,
-                            cpf: emp.cpf || '',
-                            whatsapp: emp.whatsapp || '',
-                            zones: emp.zones || ''
-                          });
+                          setEditFormData({ name: emp.name, role: emp.role, cpf: emp.cpf || '', whatsapp: emp.whatsapp || '', email: emp.email || '', zones: emp.zones || '' });
                           setShowEditModal(true);
                         }}
-                        className="w-8 h-8 rounded-full bg-[#f4ebf4] text-[#561668] flex items-center justify-center hover:bg-[#efe5ee] transition-colors"
+                        className="w-9 h-9 rounded-full bg-[#f4ebf4] text-[#561668] flex items-center justify-center hover:bg-[#e9e0e8] transition-colors"
                         title="Editar"
                       >
                         <span className="material-symbols-outlined text-[16px]">edit</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteEmployee(emp.id)}
-                        className="w-8 h-8 rounded-full bg-[#f4ebf4] text-[#d9534f] flex items-center justify-center hover:bg-[#ffebee] transition-colors"
-                        title="Ocultar/Desativar"
+                        className="w-9 h-9 rounded-full bg-[#f4ebf4] text-[#ba1a1a] flex items-center justify-center hover:bg-[#ffdad6] transition-colors"
+                        title="Desativar"
                       >
                         <span className="material-symbols-outlined text-[16px]">visibility_off</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleHardDeleteEmployee(emp.id)}
-                        className="w-8 h-8 rounded-full bg-[#ffebee] text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
-                        title="Deletar Permanentemente"
+                        className="w-9 h-9 rounded-full bg-[#ffdad6] text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
+                        title="Deletar permanentemente"
                       >
                         <span className="material-symbols-outlined text-[16px]">delete_forever</span>
                       </button>
                     </div>
-
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Danger Zone */}
+            <div className="mt-12 rounded-3xl p-7 border border-red-200 bg-red-50">
+              <h2 className="text-lg font-extrabold text-red-700 mb-2 flex items-center gap-2">
+                <span className="material-symbols-outlined">warning</span> Danger Zone
+              </h2>
+              <p className="text-red-900/70 text-sm mb-6">Ações irreversíveis. Afetam o banco de dados de produção diretamente. Tenha cuidado extremo.</p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button onClick={handleDeleteAllBookings} className="bg-red-600 hover:bg-red-700 transition-colors text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">delete_sweep</span> Apagar TODAS as Reservas
+                </button>
+                <button onClick={handleDeleteAllEmployees} className="bg-red-600 hover:bg-red-700 transition-colors text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">group_remove</span> Apagar TODAS as Especialistas
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {activeTab === 'pending' && (
-          <div className="w-full">
-            <h2 className="text-xl font-extrabold text-[#561668] mb-6">Novas Candidaturas Pendentes</h2>
-            
+        {/* ╔══════════════════════════════╗
+            ║   TAB: RECRUTAMENTO          ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'recrutamento' && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-extrabold text-[#561668]">
+                Candidaturas Pendentes
+                {pendingEmployees.length > 0 && (
+                  <span className="ml-3 text-white text-xs px-2.5 py-1 rounded-full font-bold align-middle" style={{ background: '#561668' }}>
+                    {pendingEmployees.length}
+                  </span>
+                )}
+              </h2>
+            </div>
+
             {loading ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center text-[#80737f]">
-                Carregando base de dados...
-              </div>
-            ) : employees.filter(e => e.status === 'pending').length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-12 text-center flex flex-col items-center">
-                <span className="material-symbols-outlined text-4xl text-[#d1c2d0] mb-3">inbox</span>
-                <p className="text-[#80737f] font-medium">Não há candidaturas pendentes de aprovação.</p>
+              <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f]">Carregando candidaturas...</div>
+            ) : pendingEmployees.length === 0 ? (
+              <div className="silk-lift rounded-3xl p-16 text-center flex flex-col items-center">
+                <span className="material-symbols-outlined text-6xl text-[#d1c2d0] mb-4">inbox</span>
+                <h3 className="text-lg font-bold text-[#561668] mb-2">Nenhuma candidatura pendente</h3>
+                <p className="text-[#80737f] text-sm">Todas as candidaturas foram revisadas.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {employees.filter(e => e.status === 'pending').map(emp => (
-                  <div key={emp.id} className="bg-[#fffdfa] rounded-2xl shadow-sm border-2 border-yellow-200/50 p-5 flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {pendingEmployees.map(emp => (
+                  <div key={emp.id} className="silk-lift rounded-3xl p-7 flex flex-col gap-5">
+                    {/* Candidate Header */}
                     <div className="flex gap-4 items-center">
-                      <img src={emp.photoURL} alt={emp.name} className="w-14 h-14 rounded-full border-2 border-yellow-100" />
+                      <img src={emp.photoURL} alt={emp.name} className="w-16 h-16 rounded-full silk-lift-sm border-2 border-white" />
                       <div>
                         <h3 className="font-extrabold text-lg text-[#1e1a20] leading-tight">{emp.name}</h3>
-                        <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider bg-yellow-100/50 inline-block px-2 py-0.5 rounded-full mt-1">
+                        <span className="text-[10px] text-yellow-700 font-bold uppercase tracking-widest bg-yellow-100 px-2 py-0.5 rounded-full">
                           Aguardando Avaliação
-                        </p>
+                        </span>
                       </div>
                     </div>
 
-                    <div className="text-xs text-[#4e434e] flex flex-col gap-1 bg-white p-3 rounded-xl border border-[#efe5ee]">
-                      <p><strong className="text-[#561668]">CPF:</strong> {emp.cpf || 'Não informado'}</p>
-                      <p><strong className="text-[#561668]">WhatsApp:</strong> {emp.whatsapp || 'Não informado'}</p>
+                    {/* Details */}
+                    <div className="silk-inset p-4 rounded-2xl flex flex-col gap-2 text-sm">
+                      <p><span className="font-bold text-[#561668]">CPF:</span> <span className="text-[#4e434e]">{emp.cpf || 'Não informado'}</span></p>
+                      <p><span className="font-bold text-[#561668]">WhatsApp:</span> <span className="text-[#4e434e]">{emp.whatsapp || 'Não informado'}</span></p>
+                      {emp.zones && <p><span className="font-bold text-[#561668]">Zonas:</span> <span className="text-[#4e434e]">{emp.zones}</span></p>}
                     </div>
 
-                    <div className="flex gap-2 mt-auto pt-2">
-                      <button 
+                    {/* Café Virtual */}
+                    <div className="silk-inset p-4 rounded-2xl text-center">
+                      <span className="material-symbols-outlined text-[#561668] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>coffee</span>
+                      <p className="text-xs font-bold text-[#561668] mt-1">Café Virtual com a Pame</p>
+                      <p className="text-[10px] text-[#80737f] mt-1">Agendar conversa de seleção</p>
+                      <button className="mt-3 w-full py-2 text-[11px] font-bold text-[#561668] border border-[#d1c2d0] rounded-xl hover:bg-[#f4ebf4] transition-colors uppercase tracking-widest">
+                        Agendar Café ☕
+                      </button>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 mt-auto">
+                      <button
                         onClick={() => handleRejectCandidate(emp.id)}
-                        className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors border border-red-200"
+                        className="flex-1 py-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors border border-red-200"
                       >
                         Rejeitar
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleApproveCandidate(emp.id)}
-                        className="flex-1 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
+                        className="flex-1 py-3 text-white hover:opacity-90 rounded-xl text-xs font-bold uppercase tracking-widest transition-opacity silk-lift"
+                        style={{ background: '#561668' }}
                       >
-                        Aprovar
+                        Aprovar ✓
                       </button>
                     </div>
                   </div>
@@ -514,356 +981,174 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
           </div>
         )}
 
-        {activeTab === 'bookings' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-[#efe5ee] p-6">
-            <h2 className="text-xl font-extrabold text-[#561668] mb-6">Controle de Agendamentos</h2>
-            {bookings.length === 0 ? (
-              <p className="text-[#80737f] text-sm">Nenhum agendamento encontrado ou requer configuração de índice no Firestore.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#f8f9fa] text-[#80737f] uppercase tracking-widest text-[10px] font-bold">
-                    <tr>
-                      <th className="p-4 rounded-tl-xl">Cliente</th>
-                      <th className="p-4">Data</th>
-                      <th className="p-4">Turno</th>
-                      <th className="p-4">Designada</th>
-                      <th className="p-4 rounded-tr-xl">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((b) => (
-                      <tr key={b.docId} className="border-b border-[#efe5ee] hover:bg-[#faf1fa]/50 transition-colors">
-                        <td className="p-4 font-bold text-[#1e1a20]">{b.name}</td>
-                        <td className="p-4 text-[#4e434e]">{b.date}</td>
-                        <td className="p-4 text-[#4e434e]">{b.format}</td>
-                        <td className="p-4">
-                          <span className="bg-[#561668]/10 text-[#561668] px-3 py-1 rounded-full font-bold text-[11px]">
-                            {b.assignedEmployeeName || 'Nenhuma'}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-3">
-                            <button 
-                              onClick={() => {
-                                setEditingBooking(b);
-                                setEditBookingData({
-                                  name: b.name || '',
-                                  date: b.date || '',
-                                  time: b.time || '09:00',
-                                  format: b.format || 'meio',
-                                  status: b.status || 'Confirmado',
-                                  assignedEmployeeId: b.assignedEmployeeId || '',
-                                  totalPrice: b.totalPrice || 0
-                                });
-                                setShowEditBookingModal(true);
-                              }}
-                              className="text-[#561668] font-bold text-[11px] uppercase tracking-wider hover:underline"
-                            >
-                              Editar (Modo Deus)
-                            </button>
-                            <button 
-                              onClick={async () => {
-                                const newEmp = employees.find(e => e.id !== b.assignedEmployeeId);
-                                if (newEmp) {
-                                  const oldEmp = employees.find(e => e.id === b.assignedEmployeeId);
-                                  await notifyEmployeeRemoval(oldEmp?.name || b.assignedEmployeeName, oldEmp?.email, b.date);
-                                  await notifyEmployeeAssignment(newEmp.name, newEmp.email || 'especialista@metodopame.com.br', b.date, b.format, "Endereço do Cliente", []);
-                                  alert(`Reatribuindo para ${newEmp.name}.\n\nNotificação enviada para ${b.assignedEmployeeName} (Removida).\nNotificação enviada para ${newEmp.name} (Nova).\nGoogle Calendar atualizado.`);
-                                } else {
-                                  alert('Não há outras funcionárias disponíveis para reatribuir.');
-                                }
-                              }}
-                              className="text-[#703081] font-bold text-[11px] uppercase tracking-wider hover:underline"
-                            >
-                              Reatribuir Rápido
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteBooking(b.ref)}
-                              className="text-red-600 font-bold text-[11px] uppercase tracking-wider hover:underline ml-2 border-l border-[#efe5ee] pl-3"
-                            >
-                              Deletar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+        {/* ╔══════════════════════════════╗
+            ║   TAB: LOGÍSTICA             ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'logistica' && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-extrabold text-[#561668]">Logística e Protocolos</h2>
+              <span className="text-[11px] font-bold text-[#80737f] bg-[#e9e0e8] px-3 py-1.5 rounded-full uppercase tracking-widest">Em Desenvolvimento</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
+              {[
+                { icon: 'sanitizer',        title: 'Protocolo de Higienização',  desc: 'Superfícies nobres, mármore e granito. Procedimentos certificados com produtos de alto padrão.',                               tags: ['Mármore', 'Granito', 'Vidros']        },
+                { icon: 'cleaning_services', title: 'Equipamentos Premium',       desc: 'Vaporizadores industriais, aspiradores HEPA e lavadoras de baixa pressão para superfícies delicadas.',                          tags: ['Vaporizador', 'HEPA', 'Low-pressure'] },
+                { icon: 'inventory_2',       title: 'Controle de Insumos',        desc: 'Gestão de produtos de limpeza de alta gama. Reposição automática baseada no volume de serviços.',                              tags: ['Estoque', 'Reposição']                },
+                { icon: 'route',             title: 'Roteirização de Equipe',     desc: 'Otimização de rotas para redução de tempo de deslocamento entre residências atendidas em Tijucas.',                            tags: ['Tijucas', 'Rotas']                    },
+                { icon: 'fact_check',        title: 'Checklist de Qualidade',     desc: 'Auditoria interna pós-serviço com 48 pontos de verificação para garantir o padrão Método Pame em cada visita.',               tags: ['QA', '48 pontos']                     },
+                { icon: 'workspace_premium', title: 'Certificações de Equipe',    desc: 'Controle de treinamentos, certificações e especializações de cada especialista para garantir excelência contínua.',            tags: ['Treinamento', 'Cert.']                },
+              ].map((card, i) => (
+                <div key={i} className="silk-lift rounded-3xl p-7 flex flex-col gap-4 hover:scale-[1.02] transition-transform duration-300 cursor-default">
+                  <div className="p-4 rounded-2xl w-fit" style={{ background: '#703081' }}>
+                    <span className="material-symbols-outlined text-[#eca1fb] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>{card.icon}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#1e1a20] text-base mb-2">{card.title}</h3>
+                    <p className="text-sm text-[#4e434e] leading-relaxed">{card.desc}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-auto pt-2">
+                    {card.tags.map(tag => (
+                      <span key={tag} className="text-[10px] font-bold text-[#561668] bg-[#f4ebf4] px-2.5 py-1 rounded-full uppercase tracking-widest">{tag}</span>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Coming Soon */}
+            <div className="silk-lift rounded-3xl p-10 text-center flex flex-col items-center gap-4">
+              <div className="p-5 rounded-full bg-[#e9e0e8]">
+                <span className="material-symbols-outlined text-[#561668] text-[48px]" style={{ fontVariationSettings: "'FILL' 1" }}>rocket_launch</span>
               </div>
-            )}
+              <h3 className="text-xl font-bold text-[#561668]">Módulo completo em breve</h3>
+              <p className="text-[#80737f] max-w-md text-sm leading-relaxed">
+                A gestão de estoque, protocolos digitais e checklist interativo estarão disponíveis na próxima atualização do sistema Método Pame.
+              </p>
+            </div>
           </div>
         )}
-      </section>
 
-      {/* Danger Zone */}
-      <section className="mt-12">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-extrabold text-red-700 mb-2 flex items-center gap-2">
-            <span className="material-symbols-outlined">warning</span>
-            Danger Zone
-          </h2>
-          <p className="text-red-900/80 text-sm mb-6">Ações nesta área são irreversíveis e afetam o banco de dados de produção diretamente. Tenha cuidado.</p>
-          
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button 
-              onClick={handleDeleteAllBookings}
-              className="bg-red-600 hover:bg-red-700 transition-colors text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
-              Apagar TODAS as Reservas
-            </button>
-            
-            <button 
-              onClick={handleDeleteAllEmployees}
-              className="bg-red-600 hover:bg-red-700 transition-colors text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[16px]">group_remove</span>
-              Apagar TODAS as Especialistas
-            </button>
-          </div>
-        </div>
-      </section>
+      </main>
 
-      {/* Add Employee Modal */}
+      {/* ══════════════════════════════════════════
+          MODALS — lógica 100% preservada
+      ══════════════════════════════════════════ */}
+
+      {/* Add Employee */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-[#1e1a20]/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-[#efe5ee]">
-            <h2 className="text-xl font-extrabold text-[#561668] mb-5">Adicionar Especialista</h2>
+        <div className="fixed inset-0 bg-[#1e1a20]/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="silk-lift rounded-3xl p-8 w-full max-w-md">
+            <h2 className="text-xl font-extrabold text-[#561668] mb-6">Adicionar Especialista</h2>
             <form onSubmit={handleAddEmployee} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-extrabold text-[#561668] uppercase tracking-widest">Nome Completo</label>
-                <input 
-                  type="text" 
-                  value={newEmpName}
-                  onChange={(e) => setNewEmpName(e.target.value)}
-                  className="w-full h-11 px-4 bg-[#f8f9fa] border border-[#d1c2d0] focus:border-[#561668] focus:ring-1 rounded-xl text-sm"
-                  required
-                />
+              <div>
+                <label className="block text-[10px] font-extrabold text-[#561668] uppercase tracking-widest mb-1.5">Nome Completo</label>
+                <input type="text" value={newEmpName} onChange={e => setNewEmpName(e.target.value)} className="w-full h-11 px-4 silk-inset border-none rounded-xl text-sm outline-none" required />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-extrabold text-[#561668] uppercase tracking-widest">Cargo/Função</label>
-                <input 
-                  type="text" 
-                  value={newEmpRole}
-                  onChange={(e) => setNewEmpRole(e.target.value)}
-                  className="w-full h-11 px-4 bg-[#f8f9fa] border border-[#d1c2d0] focus:border-[#561668] focus:ring-1 rounded-xl text-sm"
-                  required
-                />
+              <div>
+                <label className="block text-[10px] font-extrabold text-[#561668] uppercase tracking-widest mb-1.5">Cargo / Função</label>
+                <input type="text" value={newEmpRole} onChange={e => setNewEmpRole(e.target.value)} className="w-full h-11 px-4 silk-inset border-none rounded-xl text-sm outline-none" required />
               </div>
               <div className="flex gap-3 mt-4">
-                <button 
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-[#80737f] hover:text-[#1e1a20]"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-3 bg-[#561668] hover:bg-[#703081] transition-colors text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-md"
-                >
-                  Salvar
-                </button>
+                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-[#80737f] hover:text-[#1e1a20]">Cancelar</button>
+                <button type="submit" className="flex-1 py-3 text-white rounded-xl text-[11px] font-bold uppercase tracking-widest silk-lift hover:opacity-90" style={{ background: '#561668' }}>Salvar</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* Edit Employee */}
       {showEditModal && editingEmployee && (
         <div className="fixed inset-0 bg-[#1e1a20]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="bg-[#561668] p-6 text-white text-center">
+          <div className="silk-lift rounded-3xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="p-6 text-white text-center" style={{ background: '#561668' }}>
               <h3 className="font-extrabold text-xl">Editar Especialista</h3>
             </div>
             <form onSubmit={handleEditEmployee} className="p-6 flex flex-col gap-4">
-              
-              <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Nome Completo</label>
-                <input 
-                  type="text" 
-                  required
-                  value={editFormData.name || ''}
-                  onChange={e => setEditFormData({...editFormData, name: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Cargo</label>
-                <input 
-                  type="text" 
-                  required
-                  value={editFormData.role || ''}
-                  onChange={e => setEditFormData({...editFormData, role: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">CPF</label>
-                <input 
-                  type="text" 
-                  value={editFormData.cpf || ''}
-                  onChange={e => setEditFormData({...editFormData, cpf: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">WhatsApp</label>
-                <input 
-                  type="text" 
-                  value={editFormData.whatsapp || ''}
-                  onChange={e => setEditFormData({...editFormData, whatsapp: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Email (Para Notificações)</label>
-                <input 
-                  type="email" 
-                  value={editFormData.email || ''}
-                  onChange={e => setEditFormData({...editFormData, email: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Zonas de Atendimento</label>
-                <input 
-                  type="text" 
-                  value={editFormData.zones || ''}
-                  onChange={e => setEditFormData({...editFormData, zones: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
-              </div>
-
+              {[
+                { label: 'Nome Completo',            key: 'name',     type: 'text',  req: true  },
+                { label: 'Cargo',                    key: 'role',     type: 'text',  req: true  },
+                { label: 'CPF',                      key: 'cpf',      type: 'text',  req: false },
+                { label: 'WhatsApp',                 key: 'whatsapp', type: 'text',  req: false },
+                { label: 'Email (Para Notificações)', key: 'email',   type: 'email', req: false },
+                { label: 'Zonas de Atendimento',     key: 'zones',    type: 'text',  req: false },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">{f.label}</label>
+                  <input
+                    type={f.type}
+                    required={f.req}
+                    value={(editFormData as any)[f.key] || ''}
+                    onChange={e => setEditFormData({ ...editFormData, [f.key]: e.target.value })}
+                    className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
+                  />
+                </div>
+              ))}
               <div className="flex gap-3 mt-4 pt-4 border-t border-[#efe5ee]">
-                <button 
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 py-3 text-[#80737f] font-bold text-xs uppercase tracking-widest hover:bg-[#f8f9fa] rounded-xl transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-3 bg-[#561668] text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#703081] transition-colors shadow-md"
-                >
-                  Salvar Alterações
-                </button>
+                <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-3 text-[#80737f] font-bold text-[11px] uppercase tracking-widest hover:bg-[#f8f9fa] rounded-xl">Cancelar</button>
+                <button type="submit" className="flex-1 py-3 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl hover:opacity-90" style={{ background: '#561668' }}>Salvar Alterações</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* Edit Booking */}
       {showEditBookingModal && editingBooking && (
         <div className="fixed inset-0 bg-[#1e1a20]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="bg-[#561668] p-6 text-white text-center">
-              <h3 className="font-extrabold text-xl">Editar Agendamento (Modo Deus)</h3>
+          <div className="silk-lift rounded-3xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="p-6 text-white text-center" style={{ background: '#561668' }}>
+              <h3 className="font-extrabold text-xl">Editar Agendamento</h3>
+              <p className="text-[11px] opacity-70 mt-1">Modo Deus</p>
             </div>
             <form onSubmit={handleEditBooking} className="p-6 flex flex-col gap-4">
-              
               <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Cliente</label>
-                <input 
-                  type="text" 
-                  value={editBookingData.name || ''}
-                  onChange={e => setEditBookingData({...editBookingData, name: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
+                <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Cliente</label>
+                <input type="text" value={editBookingData.name || ''} onChange={e => setEditBookingData({ ...editBookingData, name: e.target.value })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Data</label>
-                  <input 
-                    type="date" 
-                    value={editBookingData.date || ''}
-                    onChange={e => setEditBookingData({...editBookingData, date: e.target.value})}
-                    className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                  />
+                  <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Data</label>
+                  <input type="date" value={editBookingData.date || ''} onChange={e => setEditBookingData({ ...editBookingData, date: e.target.value })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Horário</label>
-                  <input 
-                    type="time" 
-                    value={editBookingData.time || ''}
-                    onChange={e => setEditBookingData({...editBookingData, time: e.target.value})}
-                    className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                  />
+                  <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Horário</label>
+                  <input type="time" value={editBookingData.time || ''} onChange={e => setEditBookingData({ ...editBookingData, time: e.target.value })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all" />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Turno</label>
-                  <select 
-                    value={editBookingData.format || 'meio'}
-                    onChange={e => setEditBookingData({...editBookingData, format: e.target.value})}
-                    className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                  >
+                  <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Turno</label>
+                  <select value={editBookingData.format || 'meio'} onChange={e => setEditBookingData({ ...editBookingData, format: e.target.value })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all">
                     <option value="meio">Meio Turno</option>
                     <option value="completo">Turno Completo</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Status</label>
-                  <select 
-                    value={editBookingData.status || 'Confirmado'}
-                    onChange={e => setEditBookingData({...editBookingData, status: e.target.value})}
-                    className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                  >
+                  <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Status</label>
+                  <select value={editBookingData.status || 'Confirmado'} onChange={e => setEditBookingData({ ...editBookingData, status: e.target.value })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all">
                     <option value="Confirmado">Confirmado</option>
                     <option value="Concluído">Concluído</option>
                     <option value="Cancelado">Cancelado</option>
                   </select>
                 </div>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Especialista Designada</label>
-                <select 
-                  value={editBookingData.assignedEmployeeId || ''}
-                  onChange={e => setEditBookingData({...editBookingData, assignedEmployeeId: e.target.value})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                >
+                <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Especialista Designada</label>
+                <select value={editBookingData.assignedEmployeeId || ''} onChange={e => setEditBookingData({ ...editBookingData, assignedEmployeeId: e.target.value })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all">
                   <option value="">Nenhuma Especialista</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
                 </select>
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-[#561668] uppercase tracking-widest mb-1.5">Preço Total (R$)</label>
-                <input 
-                  type="number" 
-                  value={editBookingData.totalPrice || 0}
-                  onChange={e => setEditBookingData({...editBookingData, totalPrice: Number(e.target.value)})}
-                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                />
+                <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Preço Total (R$)</label>
+                <input type="number" value={editBookingData.totalPrice || 0} onChange={e => setEditBookingData({ ...editBookingData, totalPrice: Number(e.target.value) })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all" />
               </div>
-
               <div className="flex gap-3 mt-4 pt-4 border-t border-[#efe5ee]">
-                <button 
-                  type="button"
-                  onClick={() => setShowEditBookingModal(false)}
-                  className="flex-1 py-3 text-[#80737f] font-bold text-xs uppercase tracking-widest hover:bg-[#f8f9fa] rounded-xl transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-3 bg-[#561668] text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#703081] transition-colors shadow-md"
-                >
-                  Salvar (Forçar Alterações)
-                </button>
+                <button type="button" onClick={() => setShowEditBookingModal(false)} className="flex-1 py-3 text-[#80737f] font-bold text-[11px] uppercase tracking-widest hover:bg-[#f8f9fa] rounded-xl">Cancelar</button>
+                <button type="submit" className="flex-1 py-3 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl hover:opacity-90" style={{ background: '#561668' }}>Salvar (Forçar Alterações)</button>
               </div>
             </form>
           </div>

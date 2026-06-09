@@ -76,6 +76,46 @@
   .silk-shadow {
     box-shadow: 0 4px 20px -2px rgba(112, 48, 129, 0.08), 0 2px 8px -2px rgba(112, 48, 129, 0.04);
   }
+
+  .silk-neu-flat {
+    background: #fff7fd;
+    box-shadow: 8px 8px 16px #e6dde6, -8px -8px 16px #ffffff;
+  }
+
+  .silk-neu-inset {
+    background: #fff7fd;
+    box-shadow: inset 6px 6px 12px #e6dde6, inset -6px -6px 12px #ffffff;
+  }
+
+  .silk-neu-glow {
+    background: #fff7fd;
+    box-shadow: 0 0 20px #f4ebf4, inset 0 0 10px #ffffff;
+  }
+}
+
+/* === Stitch Design System — Silk Neumorphic Classes === */
+.silk-lift {
+  background: #fff7fd;
+  box-shadow: -8px -8px 20px rgba(255, 255, 255, 0.8), 8px 8px 24px rgba(226, 217, 230, 1);
+}
+.silk-lift-sm {
+  background: #fff7fd;
+  box-shadow: -4px -4px 8px rgba(255, 255, 255, 0.8), 4px 4px 8px rgba(226, 217, 230, 1);
+}
+.silk-inset {
+  background: #fff7fd;
+  box-shadow: inset -4px -4px 10px rgba(255, 255, 255, 0.8), inset 4px 4px 10px rgba(226, 217, 230, 0.6);
+}
+.silk-active {
+  background: #ffffff;
+  box-shadow: -4px -4px 12px rgba(255, 255, 255, 0.8), 4px 4px 16px rgba(226, 217, 230, 1),
+              inset 0 0 0 1px rgba(86, 22, 104, 0.05);
+}
+.progress-glow {
+  box-shadow: 0 0 10px rgba(86, 22, 104, 0.4);
+}
+.silk-text-glow {
+  text-shadow: 0 0 12px rgba(86, 22, 104, 0.2);
 }
 
 /* Scrollbar styling */
