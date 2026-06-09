@@ -119,38 +119,33 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
     try {
       setReferralsLoading(true);
       const q = query(
-        collectionGroup(db, 'bookings'),
-        where('referrerUid', '==', user.uid)
+        collection(db, 'referrals'),
+        where('referrerId', '==', user.uid)
       );
       const snap = await getDocs(q);
       const list = snap.docs.map(d => {
         const data = d.data();
         
         let referralStatus = 'Pendente';
-        if (data.status === 'Concluído') {
-          referralStatus = data.frequency === 'monthly' ? 'Cortesia Liberada!' : 'Pendente';
-        } else if (data.status === 'Confirmado' && data.frequency === 'monthly') {
-          referralStatus = 'Pendente (Contratado)';
+        if (data.status === 'rewarded') {
+          referralStatus = 'Usufruído';
+        } else if (data.status === 'completed') {
+          referralStatus = 'Cortesia Liberada!';
         }
         
         return {
           id: d.id,
-          name: data.name || 'Amigo Indicado',
-          date: data.date || '—',
+          name: data.referredName || 'Amigo Indicado',
+          date: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : '—',
           status: referralStatus,
-          frequency: data.frequency || 'avulso',
-          totalPrice: data.totalPrice || 0
+          frequency: 'monthly', // O sistema agora só gera recompensas para planos mensais
+          totalPrice: 0 // Não é mais relevante mostrar o preço do plano do amigo por privacidade
         };
       });
       setReferrals(list);
     } catch (err) {
       console.error("Erro ao buscar indicações:", err);
-      // Fallback with mock data if security rules prevent cross-user querying
-      setReferrals([
-        { id: 'mock1', name: 'Juliana Mendes', date: '2026-06-02', status: 'Usufruído', frequency: 'monthly' },
-        { id: 'mock2', name: 'Marcos Reus', date: '2026-06-08', status: 'Cortesia Liberada!', frequency: 'monthly' },
-        { id: 'mock3', name: 'Carla Souza', date: '2026-06-09', status: 'Pendente', frequency: 'avulso' },
-      ]);
+      setReferrals([]);
     } finally {
       setReferralsLoading(false);
     }
