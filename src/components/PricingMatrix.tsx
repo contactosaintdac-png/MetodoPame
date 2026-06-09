@@ -312,7 +312,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
 
     if (user) {
       try {
-        await addDoc(collection(db, 'users', user.uid, 'bookings'), {
+        const bookingRef = await addDoc(collection(db, 'users', user.uid, 'bookings'), {
           name: bookingName,
           phone: bookingPhone,
           date: bookingDateState,
@@ -326,8 +326,28 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
         });
-        if (selectedPlanMode === 'mensal') {
-          localStorage.removeItem('pame_referrer_uid');
+
+        const referrerUid = localStorage.getItem('pame_referrer_uid');
+        if (referrerUid && selectedPlanMode === 'mensal') {
+          try {
+            const referrerDoc = await getDoc(doc(db, 'users', referrerUid));
+            const referrerName = referrerDoc.exists() && referrerDoc.data().name ? referrerDoc.data().name : 'Amigo (Desconhecido)';
+            
+            await addDoc(collection(db, 'referrals'), {
+              referrerId: referrerUid,
+              referrerName: referrerName,
+              referredId: user.uid,
+              referredName: bookingName,
+              referredEmail: user.email || '',
+              bookingId: bookingRef.id,
+              status: 'pending',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            localStorage.removeItem('pame_referrer_uid');
+          } catch (err) {
+            console.error("Erro ao registrar indicação", err);
+          }
         }
       } catch (error) {
         console.error("Erro ao salvar histórico do usuário logado:", error);
@@ -363,7 +383,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
       await signInWithGoogle();
       const currentUser = auth.currentUser;
       if (currentUser) {
-        await addDoc(collection(db, 'users', currentUser.uid, 'bookings'), {
+        const bookingRef = await addDoc(collection(db, 'users', currentUser.uid, 'bookings'), {
           name: bookingName,
           phone: bookingPhone,
           date: bookingDateState,
@@ -375,8 +395,28 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
         });
-        if (selectedPlanMode === 'mensal') {
-          localStorage.removeItem('pame_referrer_uid');
+        
+        const referrerUid = localStorage.getItem('pame_referrer_uid');
+        if (referrerUid && selectedPlanMode === 'mensal') {
+          try {
+            const referrerDoc = await getDoc(doc(db, 'users', referrerUid));
+            const referrerName = referrerDoc.exists() && referrerDoc.data().name ? referrerDoc.data().name : 'Amigo (Desconhecido)';
+            
+            await addDoc(collection(db, 'referrals'), {
+              referrerId: referrerUid,
+              referrerName: referrerName,
+              referredId: currentUser.uid,
+              referredName: bookingName,
+              referredEmail: currentUser.email || '',
+              bookingId: bookingRef.id,
+              status: 'pending',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            localStorage.removeItem('pame_referrer_uid');
+          } catch (err) {
+            console.error("Erro ao registrar indicação", err);
+          }
         }
         setShowBookingModal(false);
         setModalStep('form');

@@ -13,13 +13,14 @@ const SHIFTS = [
   { id: 'completo', label: 'Integral' },
 ];
 
-type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento';
+type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes';
 
 const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard'    },
   { id: 'agenda',       icon: 'calendar_today', label: 'Agenda'     },
   { id: 'equipe',       icon: 'group',        label: 'Equipe'       },
   { id: 'recrutamento', icon: 'badge',         label: 'Recrutamento' },
+  { id: 'indicacoes',   icon: 'stars',         label: 'Indicações'   },
 ];
 
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
@@ -27,6 +28,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
 
   const [employees, setEmployees]           = useState<Employee[]>([]);
   const [bookings, setBookings]             = useState<any[]>([]);
+  const [referrals, setReferrals]           = useState<any[]>([]);
   const [loading, setLoading]               = useState(true);
   const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
   const [agendaView, setAgendaView]         = useState<'lista' | 'calendario'>('calendario');
@@ -60,10 +62,25 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
       } catch (e) {
         console.warn('collectionGroup bookings indisponível — necessita index.', e);
       }
+      try {
+        const rSnap = await getDocs(query(collection(db, 'referrals')));
+        setReferrals(rSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.warn('collection referrals fetch falhou.', e);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateReferral = async (referralId: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'referrals', referralId), { status: newStatus, updatedAt: serverTimestamp() });
+      fetchEmployees(); // Re-fetch everything to update list
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -224,6 +241,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     agenda:       'Maestro de Agendas',
     equipe:       'Gestão de Equipe',
     recrutamento: 'Recrutamento',
+    indicacoes:   'Gestão de Indicações VIP',
   }[id]);
 
   // ─── Login screen ─────────────────────────────────────────────────────────────
@@ -1128,8 +1146,99 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
           </div>
         )}
 
+        {/* ╔══════════════════════════════╗
+            ║   TAB: INDICAÇÕES            ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'indicacoes' && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-extrabold text-[#561668]">
+                Círculo de Excelência (Indicações VIP)
+                {referrals.filter(r => r.status === 'pending').length > 0 && (
+                  <span className="ml-3 text-white text-xs px-2.5 py-1 rounded-full font-bold align-middle" style={{ background: '#561668' }}>
+                    {referrals.filter(r => r.status === 'pending').length} Pendentes
+                  </span>
+                )}
+              </h2>
+            </div>
 
+            {loading ? (
+              <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f]">Carregando indicações...</div>
+            ) : referrals.length === 0 ? (
+              <div className="silk-lift rounded-3xl p-16 text-center flex flex-col items-center">
+                <span className="material-symbols-outlined text-6xl text-[#d1c2d0] mb-4">stars</span>
+                <h3 className="text-lg font-bold text-[#561668] mb-2">Nenhuma indicação ainda</h3>
+                <p className="text-[#80737f] text-sm">Quando os clientes recomendarem o método, eles aparecerão aqui.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                <div className="overflow-x-auto silk-lift rounded-[2rem] p-8">
+                  <table className="w-full text-sm text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#efe5ee]/40 text-[#80737f] uppercase font-bold tracking-wider text-[10px]">
+                        <th className="pb-3 text-left">Quem Indicou (Referente)</th>
+                        <th className="pb-3 text-left">Amigo (Referido)</th>
+                        <th className="pb-3 text-center">Status</th>
+                        <th className="pb-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {referrals.map((ref) => {
+                        const statusColors = 
+                          ref.status === 'rewarded' ? 'bg-[#561668]/15 text-[#561668]' :
+                          ref.status === 'completed' ? 'bg-green-50 text-green-700' :
+                          'bg-yellow-50 text-yellow-700';
+                        
+                        const statusLabel = 
+                          ref.status === 'rewarded' ? 'Cortesia Entregue' :
+                          ref.status === 'completed' ? 'Cortesia Liberada' :
+                          'Pendente Mensalidade';
 
+                        return (
+                          <tr key={ref.id} className="border-b border-[#efe5ee]/20 last:border-none hover:bg-[#faf1fa]/25 transition-colors">
+                            <td className="py-4 text-left font-bold text-[#561668]">
+                              {ref.referrerName}
+                            </td>
+                            <td className="py-4 text-left font-bold text-[#1e1a20]">
+                              {ref.referredName}
+                              <p className="text-[10px] text-[#80737f] font-normal">{ref.referredEmail}</p>
+                            </td>
+                            <td className="py-4 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider font-extrabold ${statusColors}`}>
+                                {statusLabel}
+                              </span>
+                            </td>
+                            <td className="py-4 text-right flex items-center justify-end gap-2">
+                              {ref.status === 'pending' && (
+                                <button
+                                  onClick={() => handleUpdateReferral(ref.id, 'completed')}
+                                  className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors"
+                                >
+                                  Liberar Cortesia
+                                </button>
+                              )}
+                              {ref.status === 'completed' && (
+                                <button
+                                  onClick={() => handleUpdateReferral(ref.id, 'rewarded')}
+                                  className="px-4 py-2 bg-[#561668] text-white hover:opacity-90 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-opacity shadow-sm"
+                                >
+                                  Marcar como Entregue
+                                </button>
+                              )}
+                              {ref.status === 'rewarded' && (
+                                <span className="text-[10px] font-bold text-[#80737f] italic px-2">Finalizado</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* ══════════════════════════════════════════

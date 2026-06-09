@@ -67,3 +67,16 @@ export interface Booking {
   createdAt?: string;
   review?: Review;
 }
+
+export interface Referral {
+  id?: string;
+  referrerId: string;
+  referrerName: string;
+  referredId: string;
+  referredName: string;
+  referredEmail: string;
+  bookingId: string;
+  status: 'pending' | 'completed' | 'rewarded';
+  createdAt: any;
+  updatedAt: any;
+}
