@@ -45,6 +45,8 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [bookings, setBookings]             = useState<any[]>([]);
   const [loading, setLoading]               = useState(true);
   const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
+  const [agendaView, setAgendaView]         = useState<'lista' | 'calendario'>('calendario');
+  const [agendaDate, setAgendaDate]         = useState<Date>(new Date());
 
   const [showAddModal, setShowAddModal]     = useState(false);
   const [showEditModal, setShowEditModal]   = useState(false);
@@ -204,6 +206,24 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
       setEditingBooking(null);
       fetchEmployees();
     } catch (err) { console.error(err); }
+  };
+
+  // ─── Calendar calculations ───────────────────────────────────────────────────
+  const aYear = agendaDate.getFullYear();
+  const aMonth = agendaDate.getMonth(); // 0-indexed
+  const aMonthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  const aFirstDayIndex = (new Date(aYear, aMonth, 1).getDay() + 6) % 7; // Mon=0, Sun=6
+  const aDaysInMonth = new Date(aYear, aMonth + 1, 0).getDate();
+  const aPrevDaysInMonth = new Date(aYear, aMonth, 0).getDate();
+
+  const handlePrevMonth = () => {
+    setAgendaDate(new Date(aYear, aMonth - 1, 1));
+  };
+  const handleNextMonth = () => {
+    setAgendaDate(new Date(aYear, aMonth + 1, 1));
   };
 
   // ─── Derived data ─────────────────────────────────────────────────────────────
@@ -573,120 +593,260 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
         {activeTab === 'agenda' && (
           <div>
             {/* Controls */}
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex p-1 bg-[#f4ebf4] rounded-2xl silk-inset">
-                <button className="px-6 py-2 rounded-xl bg-white text-[#561668] font-bold silk-lift text-sm">Vista de Lista</button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <div className="flex p-1 bg-[#f4ebf4] rounded-2xl silk-inset w-fit">
+                <button
+                  onClick={() => setAgendaView('lista')}
+                  className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${
+                    agendaView === 'lista'
+                      ? 'bg-white text-[#561668] silk-lift'
+                      : 'text-[#80737f] hover:text-[#561668]'
+                  }`}
+                >
+                  Vista de Lista
+                </button>
+                <button
+                  onClick={() => setAgendaView('calendario')}
+                  className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${
+                    agendaView === 'calendario'
+                      ? 'bg-white text-[#561668] silk-lift'
+                      : 'text-[#80737f] hover:text-[#561668]'
+                  }`}
+                >
+                  Calendário
+                </button>
               </div>
-              <button
-                onClick={fetchEmployees}
-                className="flex items-center gap-2 px-4 py-2 silk-lift rounded-xl text-[#561668] font-bold text-sm hover:opacity-80 transition-opacity"
-              >
-                <span className="material-symbols-outlined text-[18px]">refresh</span> Atualizar
-              </button>
+
+              <div className="flex items-center gap-3">
+                {agendaView === 'calendario' && (
+                  <div className="flex items-center gap-2 bg-[#faf1fa] p-1 rounded-xl border border-[#efe5ee]/60">
+                    <button
+                      onClick={handlePrevMonth}
+                      className="w-8 h-8 rounded-lg hover:bg-white text-[#561668] flex items-center justify-center cursor-pointer shadow-sm transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                    </button>
+                    <span className="text-xs font-bold text-[#561668] min-w-[90px] text-center">
+                      {aMonthNames[aMonth]} {aYear}
+                    </span>
+                    <button
+                      onClick={handleNextMonth}
+                      className="w-8 h-8 rounded-lg hover:bg-white text-[#561668] flex items-center justify-center cursor-pointer shadow-sm transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={fetchEmployees}
+                  className="flex items-center gap-2 px-4 py-2 silk-lift rounded-xl text-[#561668] font-bold text-sm hover:opacity-80 transition-opacity"
+                >
+                  <span className="material-symbols-outlined text-[18px]">refresh</span> Atualizar
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-12 gap-8">
-              {/* Bookings List */}
+              {/* Bookings List / Calendar Container */}
               <div className="col-span-12 lg:col-span-8 silk-lift rounded-[2rem] p-8">
-                <div className="flex justify-between items-center mb-7">
-                  <div>
-                    <h3 className="text-lg font-bold text-[#561668]">Serviços Agendados</h3>
-                    <p className="text-sm text-[#80737f]">{bookings.length} agendamento(s) no total</p>
-                  </div>
-                </div>
-
                 {loading ? (
-                  <div className="text-center py-16 text-[#80737f]">Carregando agendamentos...</div>
-                ) : bookings.length === 0 ? (
-                  <div className="text-center py-16 flex flex-col items-center">
-                    <span className="material-symbols-outlined text-5xl text-[#d1c2d0] mb-3">calendar_today</span>
-                    <p className="text-[#80737f]">Nenhum agendamento encontrado.</p>
-                    <p className="text-sm text-[#d1c2d0] mt-1">Pode requerer configuração de índice no Firestore.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    {bookings.map((b, i) => {
-                      const assignedEmp = employees.find(e => e.id === b.assignedEmployeeId);
-                      const statusStyles =
-                        b.status === 'Concluído' ? 'bg-green-50 text-green-700' :
-                        b.status === 'Cancelado' ? 'bg-red-50 text-red-600' :
-                        'bg-[#e9e0e8] text-[#561668]';
-                      const statusDot =
-                        b.status === 'Concluído' ? 'bg-green-500' :
-                        b.status === 'Cancelado' ? 'bg-red-500' :
-                        'bg-[#561668] animate-pulse';
+                  <>
+                    <div className="flex justify-between items-center mb-7">
+                      <div>
+                        <h3 className="text-lg font-bold text-[#561668]">Serviços Agendados</h3>
+                      </div>
+                    </div>
+                    <div className="text-center py-16 text-[#80737f]">Carregando agendamentos...</div>
+                  </>
+                ) : agendaView === 'lista' ? (
+                  <>
+                    <div className="flex justify-between items-center mb-7">
+                      <div>
+                        <h3 className="text-lg font-bold text-[#561668]">Serviços Agendados</h3>
+                        <p className="text-sm text-[#80737f]">{bookings.length} agendamento(s) no total</p>
+                      </div>
+                    </div>
 
-                      return (
-                        <div
-                          key={b.docId || i}
-                          className={`flex items-center gap-5 p-5 rounded-2xl transition-transform duration-200 hover:scale-[1.005] ${
-                            b.assignedEmployeeId ? 'silk-active border-l-4 border-[#561668]' : 'silk-lift'
-                          }`}
-                        >
-                          {/* Time */}
-                          <div className="w-20 text-center flex-shrink-0">
-                            <span className="block text-base font-bold text-[#561668]">{b.time || '—'}</span>
-                            <span className="text-[10px] text-[#80737f] font-bold uppercase">{b.date}</span>
-                          </div>
-                          {/* Info */}
-                          <div className="flex-1 border-l border-[#e9e0e8] pl-5 min-w-0">
-                            <h4 className="font-bold text-[#1e1a20] text-sm truncate">{b.name || 'Cliente'}</h4>
-                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                              <div className="flex items-center gap-1 text-[10px] bg-[#f4ebf4] rounded-full px-2 py-1 text-[#626264] font-bold">
-                                <span className="material-symbols-outlined text-[12px]">schedule</span>
-                                {b.format === 'meio' ? 'Meio Turno' : 'Turno Completo'}
+                    {bookings.length === 0 ? (
+                      <div className="text-center py-16 flex flex-col items-center">
+                        <span className="material-symbols-outlined text-5xl text-[#d1c2d0] mb-3">calendar_today</span>
+                        <p className="text-[#80737f]">Nenhum agendamento encontrado.</p>
+                        <p className="text-sm text-[#d1c2d0] mt-1">Pode requerer configuração de índice no Firestore.</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4">
+                        {bookings.map((b, i) => {
+                          const assignedEmp = employees.find(e => e.id === b.assignedEmployeeId);
+                          const statusStyles =
+                            b.status === 'Concluído' ? 'bg-green-50 text-green-700' :
+                            b.status === 'Cancelado' ? 'bg-red-50 text-red-600' :
+                            'bg-[#e9e0e8] text-[#561668]';
+                          const statusDot =
+                            b.status === 'Concluído' ? 'bg-green-500' :
+                            b.status === 'Cancelado' ? 'bg-red-500' :
+                            'bg-[#561668] animate-pulse';
+
+                          return (
+                            <div
+                              key={b.docId || i}
+                              className={`flex items-center gap-5 p-5 rounded-2xl transition-transform duration-200 hover:scale-[1.005] ${
+                                b.assignedEmployeeId ? 'silk-active border-l-4 border-[#561668]' : 'silk-lift'
+                              }`}
+                            >
+                              {/* Time */}
+                              <div className="w-20 text-center flex-shrink-0">
+                                <span className="block text-base font-bold text-[#561668]">{b.time || '—'}</span>
+                                <span className="text-[10px] text-[#80737f] font-bold uppercase">{b.date}</span>
                               </div>
-                              {b.totalPrice > 0 && (
-                                <div className="text-[10px] bg-[#fcd7ff] text-[#561668] rounded-full px-2 py-1 font-bold">
-                                  R$ {b.totalPrice}
+                              {/* Info */}
+                              <div className="flex-1 border-l border-[#e9e0e8] pl-5 min-w-0">
+                                <h4 className="font-bold text-[#1e1a20] text-sm truncate">{b.name || 'Cliente'}</h4>
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                  <div className="flex items-center gap-1 text-[10px] bg-[#f4ebf4] rounded-full px-2 py-1 text-[#626264] font-bold">
+                                    <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                    {b.format === 'meio' ? 'Meio Turno' : 'Turno Completo'}
+                                  </div>
+                                  {b.totalPrice > 0 && (
+                                    <div className="text-[10px] bg-[#fcd7ff] text-[#561668] rounded-full px-2 py-1 font-bold">
+                                      R$ {b.totalPrice}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {/* Specialist */}
+                              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                {assignedEmp ? (
+                                  <>
+                                    <img className="w-9 h-9 rounded-full silk-lift-sm border-2 border-white" src={assignedEmp.photoURL} alt={assignedEmp.name} />
+                                    <span className="text-[10px] text-[#80737f] font-bold text-right max-w-[80px] truncate">{assignedEmp.name}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-9 h-9 rounded-full bg-[#f4ebf4] silk-lift border-2 border-white flex items-center justify-center">
+                                      <span className="material-symbols-outlined text-[#80737f] text-[16px]">person_add</span>
+                                    </div>
+                                    <span className="text-[10px] text-[#561668] font-bold">Sem atribuir</span>
+                                  </>
+                                )}
+                              </div>
+                              {/* Status */}
+                              <div className={`px-3 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 flex-shrink-0 ${statusStyles}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
+                                {b.status || 'Confirmado'}
+                              </div>
+                              {/* Actions */}
+                              <div className="flex gap-2 flex-shrink-0">
+                                <button
+                                  onClick={() => {
+                                    setEditingBooking(b);
+                                    setEditBookingData({ name: b.name || '', date: b.date || '', time: b.time || '09:00', format: b.format || 'meio', status: b.status || 'Confirmado', assignedEmployeeId: b.assignedEmployeeId || '', totalPrice: b.totalPrice || 0 });
+                                    setShowEditBookingModal(true);
+                                  }}
+                                  className="text-[#561668] font-bold text-[10px] uppercase tracking-widest hover:underline"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteBooking(b.ref)}
+                                  className="text-[#ba1a1a] font-bold text-[10px] uppercase tracking-widest hover:underline border-l border-[#e9e0e8] pl-2"
+                                >
+                                  Deletar
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center mb-7">
+                      <div>
+                        <h3 className="text-lg font-bold text-[#561668]">Calendário de Serviços</h3>
+                        <p className="text-sm text-[#80737f]">Visualização mensal dos agendamentos</p>
+                      </div>
+                    </div>
+
+                    {/* Week headers */}
+                    <div className="grid grid-cols-7 border-b border-[#efe5ee]/40 pb-3 mb-3 text-center text-[10px] font-bold text-[#80737f] tracking-wider">
+                      <div>SEG</div>
+                      <div>TER</div>
+                      <div>QUA</div>
+                      <div>QUI</div>
+                      <div>SEX</div>
+                      <div className="text-[#703081]">SÁB</div>
+                      <div className="text-[#703081]">DOM</div>
+                    </div>
+
+                    {/* Day cells */}
+                    <div className="grid grid-cols-7 gap-2">
+                      {/* Prev Month Placeholders */}
+                      {Array.from({ length: aFirstDayIndex }).map((_, i) => {
+                        const dayNum = aPrevDaysInMonth - aFirstDayIndex + 1 + i;
+                        return (
+                          <div key={`prev-${i}`} className="min-h-[100px] rounded-xl flex items-start p-1.5 opacity-20 text-[11px] font-semibold bg-[#faf1fa]/20 border border-transparent select-none">
+                            {dayNum}
+                          </div>
+                        );
+                      })}
+
+                      {/* Current Month Days */}
+                      {Array.from({ length: aDaysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const dayStr = `${aYear}-${String(aMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const dayBookings = bookings.filter(b => b.date === dayStr);
+
+                        return (
+                          <div
+                            key={`day-${day}`}
+                            className={`min-h-[100px] rounded-xl flex flex-col p-1.5 text-left text-[11px] font-bold border transition-all ${
+                              dayBookings.length > 0
+                                ? 'bg-[#f4ebf4]/30 border-[#561668]/15'
+                                : 'bg-[#faf1fa]/40 border-transparent hover:bg-[#faf1fa]'
+                            }`}
+                          >
+                            <span className="text-[#80737f]">{day}</span>
+                            <div className="flex flex-col gap-1 mt-1 overflow-y-auto max-h-[80px] no-scrollbar">
+                              {dayBookings.slice(0, 3).map((b, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingBooking(b);
+                                    setEditBookingData({
+                                      name: b.name || '',
+                                      date: b.date || '',
+                                      time: b.time || '09:00',
+                                      format: b.format || 'meio',
+                                      status: b.status || 'Confirmado',
+                                      assignedEmployeeId: b.assignedEmployeeId || '',
+                                      totalPrice: b.totalPrice || 0
+                                    });
+                                    setShowEditBookingModal(true);
+                                  }}
+                                  className={`w-full text-[9px] px-1 py-0.5 rounded text-left truncate block font-bold transition-all hover:scale-[1.02] ${
+                                    b.assignedEmployeeId
+                                      ? 'bg-[#561668] text-white hover:opacity-95'
+                                      : 'bg-[#ffdad6] text-[#ba1a1a] border border-[#ba1a1a]/20 hover:bg-[#ffcdd2]'
+                                  }`}
+                                  title={`${b.time || '—'} - ${b.name}`}
+                                >
+                                  {b.time || '—'} {b.name}
+                                </button>
+                              ))}
+                              {dayBookings.length > 3 && (
+                                <div className="text-[8px] text-[#80737f] text-right font-bold mt-0.5">
+                                  +{dayBookings.length - 3} mais
                                 </div>
                               )}
                             </div>
                           </div>
-                          {/* Specialist */}
-                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                            {assignedEmp ? (
-                              <>
-                                <img className="w-9 h-9 rounded-full silk-lift-sm border-2 border-white" src={assignedEmp.photoURL} alt={assignedEmp.name} />
-                                <span className="text-[10px] text-[#80737f] font-bold text-right max-w-[80px] truncate">{assignedEmp.name}</span>
-                              </>
-                            ) : (
-                              <>
-                                <div className="w-9 h-9 rounded-full bg-[#f4ebf4] silk-lift border-2 border-white flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-[#80737f] text-[16px]">person_add</span>
-                                </div>
-                                <span className="text-[10px] text-[#561668] font-bold">Sem atribuir</span>
-                              </>
-                            )}
-                          </div>
-                          {/* Status */}
-                          <div className={`px-3 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 flex-shrink-0 ${statusStyles}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
-                            {b.status || 'Confirmado'}
-                          </div>
-                          {/* Actions */}
-                          <div className="flex gap-2 flex-shrink-0">
-                            <button
-                              onClick={() => {
-                                setEditingBooking(b);
-                                setEditBookingData({ name: b.name || '', date: b.date || '', time: b.time || '09:00', format: b.format || 'meio', status: b.status || 'Confirmado', assignedEmployeeId: b.assignedEmployeeId || '', totalPrice: b.totalPrice || 0 });
-                                setShowEditBookingModal(true);
-                              }}
-                              className="text-[#561668] font-bold text-[10px] uppercase tracking-widest hover:underline"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleDeleteBooking(b.ref)}
-                              className="text-[#ba1a1a] font-bold text-[10px] uppercase tracking-widest hover:underline border-l border-[#e9e0e8] pl-2"
-                            >
-                              Deletar
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1146,9 +1306,24 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Preço Total (R$)</label>
                 <input type="number" value={editBookingData.totalPrice || 0} onChange={e => setEditBookingData({ ...editBookingData, totalPrice: Number(e.target.value) })} className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all" />
               </div>
-              <div className="flex gap-3 mt-4 pt-4 border-t border-[#efe5ee]">
-                <button type="button" onClick={() => setShowEditBookingModal(false)} className="flex-1 py-3 text-[#80737f] font-bold text-[11px] uppercase tracking-widest hover:bg-[#f8f9fa] rounded-xl">Cancelar</button>
-                <button type="submit" className="flex-1 py-3 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl hover:opacity-90" style={{ background: '#561668' }}>Salvar (Forçar Alterações)</button>
+              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-[#efe5ee]">
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setShowEditBookingModal(false)} className="flex-1 py-3 text-[#80737f] font-bold text-[11px] uppercase tracking-widest hover:bg-[#f8f9fa] rounded-xl">Cancelar</button>
+                  <button type="submit" className="flex-1 py-3 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl hover:opacity-90" style={{ background: '#561668' }}>Salvar (Forçar Alterações)</button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('🚨 ATENÇÃO: Deletar DEFINITIVAMENTE este agendamento?')) {
+                      handleDeleteBooking(editingBooking.ref);
+                      setShowEditBookingModal(false);
+                      setEditingBooking(null);
+                    }
+                  }}
+                  className="w-full py-2.5 mt-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-200"
+                >
+                  Excluir Agendamento
+                </button>
               </div>
             </form>
           </div>
