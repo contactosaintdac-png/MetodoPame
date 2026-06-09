@@ -245,7 +245,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-1.5 ml-2 cursor-pointer" onClick={() => onScreenChange('welcome')}>
             <h1 className="font-sans text-2xl font-extrabold text-[#561668] tracking-tight flex items-center gap-2">
-              <span className="material-symbols-outlined text-[26px]">diamond</span>
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" alt="" className="w-7 h-7 rounded-full object-cover" />
               Método Pame
             </h1>
             <p className="text-[10px] uppercase font-bold tracking-widest text-[#80737f]">Gestão de Residências</p>
@@ -323,7 +323,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         {/* Mobile Header / Navigation */}
         <header className="lg:hidden w-full bg-[#fff7fd]/90 backdrop-blur-md border-b border-[#efe5ee] flex justify-between items-center px-6 py-4 h-[72px] sticky top-0 z-40">
           <h2 className="font-sans text-xl font-extrabold text-[#561668] tracking-tight flex items-center gap-2">
-            <span className="material-symbols-outlined">diamond</span>
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" alt="" className="w-6 h-6 rounded-full object-cover" />
             Portal Pame
           </h2>
           <div className="flex items-center gap-2">
@@ -377,8 +377,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
           {loading ? (
             <div className="flex-1 flex items-center justify-center min-h-[350px]">
               <div className="flex flex-col items-center gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#561668] shadow-md animate-spin">
-                  <span className="material-symbols-outlined text-white text-[20px]">diamond</span>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-[#efe5ee] shadow-md overflow-hidden animate-spin" style={{ animationDuration: '3s' }}>
+                  <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" alt="" className="w-8 h-8 object-cover" />
                 </div>
                 <p className="text-xs text-[#80737f] font-bold uppercase tracking-widest animate-pulse">Buscando informações...</p>
               </div>
@@ -481,7 +481,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                         </span>
                         <div className="mt-6 flex items-center gap-3">
                           <div className="w-12 h-12 rounded-xl bg-[#faf1fa] border border-[#efe5ee] flex items-center justify-center text-[#561668]">
-                            <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+                            <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
                           </div>
                           <div>
                             <p className="font-sans text-xl font-extrabold text-[#561668]">Premium Club</p>

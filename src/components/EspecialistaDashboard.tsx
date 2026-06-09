@@ -212,8 +212,12 @@ export default function EspecialistaDashboard({ employee }: Props) {
       >
         {/* Brand */}
         <div className="flex items-center gap-3 px-2 mb-8">
-          <div className="w-11 h-11 rounded-xl silk-lift-sm flex items-center justify-center flex-shrink-0" style={{ background: '#561668' }}>
-            <span className="material-symbols-outlined text-white text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+          <div className="w-11 h-11 rounded-xl border border-[#efe5ee] flex items-center justify-center flex-shrink-0 overflow-hidden bg-white">
+            <img 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" 
+              alt="Logo Método Pame" 
+              className="w-8 h-8 object-cover" 
+            />
           </div>
           <div>
             <h1 className="text-[15px] font-bold text-[#561668] leading-tight">Método Pame</h1>

@@ -156,8 +156,12 @@ export default function App() {
     return (
       <div className="flex items-center justify-center min-h-screen w-screen bg-[#fff7fd]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#561668] shadow-lg">
-            <span className="material-symbols-outlined text-white text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white border border-[#efe5ee] shadow-lg overflow-hidden">
+            <img 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" 
+              alt="Logo Método Pame" 
+              className="w-10 h-10 object-cover"
+            />
           </div>
           <div className="flex gap-1.5">
             {[0, 150, 300].map(delay => (
