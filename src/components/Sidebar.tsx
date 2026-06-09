@@ -17,7 +17,7 @@ export default function Sidebar({ currentScreen, onScreenChange }: SidebarProps)
   const navItems = [
     ...(user ? [] : [{ id: 'welcome', label: 'Home Detail', icon: 'home_pin' } as const]),
     ...(user ? [] : [{ id: 'triage', label: 'Avaliação da Residência', icon: 'assignment_ind' } as const]),
-    { id: 'pricing', label: 'Pricing', icon: 'payments' },
+    { id: 'pricing', label: 'Pricing', icon: 'payments' } as const,
     ...(user ? [{ id: 'minha-area', label: 'Minha Área', icon: 'person' } as const] : []),
   ];
 

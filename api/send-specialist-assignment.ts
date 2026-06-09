@@ -45,11 +45,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 <td style="color: #80737f; padding-right: 20px;" valign="top">Endereço:</td>
                 <td style="font-weight: 600; line-height: 1.4; padding-top: 4px;">${clientAddress}</td>
               </tr>
-              ${addons && addons.length > 0 ? \`
+              ${addons && addons.length > 0 ? `
               <tr>
                 <td style="color: #80737f; padding-right: 20px; padding-top: 10px;" valign="top">Adicionais:</td>
-                <td style="font-weight: 600; line-height: 1.4; padding-top: 14px;">\${addons.join(', ')}</td>
-              </tr>\` : ''}
+                <td style="font-weight: 600; line-height: 1.4; padding-top: 14px;">${addons.join(', ')}</td>
+              </tr>` : ''}
             </table>
           </div>
         </div>

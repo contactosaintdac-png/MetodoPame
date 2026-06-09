@@ -49,11 +49,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 <td style="color: #80737f; padding-right: 20px;">Especialista:</td>
                 <td style="font-weight: 600;">${employeeName}</td>
               </tr>
-              ${addons && addons.length > 0 ? \`
+              ${addons && addons.length > 0 ? `
               <tr>
                 <td style="color: #80737f; padding-right: 20px;" valign="top">Adicionais:</td>
-                <td style="font-weight: 600; line-height: 1.4; padding-top: 4px;">\${addons.join('<br>')}</td>
-              </tr>\` : ''}
+                <td style="font-weight: 600; line-height: 1.4; padding-top: 4px;">${addons.join('<br>')}</td>
+              </tr>` : ''}
             </table>
           </div>
         </div>
