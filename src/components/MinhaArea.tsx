@@ -49,8 +49,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
     {
       id: 'welcome-msg',
       sender: 'concierge',
-      senderName: 'Carlos',
-      text: `Olá, ${user?.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Sou Carlos, como posso ajudar com a sua residência hoje?`,
+      senderName: 'Atendimento',
+      text: `Olá, ${user?.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Como podemos ajudar com a sua residência hoje?`,
       time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -165,7 +165,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       const conciergeMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'concierge',
-        senderName: 'Carlos Concierge',
+        senderName: 'Concierge',
         text: randomResponse,
         time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       };
@@ -769,7 +769,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                           <div className="flex gap-2.5 mt-4 pt-3 border-t border-[#efe5ee]/30">
                             <button
                               onClick={() => {
-                                setChatInput(`Olá Carlos, preciso reagendar meu atendimento agendado para o dia ${new Date(selectedBooking.date + "T12:00:00").toLocaleDateString('pt-BR')}.`);
+                                setChatInput(`Olá, preciso reagendar meu atendimento agendado para o dia ${new Date(selectedBooking.date + "T12:00:00").toLocaleDateString('pt-BR')}.`);
                                 setActiveTab('suporte');
                               }}
                               className="flex-1 py-2.5 bg-[#f4ebf4] hover:bg-[#efe5ee] text-[#561668] font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer border border-[#efe5ee]/30"
@@ -778,7 +778,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                             </button>
                             <button
                               onClick={() => {
-                                setChatInput(`Olá Carlos, gostaria de solicitar o cancelamento do meu atendimento do dia ${new Date(selectedBooking.date + "T12:00:00").toLocaleDateString('pt-BR')}.`);
+                                setChatInput(`Olá, gostaria de solicitar o cancelamento do meu atendimento do dia ${new Date(selectedBooking.date + "T12:00:00").toLocaleDateString('pt-BR')}.`);
                                 setActiveTab('suporte');
                               }}
                               className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
@@ -1028,7 +1028,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#80737f] animate-bounce" style={{ animationDelay: '150ms' }}></span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#80737f] animate-bounce" style={{ animationDelay: '300ms' }}></span>
                               </div>
-                              <span className="text-[9px] text-[#80737f] px-1 font-bold uppercase tracking-wider">Carlos Concierge está digitando...</span>
+                              <span className="text-[9px] text-[#80737f] px-1 font-bold uppercase tracking-wider">Concierge está digitando...</span>
                             </div>
                           )}
                           <div ref={chatEndRef} />
@@ -1209,7 +1209,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
               <div>
                 <h3 className="font-sans text-xl font-extrabold text-[#561668]">Solicitação Recebida</h3>
                 <p className="text-xs text-[#4e434e] mt-2 font-semibold leading-relaxed">
-                  Seu pedido de suporte e logística especial foi enviado diretamente ao Concierge Carlos. Em breve enviaremos a confirmação.
+                  Seu pedido de suporte e logística especial foi enviado diretamente ao Concierge. Em breve enviaremos a confirmação.
                 </p>
               </div>
               <button
