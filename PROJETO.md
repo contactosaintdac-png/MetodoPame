@@ -292,9 +292,9 @@ FIREBASE_PRIVATE_KEY=
 
 ## 18. Pendientes activos (en orden de prioridad)
 
-### 🔴 Inmediato
-1. **Diagnosticar error de Resend** — modificar funciones en `/api/` para loguear error completo
-2. **Implementar precios dinámicos** — buscar `// TODO: Implementar precio dinámico` en PricingMatrix.tsx
+### 🟢 Completado (Inmediatos)
+- ~~**Diagnosticar error de Resend** — modificar funciones en `/api/` para loguear error completo~~ (Resuelto, emails funcionando)
+- ~~**Implementar precios dinámicos** — buscar `// TODO: Implementar precio dinámico` en PricingMatrix.tsx~~ (Resuelto, lógica matemática en vivo)
 
 ### 🟡 Importante
 3. **Café Virtual com a Pame** — agregar pantalla de confirmación al final del formulario de funcionárias con agendamiento de videollamada. En panel admin: botón para aprobar/rechazar candidatura.
