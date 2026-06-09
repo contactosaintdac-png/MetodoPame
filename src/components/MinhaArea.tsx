@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, collectionGroup, where } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, collectionGroup, where, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { conciergeModel } from '../lib/ai';
 import { ApplicationScreen, TriageData } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -45,17 +46,10 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   const [filterType, setFilterType] = useState('todos');
 
   // Chat state (Suporte & Concierge)
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome-msg',
-      sender: 'concierge',
-      senderName: 'Atendimento',
-      text: `Olá, ${user?.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Como podemos ajudar com a sua residência hoje?`,
-      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Special Request Form (Suporte & Concierge)
@@ -112,6 +106,35 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
     };
 
     Promise.all([fetchBookings(), fetchTriage()]).finally(() => setLoading(false));
+
+    // Initialize Real-time Chat
+    const chatRef = collection(db, 'chats', user.uid, 'messages');
+    const chatQuery = query(chatRef, orderBy('createdAt', 'asc'));
+    const unsubscribe = onSnapshot(chatQuery, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          sender: data.role === 'user' ? 'user' : 'concierge',
+          senderName: data.role === 'user' ? 'Você' : 'Concierge',
+          text: data.text,
+          time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        } as ChatMessage;
+      });
+      // Add welcome message if empty
+      if (msgs.length === 0) {
+        msgs.push({
+          id: 'welcome-msg',
+          sender: 'concierge',
+          senderName: 'Atendimento',
+          text: `Olá, ${user.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Como podemos ajudar com a sua residência hoje?`,
+          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+      setChatMessages(msgs);
+    });
+
+    return () => unsubscribe();
   }, [user]);
  
   const fetchReferrals = async () => {
@@ -183,41 +206,64 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   };
 
   // Chat message send handler
-  const handleSendMessage = () => {
-    if (chatInput.trim() === '') return;
+  const handleSendMessage = async () => {
+    if (chatInput.trim() === '' || !user) return;
     
-    const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: 'user',
-      senderName: 'Você',
-      text: chatInput,
-      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setChatMessages(prev => [...prev, userMsg]);
+    const textToSend = chatInput;
     setChatInput('');
     setIsTyping(true);
 
-    // Simulated Concierge response
-    setTimeout(() => {
-      setIsTyping(false);
-      const responses = [
-        `Com certeza, ${user.displayName?.split(' ')[0]}. Anotei os detalhes da sua solicitação e nossa equipe de coordenação residencial já está analisando para garantir os padrões luxo Método Pame.`,
-        `Entendido perfeitamente. Gostaria que eu incluísse mais algum detalhe de protocolo (como aromatização específica ou limpeza de cristais) a este pedido?`,
-        `Perfeito! Solicitação repassada para a especialista designada. Ela aplicará rigorosamente todos os protocolos especificados.`,
-        `Olá! Estou verificando a disponibilidade na agenda das nossas especialistas no momento. Entraremos em contato via WhatsApp ou telefone em até 10 minutos para confirmar.`
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    try {
+      // 1. Save user message to Firestore
+      const messagesRef = collection(db, 'chats', user.uid, 'messages');
+      await addDoc(messagesRef, {
+        role: 'user',
+        text: textToSend,
+        createdAt: serverTimestamp()
+      });
+
+      // Update root chat doc for Admin Panel
+      await setDoc(doc(db, 'chats', user.uid), {
+        clientName: user.displayName || 'Cliente',
+        clientEmail: user.email || '',
+        lastMessageAt: serverTimestamp(),
+        lastMessageText: textToSend,
+        hasUnreadAdmin: true
+      }, { merge: true });
+
+      // 2. Build history for Gemini
+      const history = chatMessages
+        .filter(m => m.id !== 'welcome-msg') // exclude hardcoded welcome
+        .map(m => ({
+          role: m.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }]
+        }));
+
+      // 3. Request streaming response from Gemini
+      const chat = conciergeModel.startChat({ history });
+      const result = await chat.sendMessageStream(textToSend);
       
-      const conciergeMsg: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
-        sender: 'concierge',
-        senderName: 'Concierge',
-        text: randomResponse,
-        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      };
-      setChatMessages(prev => [...prev, conciergeMsg]);
-    }, 1500);
+      let fullResponse = '';
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullResponse += chunkText;
+        setStreamingMessage(fullResponse);
+      }
+
+      // 4. Save AI response to Firestore
+      await addDoc(messagesRef, {
+        role: 'model',
+        text: fullResponse,
+        createdAt: serverTimestamp()
+      });
+      
+      setStreamingMessage('');
+    } catch (err) {
+      console.error("Error sending message to Concierge AI:", err);
+      setStreamingMessage("Desculpe, ocorreu um erro de conexão. Por favor, tente novamente.");
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   // Special Request Submit Handler
@@ -1211,7 +1257,16 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                             );
                           })}
 
-                          {isTyping && (
+                          {streamingMessage && (
+                            <div className="flex flex-col gap-1 max-w-[80%] text-left">
+                              <div className="bg-[#faf1fa] text-[#4e434e] border border-[#efe5ee] p-3.5 rounded-2xl rounded-tl-none text-xs font-semibold leading-relaxed">
+                                {streamingMessage}
+                              </div>
+                              <span className="text-[9px] text-[#80737f] px-1 font-bold uppercase tracking-wider mt-0.5">Concierge • Digitando...</span>
+                            </div>
+                          )}
+
+                          {isTyping && !streamingMessage && (
                             <div className="flex flex-col gap-1 max-w-[80%] text-left">
                               <div className="bg-[#faf1fa] text-[#80737f] border border-[#efe5ee] p-3.5 rounded-2xl rounded-tl-none text-xs flex gap-1.5 items-center">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#80737f] animate-bounce" style={{ animationDelay: '0ms' }}></span>

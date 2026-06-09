@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy } from 'firebase/firestore';
 import { notifyEmployeeRemoval, notifyEmployeeAssignment } from '../lib/NotificationService';
 
 import type { Employee, Booking } from '../types';
@@ -13,7 +13,7 @@ const SHIFTS = [
   { id: 'completo', label: 'Integral' },
 ];
 
-type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes';
+type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes' | 'concierge';
 
 const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard'    },
@@ -21,6 +21,7 @@ const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'equipe',       icon: 'group',        label: 'Equipe'       },
   { id: 'recrutamento', icon: 'badge',         label: 'Recrutamento' },
   { id: 'indicacoes',   icon: 'stars',         label: 'Indicações'   },
+  { id: 'concierge',    icon: 'chat',          label: 'Mensagens'    },
 ];
 
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
@@ -46,10 +47,35 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [editingBooking, setEditingBooking]             = useState<any>(null);
   const [editBookingData, setEditBookingData]           = useState<any>({});
 
+  const [activeChats, setActiveChats] = useState<any[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [selectedChatMessages, setSelectedChatMessages] = useState<any[]>([]);
+
   // ─── Data fetching ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (user) fetchEmployees();
+    if (user) {
+      fetchEmployees();
+      const unsubscribeChats = onSnapshot(query(collection(db, 'chats'), orderBy('lastMessageAt', 'desc')), (snap) => {
+        const chats = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setActiveChats(chats);
+      });
+      return () => unsubscribeChats();
+    }
   }, [user]);
+
+  useEffect(() => {
+    if (selectedChatId) {
+      const q = query(collection(db, 'chats', selectedChatId, 'messages'), orderBy('createdAt', 'asc'));
+      const unsub = onSnapshot(q, (snap) => {
+        setSelectedChatMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+      // Mark as read
+      updateDoc(doc(db, 'chats', selectedChatId), { hasUnreadAdmin: false }).catch(console.error);
+      return () => unsub();
+    } else {
+      setSelectedChatMessages([]);
+    }
+  }, [selectedChatId]);
 
   const fetchEmployees = async () => {
     try {
@@ -1237,6 +1263,76 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ╔══════════════════════════════╗
+            ║   TAB: CONCIERGE / MENSAGENS  ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'concierge' && (
+          <div className="animate-fade-in flex flex-col h-[calc(100vh-8rem)]">
+            <div className="mb-6">
+              <h1 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">Concierge / Mensagens</h1>
+              <p className="text-sm text-[#4e434e] mt-1 font-medium">Bandeja de entrada do assistente virtual. Monitore os chats das suas clientas em tempo real.</p>
+            </div>
+
+            <div className="flex flex-1 gap-6 min-h-0">
+              {/* Chat List Sidebar */}
+              <div className="w-1/3 silk-lift rounded-3xl p-4 flex flex-col gap-3 overflow-y-auto custom-scroll">
+                <h3 className="text-sm font-bold text-[#561668] px-2">Conversas Ativas</h3>
+                {activeChats.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-[#80737f] font-semibold">Nenhuma conversa encontrada.</div>
+                ) : (
+                  activeChats.map(chat => (
+                    <button
+                      key={chat.id}
+                      onClick={() => setSelectedChatId(chat.id)}
+                      className={`flex flex-col gap-1 p-3 rounded-2xl text-left transition-all ${selectedChatId === chat.id ? 'bg-[#561668] text-white shadow-md' : 'bg-[#fff7fd] text-[#4e434e] hover:bg-[#faf1fa]'}`}
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <span className="font-bold text-sm truncate pr-2">{chat.clientName}</span>
+                        {chat.hasUnreadAdmin && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                        )}
+                      </div>
+                      <span className={`text-[11px] truncate opacity-80 ${selectedChatId === chat.id ? 'text-white' : 'text-[#80737f]'}`}>
+                        {chat.lastMessageText || 'Nova mensagem...'}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Chat View */}
+              <div className="flex-1 silk-lift rounded-3xl p-6 flex flex-col bg-[#fff7fd] min-h-0">
+                {selectedChatId ? (
+                  <>
+                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#efe5ee]">
+                      <h3 className="font-bold text-[#561668]">{activeChats.find(c => c.id === selectedChatId)?.clientName}</h3>
+                    </div>
+                    <div className="flex-1 overflow-y-auto mb-4 flex flex-col gap-3 pr-2 custom-scroll">
+                      {selectedChatMessages.map(msg => {
+                        const isUser = msg.role === 'user';
+                        return (
+                          <div key={msg.id} className={`flex flex-col gap-1 max-w-[80%] ${isUser ? 'ml-auto text-right items-end' : 'text-left'}`}>
+                            <div className={`p-3 rounded-2xl text-sm ${isUser ? 'bg-[#faf1fa] text-[#4e434e] border border-[#efe5ee] rounded-tr-none' : 'bg-[#561668] text-white rounded-tl-none shadow-sm'}`}>
+                              {msg.text}
+                            </div>
+                            <span className="text-[9px] text-[#80737f] px-1 font-bold uppercase tracking-wider mt-0.5">
+                              {isUser ? 'Clienta' : 'Concierge AI'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-[#80737f] font-semibold text-sm">
+                    Selecione uma conversa para visualizar o histórico do AI Concierge.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </main>

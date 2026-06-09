@@ -59,5 +59,13 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if isAdmin();
     }
+    // Rules for AI Concierge Chats
+    match /chats/{userId} {
+      allow read, write: if isAdmin() || isOwner(userId);
+      
+      match /messages/{messageId} {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+    }
   }
 }
