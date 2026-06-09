@@ -292,20 +292,22 @@ FIREBASE_PRIVATE_KEY=
 
 ## 18. Pendientes activos (en orden de prioridad)
 
-### 🟢 Completado (Inmediatos)
+### 🟢 Completado
 - ~~**Diagnosticar error de Resend** — modificar funciones en `/api/` para loguear error completo~~ (Resuelto, emails funcionando)
 - ~~**Implementar precios dinámicos** — buscar `// TODO: Implementar precio dinámico` en PricingMatrix.tsx~~ (Resuelto, lógica matemática en vivo)
+- ~~**Verificar el dominio `www.metodopame.com` en Resend**~~ (Resuelto)
 
 ### 🟡 Importante
-3. **Café Virtual com a Pame** — agregar pantalla de confirmación al final del formulario de funcionárias con agendamiento de videollamada. En panel admin: botón para aprobar/rechazar candidatura.
+1. **Café Virtual com a Pame** — agregar pantalla de confirmación al final del formulario de funcionárias con agendamiento de videollamada. En panel admin: botón para aprobar/rechazar candidatura.
 
-### 🟢 Para más adelante
-4. Verificar el dominio `www.metodopame.com` en Resend para mejorar la entrega de correos.
-5. Activar Google Calendar con service account real
-6. Sistema de evaluaciones del cliente sobre el servicio
-7. Que las funcionárias gestionen su propia disponibilidad desde `/equipe`
-8. WhatsApp Business API para notificaciones
-9. Modelo de expansión tipo Uber para limpieza (visión a futuro con Pame)
+### 🔵 Para más adelante
+2. Activar Google Calendar con service account real (actualmente es un simulador)
+3. Sistema de evaluaciones (estrellas) del cliente sobre el servicio
+4. Que las funcionárias gestionen su propia disponibilidad desde su celular en `/equipe`
+5. Conectar WhatsApp Business API para notificaciones
+
+### 🌌 Visión a largo plazo (Objetivo a futuro)
+6. Modelo de expansión tipo Uber para limpieza (abarcar más zonas y escalar operaciones)
 
 ---
 
