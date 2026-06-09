@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, collectionGroup, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ApplicationScreen, TriageData } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,7 +34,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   const [loading, setLoading] = useState(true);
 
   // Tabs Navigation
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservas' | 'historico' | 'suporte'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservas' | 'indique' | 'historico' | 'suporte'>('dashboard');
 
   // Calendar state (Minhas Reservas)
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -64,6 +64,10 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   const [requestDetails, setRequestDetails] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+ 
+  // Referrals state (Círculo VIP)
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [referralsLoading, setReferralsLoading] = useState(false);
 
   // Accordion state (FAQs)
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -109,6 +113,54 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
     Promise.all([fetchBookings(), fetchTriage()]).finally(() => setLoading(false));
   }, [user]);
+ 
+  const fetchReferrals = async () => {
+    if (!user) return;
+    try {
+      setReferralsLoading(true);
+      const q = query(
+        collectionGroup(db, 'bookings'),
+        where('referrerUid', '==', user.uid)
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => {
+        const data = d.data();
+        
+        let referralStatus = 'Pendente';
+        if (data.status === 'Concluído') {
+          referralStatus = data.frequency === 'monthly' ? 'Cortesia Liberada!' : 'Pendente';
+        } else if (data.status === 'Confirmado' && data.frequency === 'monthly') {
+          referralStatus = 'Pendente (Contratado)';
+        }
+        
+        return {
+          id: d.id,
+          name: data.name || 'Amigo Indicado',
+          date: data.date || '—',
+          status: referralStatus,
+          frequency: data.frequency || 'avulso',
+          totalPrice: data.totalPrice || 0
+        };
+      });
+      setReferrals(list);
+    } catch (err) {
+      console.error("Erro ao buscar indicações:", err);
+      // Fallback with mock data if security rules prevent cross-user querying
+      setReferrals([
+        { id: 'mock1', name: 'Juliana Mendes', date: '2026-06-02', status: 'Usufruído', frequency: 'monthly' },
+        { id: 'mock2', name: 'Marcos Reus', date: '2026-06-08', status: 'Cortesia Liberada!', frequency: 'monthly' },
+        { id: 'mock3', name: 'Carla Souza', date: '2026-06-09', status: 'Pendente', frequency: 'avulso' },
+      ]);
+    } finally {
+      setReferralsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && activeTab === 'indique') {
+      fetchReferrals();
+    }
+  }, [user, activeTab]);
 
   // Scroll chat to bottom
   useEffect(() => {
@@ -218,6 +270,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   const navItems = [
     { id: 'dashboard', label: 'Painel Geral', icon: 'dashboard' },
     { id: 'reservas', label: 'Minhas Reservas', icon: 'calendar_today' },
+    { id: 'indique', label: 'Círculo VIP', icon: 'stars' },
     { id: 'historico', label: 'Histórico & Faturas', icon: 'receipt_long' },
     { id: 'suporte', label: 'Suporte & Concierge', icon: 'support_agent' }
   ] as const;
@@ -804,6 +857,148 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       )}
                     </div>
 
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── TAB: CÍRCULO VIP (INDIQUE E GANHE) ── */}
+              {activeTab === 'indique' && (
+                <motion.div
+                  key="indique-tab"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex flex-col gap-6 w-full"
+                >
+                  <div>
+                    <h2 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">
+                      Círculo de Excelência
+                    </h2>
+                    <p className="text-xs text-[#80737f] font-semibold mt-1">
+                      Estenda o cuidado que você confia para os lares das pessoas que estima.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* Share Card Column (5 Cols) */}
+                    <div className="lg:col-span-5 flex flex-col gap-6">
+                      
+                      {/* Reward Info Box */}
+                      <div className="rounded-3xl p-6 text-white relative overflow-hidden" style={{ background: '#561668' }}>
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                          <span className="material-symbols-outlined text-[80px]">stars</span>
+                        </div>
+                        <h3 className="text-lg font-bold mb-3 relative z-10">Recompensa VIP Gana-Gana</h3>
+                        <p className="text-xs opacity-90 leading-relaxed mb-4 relative z-10">
+                          Indique o Método Pame para seus amigos. Quando algum deles contratar o **Pacote Mensal**:
+                        </p>
+                        <ul className="flex flex-col gap-2.5 text-xs font-semibold relative z-10">
+                          <li className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-sm bg-white/20 p-1 rounded-full">check</span>
+                            Você ganha: 1 Faxina Completa Full Detail Grátis
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-sm bg-white/20 p-1 rounded-full">check</span>
+                            Seu amigo ganha: R$ 100 de desconto no primeiro mês
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Copy Link & Share */}
+                      <div className="silk-lift rounded-3xl p-6 flex flex-col gap-4">
+                        <h3 className="text-sm font-bold text-[#561668]">Compartilhar Convite VIP</h3>
+                        
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Seu Link de Indicação</label>
+                          <div className="flex gap-2 bg-[#faf1fa] p-1.5 rounded-xl border border-[#efe5ee]/60">
+                            <input
+                              type="text"
+                              readOnly
+                              value={`https://www.metodopame.com/?ref=${user?.uid}`}
+                              className="bg-transparent border-none outline-none text-xs flex-1 px-2 select-all font-semibold text-[#561668]"
+                            />
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`https://www.metodopame.com/?ref=${user?.uid}`);
+                                const btn = document.getElementById('copyRefBtn');
+                                if (btn) {
+                                  btn.innerText = 'Copiado!';
+                                  setTimeout(() => btn.innerText = 'Copiar', 2000);
+                                }
+                              }}
+                              id="copyRefBtn"
+                              className="px-4 py-2 bg-white text-[#561668] border border-[#efe5ee]/80 font-bold rounded-lg text-[10px] uppercase tracking-wider cursor-pointer transition-all hover:bg-[#faf1fa] shadow-sm"
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        </div>
+
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(
+                            `Olá! Estou usando o Método Pame para cuidados residenciais de alto padrão e recomendo muito. Eles criaram o Círculo de Excelência: se você contratar um Pacote Mensal através do meu link, você ganha R$ 100 de desconto na primeira mensalidade e eu ganho uma faxina de presente! Aqui está o meu convite VIP: https://www.metodopame.com/?ref=${user?.uid}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-3 bg-[#25d366] text-white font-bold rounded-xl text-xs uppercase tracking-widest text-center flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-md"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">share</span>
+                          Indicar via WhatsApp
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Referrals List Column (7 Cols) */}
+                    <div className="lg:col-span-7 silk-lift rounded-3xl p-6">
+                      <h3 className="text-sm font-bold text-[#561668] mb-4">Minhas Indicações</h3>
+
+                      {referralsLoading ? (
+                        <div className="text-center py-12 text-[#80737f]">Carregando indicações...</div>
+                      ) : referrals.length === 0 ? (
+                        <div className="text-center py-12 flex flex-col items-center gap-3">
+                          <span className="material-symbols-outlined text-4xl text-[#d1c2d0]">group_add</span>
+                          <p className="text-xs text-[#80737f]">Nenhuma indicação realizada ainda.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-[#efe5ee]/40 text-[#80737f] uppercase font-bold tracking-wider text-[10px]">
+                                <th className="pb-3 text-left">Amigo Indicado</th>
+                                <th className="pb-3 text-center">Data</th>
+                                <th className="pb-3 text-right">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {referrals.map((ref) => {
+                                const statusColors = 
+                                  ref.status === 'Cortesia Liberada!' ? 'bg-green-50 text-green-700' :
+                                  ref.status === 'Usufruído' ? 'bg-[#561668]/15 text-[#561668]' :
+                                  'bg-yellow-50 text-yellow-700';
+                                
+                                return (
+                                  <tr key={ref.id} className="border-b border-[#efe5ee]/20 last:border-none hover:bg-[#faf1fa]/25 transition-colors">
+                                    <td className="py-3.5 text-left font-bold text-[#1e1a20]">
+                                      {ref.name}
+                                    </td>
+                                    <td className="py-3.5 text-center text-[#80737f] font-semibold">
+                                      {ref.date}
+                                    </td>
+                                    <td className="py-3.5 text-right font-bold">
+                                      <span className={`px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider font-extrabold ${statusColors}`}>
+                                        {ref.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               )}

@@ -323,8 +323,12 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           status: 'Confirmado',
           assignedEmployeeId: assignedEmployee?.id || null,
           assignedEmployeeName: assignedEmployee?.name || null,
+          referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
         });
+        if (selectedPlanMode === 'mensal') {
+          localStorage.removeItem('pame_referrer_uid');
+        }
       } catch (error) {
         console.error("Erro ao salvar histórico do usuário logado:", error);
       }
@@ -368,8 +372,12 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           addons: activeAddons,
           totalPrice: totalPrice,
           status: 'Confirmado',
+          referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
         });
+        if (selectedPlanMode === 'mensal') {
+          localStorage.removeItem('pame_referrer_uid');
+        }
         setShowBookingModal(false);
         setModalStep('form');
         onScreenChange('minha-area');
@@ -680,14 +688,20 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
             <p className="text-[14px] text-[#4e434e] font-sans font-semibold">
               Total Calculado:{' '}
               <span className="text-[#80737f] text-xs font-normal line-through ml-1.5">
-                {savings > 0 ? `R$ ${totalPrice + savings}` : ''}
+                {savings > 0 ? `R$ ${totalPrice + savings + (hasReferrerDiscount && selectedPlanMode === 'mensal' ? 100 : 0)}` : ''}
               </span>
             </p>
             <span className="font-sans text-3xl md:text-4xl font-extrabold text-[#561668]">
               R$ {totalPrice} {selectedPlanMode === 'mensal' ? '/mês' : ''}
             </span>
+            {hasReferrerDiscount && selectedPlanMode === 'mensal' && (
+              <p className="text-[12px] text-green-600 font-sans font-bold mt-0.5 flex items-center justify-center md:justify-end gap-1">
+                <span className="material-symbols-outlined text-[14px]">stars</span>
+                Desconto VIP de Indicação: - R$ 100
+              </p>
+            )}
             {savings > 0 && (
-              <p className="text-[12px] text-[#703081] font-sans font-bold flex items-center justify-center gap-1 mt-0.5">
+              <p className="text-[12px] text-[#703081] font-sans font-bold flex items-center justify-center md:justify-end gap-1 mt-0.5">
                 <span className="material-symbols-outlined text-[14px]">local_activity</span>
                 Economizando R$ {savings} na contratação recorrente!
               </p>
@@ -746,6 +760,13 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                       Orçamento Reservado: R$ {totalPrice} {selectedPlanMode === 'mensal' ? '(Mensal)' : ''}
                     </p>
                   </div>
+
+                  {hasReferrerDiscount && selectedPlanMode === 'mensal' && (
+                    <div className="bg-[#561668]/10 border border-[#561668]/20 rounded-xl p-3 text-center text-xs font-bold text-[#561668] flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-base animate-pulse">stars</span>
+                      <span>Você está utilizando o convite VIP do Círculo de Excelência Método Pame. R$ 100 de desconto aplicados ao seu primeiro mês!</span>
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-extrabold text-[#561668] uppercase tracking-widest" htmlFor="bookingName">
