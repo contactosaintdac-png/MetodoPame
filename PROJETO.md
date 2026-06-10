@@ -224,6 +224,7 @@ Acceso exclusivo para Pame y el desarrollador. Funcionalidades:
 - Gestión de funcionárias: fichas, disponibilidad, credenciales, historial, activar/desactivar/eliminar
 - Revisión de candidaturas: aprobar o rechazar con opción de agendar Café Virtual
 - Reportes financieros: ingresos por mes, servicios por tipo, add-ons más contratados
+- Gestão de Indicações (Círculo VIP): Visualização de estatísticas gerais da campanha de recomendação e controle total das cortesías geradas (status pendente, liberada ou usufruída) para referentes e indicados.
 
 ---
 
@@ -330,6 +331,7 @@ FIREBASE_PRIVATE_KEY=
 - **Tipagem Estrita (TypeScript) e UX** — Interfaces (`Employee`, `Booking`) padronizadas, remoção de telas e tabs não funcionais.
 - **Campanha de Indicações Círculo de Excelência (Frontend & Lógica)** — Captura do parâmetro `?ref` na URL com salvamento e limpeza dinâmica de endereço (App.tsx), aplicação do desconto VIP de R$ 100 com banner explicativo no checkout (PricingMatrix.tsx), e aba de indicações ativa no portal do cliente com botão do WhatsApp e lista de indicações com fallback de mock premium (MinhaArea.tsx).
 - **Redesenho Visual Premium (Diretrizes Taste Skill)** — Importação e aplicação da fonte display serifada *Cormorant Garamond* em itálico para títulos principais, injeção de textura física de papel via ruído estático em CSS, estabilização de viewports móveis (`dvh`), micro-interações táteis `active-scale` nos cliques e implementação de Skeleton Loaders animados na Área de Clientes.
+- **Painel de Gestão de Indicações no Admin** — Integração e redesenho da aba de controle da campanha de recomendação no painel da Pame com painel de estatísticas neumórficas e tabela de controle detalhada (Referente, Amigo, Status e Ações).
 
 ### 🟡 Importante
 *(Ninguno por el momento)*
