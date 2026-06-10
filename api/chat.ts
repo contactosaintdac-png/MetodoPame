@@ -177,6 +177,9 @@ async function cambiarFechaReserva(bookingId: string, uid: string, nuevaFecha: s
     
     const iUpd: any = { fecha: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
     if (nuevaHora) iUpd.hora = nuevaHora;
+    if (resolvedUid && resolvedUid !== 'pendiente') {
+      iUpd.uid = resolvedUid;
+    }
     await indexRef.update(iUpd);
     
     if (resolvedUid && resolvedUid !== 'pendiente') {
@@ -186,6 +189,16 @@ async function cambiarFechaReserva(bookingId: string, uid: string, nuevaFecha: s
         const bUpd: any = { date: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
         if (nuevaHora) bUpd.time = nuevaHora;
         await bookingRef.update(bUpd);
+      } else {
+        await bookingRef.set({
+          date: nuevaFecha,
+          time: nuevaHora || iData.hora || '09:00',
+          service: iData.formato || 'completo',
+          status: iData.estado || 'Pendiente de Pago',
+          price: iData.precio || 350,
+          createdAt: iData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
       }
     }
     
@@ -213,13 +226,27 @@ async function cancelarReserva(bookingId: string, uid: string): Promise<ToolResu
     const iData = iSnap.data() as any;
     const resolvedUid = uid || iData.uid || 'pendiente';
 
-    await indexRef.update({ estado: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    const iUpd: any = { estado: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    if (resolvedUid && resolvedUid !== 'pendiente') {
+      iUpd.uid = resolvedUid;
+    }
+    await indexRef.update(iUpd);
 
     if (resolvedUid && resolvedUid !== 'pendiente') {
       const bookingRef = db.collection('users').doc(resolvedUid).collection('bookings').doc(bookingId);
       const bSnap = await bookingRef.get();
       if (bSnap.exists) {
         await bookingRef.update({ status: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      } else {
+        await bookingRef.set({
+          date: iData.fecha || '',
+          time: iData.hora || '09:00',
+          service: iData.formato || 'completo',
+          status: 'Cancelado',
+          price: iData.precio || 350,
+          createdAt: iData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
       }
     }
 
@@ -272,10 +299,10 @@ async function crearReserva(nombre: string, email: string, fecha: string, hora: 
 
 // ─── Ejecutor de herramientas ─────────────────────────────────────────────────
 
-async function executeTool(name: string, args: any): Promise<any> {
+async function executeTool(name: string, args: any, contextUid?: string): Promise<any> {
   console.log(`[Concierge] Tool: ${name}`, JSON.stringify(args));
   const bookingId = args.booking_id || args.bookingId;
-  const uid = args.uid;
+  const uid = contextUid || args.uid;
   const nuevaFecha = args.nueva_fecha || args.nuevaFecha || args.fecha;
   const nuevaHora = args.nueva_hora || args.nuevaHora || args.hora;
 
@@ -391,7 +418,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         for (const toolCall of message.tool_calls) {
           let args = {};
           try { args = JSON.parse(toolCall.function.arguments); } catch(e){}
-          const result = await executeTool(toolCall.function.name, args);
+          const result = await executeTool(toolCall.function.name, args, context?.uid);
           
           messages.push({
             role: 'tool',
