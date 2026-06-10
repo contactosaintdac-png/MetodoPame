@@ -49,7 +49,8 @@ interface NotificacionParams {
 
 // ─── System Prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM_INSTRUCTION = `Eres el Concierge exclusivo del Método Pame, un servicio élite de curaduría del hogar y limpieza profunda de lujo con sede en Brasil.
+const getSystemInstruction = () => `Eres el Concierge exclusivo del Método Pame, un servicio élite de curaduría del hogar y limpieza profunda de lujo con sede en Brasil.
+HOY ES: ${new Date().toISOString().split('T')[0]}. Usa este año para cualquier cálculo de fecha.
 
 ROL Y CAPACIDADES:
 Tenés acceso a herramientas reales para gestionar reservas. Podés buscar, reagendar, cancelar y crear reservas directamente en el sistema — sin intermediarios.
@@ -260,7 +261,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: currentContents,
-            systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+            systemInstruction: { parts: [{ text: getSystemInstruction() }] },
             tools: [TOOL_DECLARATIONS],
             generationConfig: { temperature: 0.3, topK: 40, topP: 0.95, maxOutputTokens: 500 }
           })
@@ -307,7 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ── NVIDIA NIM (fallback sin function calling) ────────────────────────────────
   if (process.env.NVIDIA_API_KEY) {
     try {
-      const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
+      const messages = [{ role: 'system', content: getSystemInstruction() }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
       const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` }, body: JSON.stringify({ model: 'meta/llama-3.1-8b-instruct', messages, temperature: 0.4, max_tokens: 250 }) });
       if (r.ok) { const d = await r.json(); return res.status(200).json({ text: d.choices?.[0]?.message?.content || '' }); }
     } catch (e: any) { console.error('[chat] NVIDIA:', e.message); }
@@ -316,7 +317,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ── OpenAI (fallback) ─────────────────────────────────────────────────────────
   if (process.env.OPENAI_API_KEY) {
     try {
-      const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
+      const messages = [{ role: 'system', content: getSystemInstruction() }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
       const r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.4, max_tokens: 250 }) });
       if (r.ok) { const d = await r.json(); return res.status(200).json({ text: d.choices?.[0]?.message?.content || '' }); }
     } catch (e: any) { console.error('[chat] OpenAI:', e.message); }

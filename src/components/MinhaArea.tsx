@@ -95,30 +95,36 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   useEffect(() => {
     if (!user) return;
 
-    const fetchBookings = async () => {
+    let unsubscribeBookings: (() => void) | undefined;
+
+    const setupBookingsListener = () => {
       try {
         const q = query(
           collection(db, 'users', user.uid, 'bookings'),
           orderBy('date', 'desc')
         );
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Booking[];
-        setBookings(data);
-        
-        // Default selected booking in calendar to the next upcoming one
-        const todayStr = new Date().toISOString().split('T')[0];
-        const upcoming = data
-          .filter(b => b.date >= todayStr)
-          .sort((a, b) => a.date.localeCompare(b.date));
-        if (upcoming.length > 0) {
-          setSelectedBooking(upcoming[0]);
-        } else if (data.length > 0) {
-          setSelectedBooking(data[0]);
-        }
+        unsubscribeBookings = onSnapshot(q, (querySnapshot) => {
+          const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Booking[];
+          setBookings(data);
+          
+          // Default selected booking in calendar to the next upcoming one
+          const todayStr = new Date().toISOString().split('T')[0];
+          const upcoming = data
+            .filter(b => b.date >= todayStr)
+            .sort((a, b) => a.date.localeCompare(b.date));
+          if (upcoming.length > 0) {
+            setSelectedBooking(upcoming[0]);
+          } else if (data.length > 0) {
+            setSelectedBooking(data[0]);
+          }
+        }, (error) => {
+          console.error("Erro ao escutar histórico:", error);
+        });
       } catch (error) {
-        console.error("Erro ao buscar histórico:", error);
+        console.error("Erro ao configurar escuta de reservas:", error);
       }
     };
+    setupBookingsListener();
 
     const fetchTriage = async () => {
       try {
@@ -131,7 +137,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       }
     };
 
-    Promise.all([fetchBookings(), fetchTriage()]).finally(() => setLoading(false));
+    fetchTriage().finally(() => setLoading(false));
 
     // Listen to root chat doc for clearChatAt
     const chatDocRef = doc(db, 'chats', user.uid);
@@ -161,6 +167,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
     });
 
     return () => {
+      if (unsubscribeBookings) unsubscribeBookings();
       unsubscribeRoot();
       unsubscribeMessages();
     };
