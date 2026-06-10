@@ -47,8 +47,6 @@ interface NotificacionParams {
   formato?: string; precio?: number; notas?: string;
 }
 
-// ─── System Prompt ─────────────────────────────────────────────────────────────
-
 const getSystemInstruction = () => `Eres el Concierge exclusivo del Método Pame, un servicio élite de curaduría del hogar y limpieza profunda de lujo con sede en Brasil.
 HOY ES: ${new Date().toISOString().split('T')[0]}. Usa este año para cualquier cálculo de fecha.
 
@@ -59,6 +57,9 @@ CÓMO ACTUAR:
 - Cuando un cliente quiera cambiar su reserva: primero buscá la reserva por nombre, luego verificá disponibilidad en la nueva fecha, luego ejecutá el cambio.
 - Cuando un cliente quiera cancelar: buscá la reserva, confirmá verbalmente "¿Confirma la cancelación?", esperá su respuesta, y recién entonces cancelá.
 - Cuando un cliente quiera una reserva nueva: recopilá nombre, email, fecha, hora y formato (meio=4hs / completo=9hs), luego creá la reserva.
+
+REGLA CRÍTICA (ANTI-ALUCINACIÓN):
+Si una herramienta devuelve "success: false" o un error, DEBES informar al cliente exactamente qué falló (ej. "No pude encontrar tu reserva" o "Error del sistema"). BAJO NINGUNA CIRCUNSTANCIA debes inventar que la acción fue exitosa si la herramienta falló.`;
 - Cuando uses una herramienta, actuá con naturalidad — nunca menciones términos técnicos.
 
 TONO Y ESTILO:
@@ -247,7 +248,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!contents || !Array.isArray(contents)) return res.status(400).json({ error: 'Missing contents array' });
 
   // Diagnóstico
-  console.log('[chat] Config:', JSON.stringify({ gemini: !!process.env.GEMINI_API_KEY, fbProject: !!process.env.FIREBASE_PROJECT_ID, fbEmail: !!process.env.FIREBASE_CLIENT_EMAIL, fbKey: !!process.env.FIREBASE_PRIVATE_KEY, resend: !!process.env.RESEND_API_KEY }));
+  const config = { gemini: !!process.env.GEMINI_API_KEY, fbProject: !!process.env.FIREBASE_PROJECT_ID, fbEmail: !!process.env.FIREBASE_CLIENT_EMAIL, fbKey: !!process.env.FIREBASE_PRIVATE_KEY, resend: !!process.env.RESEND_API_KEY };
+  console.log('[chat] Config:', JSON.stringify(config));
+
+  if (!config.fbProject || !config.fbEmail || !config.fbKey) {
+    return res.status(200).json({ text: `[SYSTEM_ERROR] Faltan variables de entorno de Firebase Admin en Vercel (Project: ${config.fbProject}, Email: ${config.fbEmail}, Key: ${config.fbKey}). El sistema no puede conectarse a la base de datos.` });
+  }
 
   // ── Gemini con Function Calling ───────────────────────────────────────────────
   if (process.env.GEMINI_API_KEY) {
