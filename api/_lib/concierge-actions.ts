@@ -4,7 +4,7 @@
  * Usa Firebase Admin SDK para acceso server-side sin restricciones de seguridad.
  */
 
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import { Resend } from 'resend';
 
 // ─── Inicialización Firebase Admin — LAZY (solo cuando se necesita) ───────────

@@ -5,7 +5,7 @@
  */
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import { Resend } from 'resend';
 
 // ─── Firebase Admin — inicialización LAZY ─────────────────────────────────────
@@ -68,6 +68,7 @@ Você tem acesso a ferramentas reais para gerenciar reservas. Pode buscar, reage
 IDIOMA OBRIGATÓRIO (CRÍTICO):
 - VOCÊ DEVE RESPONDER SEMPRE EM PORTUGUÊS BRASILEIRO (Português-BR)!
 - Mesmo que o cliente fale ou cumprimente em espanhol, inglês ou outro idioma, você deve responder ÚNICA E EXCLUSIVAMENTE em português brasileiro.
+- IMPORTANTE: Mesmo que o histórico de mensagens anterior nesta conversa contenha diálogos ou mensagens em espanhol, você deve IGNORAR o idioma do histórico e responder ÚNICA E EXCLUSIVAMENTE em português brasileiro a partir de agora. Não dê continuidade ao espanhol sob nenhuma circunstância.
 - A única exceção é que nomes próprios não são traduzidos.
 
 COMO AGIR:
