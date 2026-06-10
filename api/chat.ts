@@ -117,7 +117,7 @@ const TOOL_DECLARATIONS = {
     {
       name: 'crear_reserva',
       description: 'Crea una nueva reserva con estado Pendiente de Pago.',
-      parameters: { type: 'object', properties: { nombre: { type: 'string' }, email: { type: 'string' }, fecha: { type: 'string' }, hora: { type: 'string' }, formato: { type: 'string', enum: ['completo', 'meio'] }, frecuencia: { type: 'string', enum: ['avulso', 'mensal'] }, notas_especiales: { type: 'string' } }, required: ['nombre', 'email', 'fecha', 'hora', 'formato', 'frecuencia'] }
+      parameters: { type: 'object', properties: { nombre: { type: 'string' }, email: { type: 'string' }, fecha: { type: 'string' }, hora: { type: 'string' }, formato: { type: 'string', enum: ['completo', 'meio'] }, frecuencia: { type: 'string', enum: ['avulso', 'mensal'] }, notas_especiales: { type: 'string' }, uid: { type: 'string' } }, required: ['nombre', 'email', 'fecha', 'hora', 'formato', 'frecuencia'] }
     }
   ]
 };
@@ -215,12 +215,27 @@ async function obtenerReserva(bookingId: string): Promise<ToolResult> {
   } catch (e: any) { return { success: false, error: e.message }; }
 }
 
-async function crearReserva(nombre: string, email: string, fecha: string, hora: string, formato: string, frecuencia: string, notasEspeciales?: string): Promise<ToolResult> {
+async function crearReserva(nombre: string, email: string, fecha: string, hora: string, formato: string, frecuencia: string, notasEspeciales?: string, uid?: string): Promise<ToolResult> {
   try {
     const db = getDb();
     const precio = formato === 'completo' ? 450 : 350;
-    const newDoc = await db.collection('reservas_index').add({ uid: 'pendiente', bookingId: '', nombre, nombre_lower: nombre.toLowerCase().trim(), email, fecha, hora, formato, frecuencia, estado: 'Pendiente de Pago', empleada_nombre: '', empleada_email: '', empleada_id: '', precio, notas_especiales: notasEspeciales || '', createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    const resolvedUid = uid || 'pendiente';
+    const newDoc = await db.collection('reservas_index').add({ uid: resolvedUid, bookingId: '', nombre, nombre_lower: nombre.toLowerCase().trim(), email, fecha, hora, formato, frecuencia, estado: 'Pendiente de Pago', empleada_nombre: '', empleada_email: '', empleada_id: '', precio, notas_especiales: notasEspeciales || '', createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    
     await newDoc.update({ bookingId: newDoc.id });
+    
+    if (uid) {
+       await db.collection('users').doc(uid).collection('bookings').doc(newDoc.id).set({
+           date: fecha,
+           time: hora,
+           service: formato,
+           status: 'Pendiente de Pago',
+           price: precio,
+           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+           updatedAt: admin.firestore.FieldValue.serverTimestamp()
+       });
+    }
+
     enviarNotificacion({ accion: 'nueva_reserva_pendiente', nombreCliente: nombre, emailCliente: email, nuevaFecha: fecha, nuevaHora: hora, formato, precio, notas: notasEspeciales });
     return { success: true, data: { mensaje: `Reserva creada para ${nombre} el ${fecha} a las ${hora}. Pendiente de Pago. El equipo contactará al cliente.`, bookingId: newDoc.id } };
   } catch (e: any) { console.error('[crearReserva]', e.message); return { success: false, error: e.message }; }
@@ -236,7 +251,7 @@ async function executeTool(name: string, args: any): Promise<any> {
     case 'cambiar_fecha_reserva':   return cambiarFechaReserva(args.booking_id, args.uid, args.nueva_fecha, args.nueva_hora);
     case 'cancelar_reserva':        return cancelarReserva(args.booking_id, args.uid);
     case 'obtener_reserva':         return obtenerReserva(args.booking_id);
-    case 'crear_reserva':           return crearReserva(args.nombre, args.email, args.fecha, args.hora, args.formato, args.frecuencia, args.notas_especiales);
+    case 'crear_reserva':           return crearReserva(args.nombre, args.email, args.fecha, args.hora, args.formato, args.frecuencia, args.notas_especiales, args.uid);
     default:                        return { success: false, error: `Función desconocida: ${name}` };
   }
 }
