@@ -438,7 +438,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           <span className="font-sans text-xs font-extrabold text-[#703081] uppercase tracking-[0.2em]">
             Curadoria &amp; Investimento Estritos
           </span>
-          <h1 className="font-sans text-3xl md:text-5xl font-extrabold text-[#561668] tracking-tight">
+          <h1 className="font-display italic text-4xl md:text-6xl font-semibold text-[#561668] tracking-tight">
             Matriz de Investimento
           </h1>
           <p className="font-sans text-[16px] md:text-lg text-[#4e434e] leading-relaxed">
@@ -484,8 +484,8 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 mb-1">
               <span className="material-symbols-outlined text-[#703081] text-2xl font-bold">schedule</span>
-              <h2 className="font-sans text-xl md:text-2xl font-bold text-[#561668]">
-                Meio Turno <span className="font-sans text-sm md:text-base text-[#4e434e] font-normal ml-1">(4h)</span>
+              <h2 className="font-display italic text-2xl md:text-3xl font-semibold text-[#561668]">
+                Meio Turno <span className="font-sans text-xs md:text-sm text-[#4e434e] font-normal not-italic ml-1">(4h)</span>
               </h2>
             </div>
 
@@ -559,8 +559,8 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           <div className="flex flex-col gap-4 relative">
             <div className="flex items-center gap-3 mb-1">
               <span className="material-symbols-outlined text-[#703081] text-2xl font-bold">update</span>
-              <h2 className="font-sans text-xl md:text-2xl font-bold text-[#561668]">
-                Turno Completo <span className="font-sans text-sm md:text-base text-[#4e434e] font-normal ml-1">(9h)</span>
+              <h2 className="font-display italic text-2xl md:text-3xl font-semibold text-[#561668]">
+                Turno Completo <span className="font-sans text-xs md:text-sm text-[#4e434e] font-normal not-italic ml-1">(9h)</span>
               </h2>
             </div>
 
@@ -653,7 +653,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         {/* Dynamic Addons Services Area */}
         <section className="flex flex-col gap-5">
           <div>
-            <h2 className="font-sans text-2xl font-extrabold text-[#561668]">
+            <h2 className="font-display italic text-3xl font-semibold text-[#561668]">
               Serviços Adicionais de Alta Gama
             </h2>
             <p className="font-sans text-sm text-[#4e434e] mt-1 leading-relaxed">

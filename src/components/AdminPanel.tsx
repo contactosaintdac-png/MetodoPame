@@ -278,7 +278,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
           <div className="w-20 h-20 rounded-2xl silk-lift-sm mx-auto mb-6 flex items-center justify-center" style={{ background: '#561668' }}>
             <span className="material-symbols-outlined text-white text-[40px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield_person</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-[#561668] mb-2 tracking-tight">Painel Administrativo</h1>
+          <h1 className="font-display italic text-3xl font-semibold text-[#561668] mb-2 tracking-tight">Painel Administrativo</h1>
           <p className="text-sm text-[#80737f] mb-8">Acesso restrito à gerência do Método Pame.</p>
           <button
             onClick={signInWithGoogle}
@@ -313,7 +313,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             />
           </div>
           <div>
-            <h1 className="text-[17px] font-bold text-[#561668] leading-tight">Método Pame</h1>
+            <h1 className="font-display italic text-lg font-semibold text-[#561668] leading-tight">Método Pame</h1>
             <p className="text-[9px] text-[#80737f] uppercase tracking-widest font-bold">Residential Excellence</p>
           </div>
         </div>

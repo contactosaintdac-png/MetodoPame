@@ -45,7 +45,7 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
   };
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden flex flex-col md:flex-row font-sans selection:bg-[#561668] selection:text-white">
+    <div className="relative h-[100dvh] w-screen overflow-hidden flex flex-col md:flex-row font-sans selection:bg-[#561668] selection:text-white">
       
       {/* Hidden H1 for SEO */}
       <h1 className="sr-only">Método Pame - Home Detail | Serviços Residenciais de Alto Padrão</h1>
@@ -66,7 +66,7 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
         <button
           onClick={handleLoginClick}
           disabled={isLoggingIn}
-          className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-white/90 backdrop-blur-md hover:bg-white border border-[#efe5ee] rounded-full shadow-[2px_2px_8px_rgba(112,48,129,0.15)] transition-all text-[#561668] font-bold text-[10px] md:text-[11px] tracking-widest uppercase cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-white/90 backdrop-blur-md hover:bg-white border border-[#efe5ee] rounded-full shadow-[2px_2px_8px_rgba(112,48,129,0.15)] transition-all text-[#561668] font-bold text-[10px] md:text-[11px] tracking-widest uppercase cursor-pointer disabled:opacity-50 active-scale"
         >
           <span className="material-symbols-outlined text-[16px] md:text-[16px]">
             {user ? 'person' : 'login'}
@@ -137,7 +137,7 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
               </span>
             </div>
             
-            <h2 className="font-sans text-2xl md:text-3xl font-extrabold text-[#561668] tracking-tight mb-1.5 md:mb-2">
+            <h2 className="font-display italic text-3xl md:text-4xl font-semibold text-[#561668] tracking-tight mb-2 md:mb-3">
               Para Residências
             </h2>
             <p className="font-sans text-[14px] md:text-[17px] text-[#4e434e] mb-5 md:mb-6 leading-relaxed">
@@ -149,7 +149,7 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
                 e.stopPropagation();
                 onScreenChange('triage');
               }}
-              className="w-full py-3.5 md:py-4 px-6 bg-[#fff7fd] hover:bg-[#efe5ee] text-[#561668] border border-[#d1c2d0]/30 rounded-2xl font-bold text-[10px] md:text-xs tracking-widest uppercase transition-all duration-300 shadow-[4px_4px_8px_#d9cbd9,-4px_-4px_8px_#ffffff] hover:shadow-[inset_2px_2px_5px_#d9cbd9,inset_-2px_-2px_5px_#ffffff] active:scale-98 flex items-center justify-center gap-2"
+              className="w-full py-3.5 md:py-4 px-6 bg-[#fff7fd] hover:bg-[#efe5ee] text-[#561668] border border-[#d1c2d0]/30 rounded-2xl font-bold text-[10px] md:text-xs tracking-widest uppercase transition-all duration-300 shadow-[4px_4px_8px_#d9cbd9,-4px_-4px_8px_#ffffff] hover:shadow-[inset_2px_2px_5px_#d9cbd9,inset_-2px_-2px_5px_#ffffff] active-scale flex items-center justify-center gap-2"
             >
               Iniciar Avaliação
               <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold">arrow_forward</span>
@@ -197,7 +197,7 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
               </span>
             </div>
             
-            <h2 className="font-sans text-2xl md:text-3xl font-extrabold text-[#561668] tracking-tight mb-1.5 md:mb-2">
+            <h2 className="font-display italic text-3xl md:text-4xl font-semibold text-[#561668] tracking-tight mb-2 md:mb-3">
               Para Especialistas
             </h2>
             <p className="font-sans text-[14px] md:text-[17px] text-[#4e434e] mb-5 md:mb-6 leading-relaxed">
@@ -209,7 +209,7 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
                 e.stopPropagation();
                 onScreenChange('recruitment');
               }}
-              className="w-full py-3.5 md:py-4 px-6 bg-[#fff7fd] hover:bg-[#efe5ee] text-[#561668] border border-[#d1c2d0]/30 rounded-2xl font-bold text-[10px] md:text-xs tracking-widest uppercase transition-all duration-300 shadow-[4px_4px_8px_#d9cbd9,-4px_-4px_8px_#ffffff] hover:shadow-[inset_2px_2px_5px_#d9cbd9,inset_-2px_-2px_5px_#ffffff] active:scale-98 flex items-center justify-center gap-2 md:flex-row-reverse"
+              className="w-full py-3.5 md:py-4 px-6 bg-[#fff7fd] hover:bg-[#efe5ee] text-[#561668] border border-[#d1c2d0]/30 rounded-2xl font-bold text-[10px] md:text-xs tracking-widest uppercase transition-all duration-300 shadow-[4px_4px_8px_#d9cbd9,-4px_-4px_8px_#ffffff] hover:shadow-[inset_2px_2px_5px_#d9cbd9,inset_-2px_-2px_5px_#ffffff] active-scale flex items-center justify-center gap-2 md:flex-row-reverse"
             >
               Inicie sua Jornada
               <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold md:rotate-180">arrow_forward</span>

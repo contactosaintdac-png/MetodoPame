@@ -370,7 +370,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       <aside className="hidden lg:flex h-screen w-72 flex-col fixed left-0 top-0 bg-[#fff7fd] border-r border-[#efe5ee] z-50 p-6 gap-6 justify-between shadow-sm">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-1.5 ml-2 cursor-pointer" onClick={() => onScreenChange('welcome')}>
-            <h1 className="font-sans text-2xl font-extrabold text-[#561668] tracking-tight flex items-center gap-2">
+            <h1 className="font-display italic text-2xl font-semibold text-[#561668] tracking-tight flex items-center gap-2">
               <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" alt="" className="w-7 h-7 rounded-full object-cover" />
               Método Pame
             </h1>
@@ -384,7 +384,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 text-left font-bold text-sm tracking-wide cursor-pointer ${
+                  className={`flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 text-left font-bold text-sm tracking-wide cursor-pointer active-scale ${
                     isActive
                       ? 'bg-[#561668] text-white shadow-md silk-text-glow'
                       : 'text-[#4e434e] hover:bg-[#faf1fa] hover:text-[#561668]'
@@ -501,12 +501,45 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         {/* ── Content Area ── */}
         <div className="p-6 md:p-8 max-w-5xl w-full mx-auto flex-1 flex flex-col">
           {loading ? (
-            <div className="flex-1 flex items-center justify-center min-h-[350px]">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-[#efe5ee] shadow-md overflow-hidden animate-spin" style={{ animationDuration: '3s' }}>
-                  <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" alt="" className="w-8 h-8 object-cover" />
+            <div className="flex-1 flex flex-col gap-6 min-h-[450px] animate-pulse-silk">
+              {/* Header Skeleton */}
+              <div className="flex flex-col gap-2.5">
+                <div className="h-4 w-32 bg-[#561668]/10 rounded-lg"></div>
+                <div className="h-8 w-64 bg-[#561668]/15 rounded-xl"></div>
+              </div>
+              
+              {/* Cards Grid Skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="silk-lift rounded-3xl p-6 h-36 flex flex-col justify-between">
+                  <div className="h-10 w-10 bg-[#faf1fa] rounded-full"></div>
+                  <div className="flex flex-col gap-2">
+                    <div className="h-3 w-16 bg-[#efe5ee] rounded"></div>
+                    <div className="h-4 w-36 bg-[#efe5ee] rounded"></div>
+                  </div>
                 </div>
-                <p className="text-xs text-[#80737f] font-bold uppercase tracking-widest animate-pulse">Buscando informações...</p>
+                <div className="silk-lift rounded-3xl p-6 h-36 flex flex-col justify-between">
+                  <div className="h-10 w-10 bg-[#faf1fa] rounded-full"></div>
+                  <div className="flex flex-col gap-2">
+                    <div className="h-3 w-16 bg-[#efe5ee] rounded"></div>
+                    <div className="h-4 w-36 bg-[#efe5ee] rounded"></div>
+                  </div>
+                </div>
+                <div className="silk-lift rounded-3xl p-6 h-36 flex flex-col justify-between">
+                  <div className="h-10 w-10 bg-[#faf1fa] rounded-full"></div>
+                  <div className="flex flex-col gap-2">
+                    <div className="h-3 w-16 bg-[#efe5ee] rounded"></div>
+                    <div className="h-4 w-36 bg-[#efe5ee] rounded"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table/List Skeleton */}
+              <div className="silk-lift rounded-3xl p-6 flex-1 flex flex-col gap-4 min-h-[160px]">
+                <div className="h-4 w-40 bg-[#efe5ee] rounded-lg"></div>
+                <div className="flex flex-col gap-3.5 mt-2">
+                  <div className="h-12 w-full bg-[#faf1fa] rounded-xl"></div>
+                  <div className="h-12 w-full bg-[#faf1fa]/70 rounded-xl"></div>
+                </div>
               </div>
             </div>
           ) : (
@@ -524,7 +557,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                 >
                   {/* Hero Greeting */}
                   <div>
-                    <h2 className="font-sans text-3xl md:text-4xl font-extrabold text-[#561668] tracking-tight">
+                    <h2 className="font-display italic text-3xl md:text-4xl font-semibold text-[#561668] tracking-tight">
                       Boas-vindas, {user.displayName?.split(' ')[0] || 'Cliente'}
                     </h2>
                     <p className="text-[#4e434e] mt-1 text-sm md:text-base">
@@ -723,7 +756,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                 >
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                      <h2 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">
+                      <h2 className="font-display italic text-3xl font-semibold text-[#561668] tracking-tight">
                         Calendário Mensal
                       </h2>
                       <p className="text-xs text-[#80737f] font-semibold mt-1">
@@ -945,7 +978,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                   className="flex flex-col gap-6 w-full"
                 >
                   <div>
-                    <h2 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">
+                    <h2 className="font-display italic text-3xl font-semibold text-[#561668] tracking-tight">
                       Círculo de Excelência
                     </h2>
                     <p className="text-xs text-[#80737f] font-semibold mt-1">
@@ -1028,7 +1061,11 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       <h3 className="text-sm font-bold text-[#561668] mb-4">Minhas Indicações</h3>
 
                       {referralsLoading ? (
-                        <div className="text-center py-12 text-[#80737f]">Carregando indicações...</div>
+                        <div className="flex flex-col gap-3 py-4 animate-pulse-silk">
+                          <div className="h-9 w-full bg-[#faf1fa] rounded-lg"></div>
+                          <div className="h-9 w-full bg-[#faf1fa]/75 rounded-lg"></div>
+                          <div className="h-9 w-full bg-[#faf1fa]/50 rounded-lg"></div>
+                        </div>
                       ) : referrals.length === 0 ? (
                         <div className="text-center py-12 flex flex-col items-center gap-3">
                           <span className="material-symbols-outlined text-4xl text-[#d1c2d0]">group_add</span>
@@ -1087,8 +1124,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                   className="flex flex-col gap-6 w-full"
                 >
                   <div>
-                    <h2 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">
-                      Histórico & Facturação
+                    <h2 className="font-display italic text-3xl font-semibold text-[#561668] tracking-tight">
+                      Histórico &amp; Faturamento
                     </h2>
                     <p className="text-xs text-[#80737f] font-semibold mt-1">
                       Acesse os atendimentos anteriores, avalie os resultados e faça o download dos comprovantes.
@@ -1245,8 +1282,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                 >
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                      <h2 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">
-                        Suporte & Concierge
+                      <h2 className="font-display italic text-3xl font-semibold text-[#561668] tracking-tight">
+                        Suporte &amp; Concierge
                       </h2>
                       <p className="text-xs text-[#80737f] font-semibold mt-1">
                         Comunicação direta para triagem de urgências, logística residencial e pedidos adicionais.
