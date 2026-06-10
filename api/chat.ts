@@ -47,15 +47,27 @@ interface NotificacionParams {
   formato?: string; precio?: number; notas?: string;
 }
 
-const getSystemInstruction = () => `Eres el Concierge exclusivo del Método Pame, un servicio élite de curaduría del hogar y limpieza profunda de lujo con sede en Brasil.
-HOY ES: ${new Date().toISOString().split('T')[0]}. Usa este año para cualquier cálculo de fecha.
+const getSystemInstruction = (context?: any) => {
+  let contextStr = '';
+  if (context && context.uid) {
+    contextStr = `\nINFORMACIÓN DEL CLIENTE ACTUAL:\nNombre en sistema: ${context.name}\nUID (Obligatorio para herramientas): ${context.uid}\n`;
+    if (context.bookings && context.bookings.length > 0) {
+      contextStr += `Reservas actuales del cliente:\n${context.bookings.map((b: any) => `- ID de reserva (booking_id): ${b.id} | Fecha: ${b.date} | Hora: ${b.time} | Estado: ${b.status}`).join('\n')}\n`;
+      contextStr += `(Usa estos 'booking_id' y 'uid' directamente para cambiar_fecha_reserva o cancelar_reserva. Ya NO necesitas usar buscar_reserva si la reserva está en esta lista).\n`;
+    } else {
+      contextStr += `El cliente no tiene reservas activas actualmente.\n`;
+    }
+  }
 
+  return `Eres el Concierge exclusivo del Método Pame, un servicio élite de curaduría del hogar y limpieza profunda de lujo con sede en Brasil.
+HOY ES: ${new Date().toISOString().split('T')[0]}. Usa este año para cualquier cálculo de fecha.
+${contextStr}
 ROL Y CAPACIDADES:
 Tenés acceso a herramientas reales para gestionar reservas. Podés buscar, reagendar, cancelar y crear reservas directamente en el sistema — sin intermediarios.
 
 CÓMO ACTUAR:
-- Cuando un cliente quiera cambiar su reserva: primero buscá la reserva por nombre, luego verificá disponibilidad en la nueva fecha, luego ejecutá el cambio.
-- Cuando un cliente quiera cancelar: buscá la reserva, confirmá verbalmente "¿Confirma la cancelación?", esperá su respuesta, y recién entonces cancelá.
+- Cuando un cliente quiera cambiar su reserva: si ya tenés el booking_id y uid en su INFORMACIÓN DEL CLIENTE ACTUAL, usalos directamente para verificar_disponibilidad y luego cambiar_fecha_reserva. Si no los tenés, usá buscar_reserva primero.
+- Cuando un cliente quiera cancelar: confirmá verbalmente "¿Confirma la cancelación?", esperá su respuesta, y recién entonces usá cancelar_reserva con el booking_id y uid.
 - Cuando un cliente quiera una reserva nueva: recopilá nombre, email, fecha, hora y formato (meio=4hs / completo=9hs), luego creá la reserva.
 
 REGLA CRÍTICA (ANTI-ALUCINACIÓN):
@@ -71,6 +83,7 @@ LÍMITES:
 - NO hables de precios directamente.
 - Si no encontrás la reserva, pedí amablemente que verifique su nombre.
 - Ante cualquier error, indicá que el equipo lo contactará a la brevedad.`;
+};
 
 // ─── Declaración de Tools para Gemini ─────────────────────────────────────────
 
@@ -140,15 +153,31 @@ async function cambiarFechaReserva(bookingId: string, uid: string, nuevaFecha: s
     const db = getDb();
     const indexRef   = db.collection('reservas_index').doc(bookingId);
     const bookingRef = db.collection('users').doc(uid).collection('bookings').doc(bookingId);
-    const [iSnap, bSnap] = await Promise.all([indexRef.get(), bookingRef.get()]);
-    if (!iSnap.exists || !bSnap.exists) return { success: false, error: 'No se encontró la reserva.' };
-    const iData = iSnap.data() as any;
-    const fechaAnterior = iData.fecha; const horaAnterior = iData.hora;
-    const upd: any = { fecha: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    if (nuevaHora) upd.hora = nuevaHora;
-    await Promise.all([indexRef.update(upd), bookingRef.update({ date: nuevaFecha, ...(nuevaHora ? { time: nuevaHora } : {}), updatedAt: admin.firestore.FieldValue.serverTimestamp() })]);
-    enviarNotificacion({ accion: 'cambio_fecha', nombreCliente: iData.nombre, emailCliente: iData.email, fechaAnterior, horaAnterior, nuevaFecha, nuevaHora: nuevaHora || iData.hora, empleadaNombre: iData.empleada_nombre, empleadaEmail: iData.empleada_email, formato: iData.formato, precio: iData.precio });
-    return { success: true, data: { mensaje: `Reserva de ${iData.nombre} cambiada: ${fechaAnterior} → ${nuevaFecha}${nuevaHora ? ` a las ${nuevaHora}` : ''}.`, bookingId, fechaAnterior, nuevaFecha } };
+    const [iSnap, bSnap, uSnap] = await Promise.all([indexRef.get(), bookingRef.get(), db.collection('users').doc(uid).get()]);
+    if (!bSnap.exists) return { success: false, error: 'No se encontró la reserva.' };
+    
+    const bData = bSnap.data() as any;
+    const uData = uSnap.exists ? (uSnap.data() as any) : {};
+    const fechaAnterior = bData.date || ''; 
+    const horaAnterior = bData.time || '';
+    
+    const bUpd: any = { date: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    if (nuevaHora) bUpd.time = nuevaHora;
+    await bookingRef.update(bUpd);
+    
+    if (iSnap.exists) {
+      const iUpd: any = { fecha: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+      if (nuevaHora) iUpd.hora = nuevaHora;
+      await indexRef.update(iUpd);
+    }
+    
+    const nombreCliente = (iSnap.exists ? iSnap.data()?.nombre : uData.displayName) || 'Cliente';
+    const emailCliente = (iSnap.exists ? iSnap.data()?.email : uData.email) || '';
+    
+    if (emailCliente) {
+      enviarNotificacion({ accion: 'cambio_fecha', nombreCliente, emailCliente, fechaAnterior, horaAnterior, nuevaFecha, nuevaHora: nuevaHora || horaAnterior, empleadaNombre: iSnap.data()?.empleada_nombre, empleadaEmail: iSnap.data()?.empleada_email, formato: bData.service || '', precio: iSnap.data()?.precio || 0 });
+    }
+    return { success: true, data: { mensaje: `Reserva cambiada: ${fechaAnterior} → ${nuevaFecha}${nuevaHora ? ` a las ${nuevaHora}` : ''}.`, bookingId, fechaAnterior, nuevaFecha } };
   } catch (e: any) { console.error('[cambiarFechaReserva]', e.message); return { success: false, error: e.message }; }
 }
 
@@ -157,12 +186,24 @@ async function cancelarReserva(bookingId: string, uid: string): Promise<ToolResu
     const db = getDb();
     const indexRef   = db.collection('reservas_index').doc(bookingId);
     const bookingRef = db.collection('users').doc(uid).collection('bookings').doc(bookingId);
-    const iSnap = await indexRef.get();
-    if (!iSnap.exists) return { success: false, error: 'No se encontró la reserva.' };
-    const iData = iSnap.data() as any;
-    await Promise.all([indexRef.update({ estado: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() }), bookingRef.update({ status: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() })]);
-    enviarNotificacion({ accion: 'cancelacion', nombreCliente: iData.nombre, emailCliente: iData.email, fechaAnterior: iData.fecha, horaAnterior: iData.hora, empleadaNombre: iData.empleada_nombre, empleadaEmail: iData.empleada_email });
-    return { success: true, data: { mensaje: `Reserva de ${iData.nombre} del ${iData.fecha} cancelada.`, bookingId } };
+    const [iSnap, bSnap, uSnap] = await Promise.all([indexRef.get(), bookingRef.get(), db.collection('users').doc(uid).get()]);
+    if (!bSnap.exists) return { success: false, error: 'No se encontró la reserva.' };
+
+    const bData = bSnap.data() as any;
+    const uData = uSnap.exists ? (uSnap.data() as any) : {};
+
+    await bookingRef.update({ status: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    if (iSnap.exists) {
+      await indexRef.update({ estado: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    }
+
+    const nombreCliente = (iSnap.exists ? iSnap.data()?.nombre : uData.displayName) || 'Cliente';
+    const emailCliente = (iSnap.exists ? iSnap.data()?.email : uData.email) || '';
+
+    if (emailCliente) {
+      enviarNotificacion({ accion: 'cancelacion', nombreCliente, emailCliente, fechaAnterior: bData.date, horaAnterior: bData.time, empleadaNombre: iSnap.data()?.empleada_nombre, empleadaEmail: iSnap.data()?.empleada_email });
+    }
+    return { success: true, data: { mensaje: `Reserva del ${bData.date} cancelada.`, bookingId } };
   } catch (e: any) { console.error('[cancelarReserva]', e.message); return { success: false, error: e.message }; }
 }
 
@@ -244,7 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { contents } = req.body;
+  const { contents, context } = req.body;
   if (!contents || !Array.isArray(contents)) return res.status(400).json({ error: 'Missing contents array' });
 
   // Diagnóstico
@@ -267,7 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: currentContents,
-            systemInstruction: { parts: [{ text: getSystemInstruction() }] },
+            systemInstruction: { parts: [{ text: getSystemInstruction(context) }] },
             tools: [TOOL_DECLARATIONS],
             generationConfig: { temperature: 0.3, topK: 40, topP: 0.95, maxOutputTokens: 500 }
           })
@@ -314,7 +355,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ── NVIDIA NIM (fallback sin function calling) ────────────────────────────────
   if (process.env.NVIDIA_API_KEY) {
     try {
-      const messages = [{ role: 'system', content: getSystemInstruction() }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
+      const messages = [{ role: 'system', content: getSystemInstruction(context) }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
       const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` }, body: JSON.stringify({ model: 'meta/llama-3.1-8b-instruct', messages, temperature: 0.4, max_tokens: 250 }) });
       if (r.ok) { const d = await r.json(); return res.status(200).json({ text: d.choices?.[0]?.message?.content || '' }); }
     } catch (e: any) { console.error('[chat] NVIDIA:', e.message); }
@@ -323,7 +364,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ── OpenAI (fallback) ─────────────────────────────────────────────────────────
   if (process.env.OPENAI_API_KEY) {
     try {
-      const messages = [{ role: 'system', content: getSystemInstruction() }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
+      const messages = [{ role: 'system', content: getSystemInstruction(context) }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
       const r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.4, max_tokens: 250 }) });
       if (r.ok) { const d = await r.json(); return res.status(200).json({ text: d.choices?.[0]?.message?.content || '' }); }
     } catch (e: any) { console.error('[chat] OpenAI:', e.message); }

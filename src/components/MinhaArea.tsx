@@ -318,7 +318,14 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ contents }),
+        body: JSON.stringify({ 
+          contents,
+          context: {
+            uid: user.uid,
+            name: user.displayName || 'Cliente',
+            bookings: bookings.map(b => ({ id: b.id, date: b.date, time: b.time || '', status: b.status, service: b.service || 'Limpieza' }))
+          }
+        }),
       });
 
       if (!chatResponse.ok) {
