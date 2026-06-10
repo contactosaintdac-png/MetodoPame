@@ -42,6 +42,7 @@ Plataforma web para el negocio de limpieza residencial de alto padrón de Pamela
 | Deploy | Vercel (gratuito, sin tarjeta) |
 | Idioma | 100% Português Brasileiro |
 | Optimización | Mobile-first |
+| Directrices de Diseño IA | Taste Skill (Estándar anti-slop para agentes de UI) |
 
 ---
 
