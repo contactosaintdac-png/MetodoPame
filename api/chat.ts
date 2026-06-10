@@ -164,32 +164,39 @@ async function verificarDisponibilidad(fecha: string, hora?: string): Promise<To
 
 async function cambiarFechaReserva(bookingId: string, uid: string, nuevaFecha: string, nuevaHora?: string): Promise<ToolResult> {
   try {
+    if (!bookingId) return { success: false, error: 'Identificador de reserva (bookingId) inválido o no suministrado.' };
     const db = getDb();
     const indexRef   = db.collection('reservas_index').doc(bookingId);
-    const bookingRef = db.collection('users').doc(uid).collection('bookings').doc(bookingId);
-    const [iSnap, bSnap, uSnap] = await Promise.all([indexRef.get(), bookingRef.get(), db.collection('users').doc(uid).get()]);
-    if (!bSnap.exists) return { success: false, error: 'No se encontró la reserva.' };
+    const iSnap = await indexRef.get();
+    if (!iSnap.exists) return { success: false, error: `No se encontró la reserva con ID "${bookingId}" en la base de datos.` };
     
-    const bData = bSnap.data() as any;
-    const uData = uSnap.exists ? (uSnap.data() as any) : {};
-    const fechaAnterior = bData.date || ''; 
-    const horaAnterior = bData.time || '';
+    const iData = iSnap.data() as any;
+    const resolvedUid = uid || iData.uid || 'pendiente';
+    const fechaAnterior = iData.fecha || ''; 
+    const horaAnterior = iData.hora || '';
     
-    const bUpd: any = { date: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    if (nuevaHora) bUpd.time = nuevaHora;
-    await bookingRef.update(bUpd);
+    const iUpd: any = { fecha: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    if (nuevaHora) iUpd.hora = nuevaHora;
+    await indexRef.update(iUpd);
     
-    if (iSnap.exists) {
-      const iUpd: any = { fecha: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-      if (nuevaHora) iUpd.hora = nuevaHora;
-      await indexRef.update(iUpd);
+    if (resolvedUid && resolvedUid !== 'pendiente') {
+      const bookingRef = db.collection('users').doc(resolvedUid).collection('bookings').doc(bookingId);
+      const bSnap = await bookingRef.get();
+      if (bSnap.exists) {
+        const bUpd: any = { date: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+        if (nuevaHora) bUpd.time = nuevaHora;
+        await bookingRef.update(bUpd);
+      }
     }
     
-    const nombreCliente = (iSnap.exists ? iSnap.data()?.nombre : uData.displayName) || 'Cliente';
-    const emailCliente = (iSnap.exists ? iSnap.data()?.email : uData.email) || '';
+    const uSnap = resolvedUid && resolvedUid !== 'pendiente' ? await db.collection('users').doc(resolvedUid).get() : null;
+    const uData = uSnap && uSnap.exists ? (uSnap.data() as any) : {};
+    
+    const nombreCliente = iData.nombre || uData.displayName || 'Cliente';
+    const emailCliente = iData.email || uData.email || '';
     
     if (emailCliente) {
-      enviarNotificacion({ accion: 'cambio_fecha', nombreCliente, emailCliente, fechaAnterior, horaAnterior, nuevaFecha, nuevaHora: nuevaHora || horaAnterior, empleadaNombre: iSnap.data()?.empleada_nombre, empleadaEmail: iSnap.data()?.empleada_email, formato: bData.service || '', precio: iSnap.data()?.precio || 0 });
+      enviarNotificacion({ accion: 'cambio_fecha', nombreCliente, emailCliente, fechaAnterior, horaAnterior, nuevaFecha, nuevaHora: nuevaHora || horaAnterior, empleadaNombre: iData.empleada_nombre, empleadaEmail: iData.empleada_email, formato: iData.formato || '', precio: iData.precio || 0 });
     }
     return { success: true, data: { mensaje: `Reserva cambiada: ${fechaAnterior} → ${nuevaFecha}${nuevaHora ? ` a las ${nuevaHora}` : ''}.`, bookingId, fechaAnterior, nuevaFecha } };
   } catch (e: any) { console.error('[cambiarFechaReserva]', e.message); return { success: false, error: e.message }; }
@@ -197,27 +204,35 @@ async function cambiarFechaReserva(bookingId: string, uid: string, nuevaFecha: s
 
 async function cancelarReserva(bookingId: string, uid: string): Promise<ToolResult> {
   try {
+    if (!bookingId) return { success: false, error: 'Identificador de reserva (bookingId) inválido o no suministrado.' };
     const db = getDb();
     const indexRef   = db.collection('reservas_index').doc(bookingId);
-    const bookingRef = db.collection('users').doc(uid).collection('bookings').doc(bookingId);
-    const [iSnap, bSnap, uSnap] = await Promise.all([indexRef.get(), bookingRef.get(), db.collection('users').doc(uid).get()]);
-    if (!bSnap.exists) return { success: false, error: 'No se encontró la reserva.' };
+    const iSnap = await indexRef.get();
+    if (!iSnap.exists) return { success: false, error: `No se encontró la reserva con ID "${bookingId}" en la base de datos.` };
 
-    const bData = bSnap.data() as any;
-    const uData = uSnap.exists ? (uSnap.data() as any) : {};
+    const iData = iSnap.data() as any;
+    const resolvedUid = uid || iData.uid || 'pendiente';
 
-    await bookingRef.update({ status: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-    if (iSnap.exists) {
-      await indexRef.update({ estado: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    await indexRef.update({ estado: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    if (resolvedUid && resolvedUid !== 'pendiente') {
+      const bookingRef = db.collection('users').doc(resolvedUid).collection('bookings').doc(bookingId);
+      const bSnap = await bookingRef.get();
+      if (bSnap.exists) {
+        await bookingRef.update({ status: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
     }
 
-    const nombreCliente = (iSnap.exists ? iSnap.data()?.nombre : uData.displayName) || 'Cliente';
-    const emailCliente = (iSnap.exists ? iSnap.data()?.email : uData.email) || '';
+    const uSnap = resolvedUid && resolvedUid !== 'pendiente' ? await db.collection('users').doc(resolvedUid).get() : null;
+    const uData = uSnap && uSnap.exists ? (uSnap.data() as any) : {};
+
+    const nombreCliente = iData.nombre || uData.displayName || 'Cliente';
+    const emailCliente = iData.email || uData.email || '';
 
     if (emailCliente) {
-      enviarNotificacion({ accion: 'cancelacion', nombreCliente, emailCliente, fechaAnterior: bData.date, horaAnterior: bData.time, empleadaNombre: iSnap.data()?.empleada_nombre, empleadaEmail: iSnap.data()?.empleada_email });
+      enviarNotificacion({ accion: 'cancelacion', nombreCliente, emailCliente, fechaAnterior: iData.fecha, horaAnterior: iData.hora, empleadaNombre: iData.empleada_nombre, empleadaEmail: iData.empleada_email });
     }
-    return { success: true, data: { mensaje: `Reserva del ${bData.date} cancelada.`, bookingId } };
+    return { success: true, data: { mensaje: `Reserva del ${iData.fecha} cancelada.`, bookingId } };
   } catch (e: any) { console.error('[cancelarReserva]', e.message); return { success: false, error: e.message }; }
 }
 
@@ -259,13 +274,18 @@ async function crearReserva(nombre: string, email: string, fecha: string, hora: 
 
 async function executeTool(name: string, args: any): Promise<any> {
   console.log(`[Concierge] Tool: ${name}`, JSON.stringify(args));
+  const bookingId = args.booking_id || args.bookingId;
+  const uid = args.uid;
+  const nuevaFecha = args.nueva_fecha || args.nuevaFecha || args.fecha;
+  const nuevaHora = args.nueva_hora || args.nuevaHora || args.hora;
+
   switch (name) {
     case 'buscar_reserva':          return buscarReserva(args.nombre);
-    case 'verificar_disponibilidad': return verificarDisponibilidad(args.fecha, args.hora);
-    case 'cambiar_fecha_reserva':   return cambiarFechaReserva(args.booking_id, args.uid, args.nueva_fecha, args.nueva_hora);
-    case 'cancelar_reserva':        return cancelarReserva(args.booking_id, args.uid);
-    case 'obtener_reserva':         return obtenerReserva(args.booking_id);
-    case 'crear_reserva':           return crearReserva(args.nombre, args.email, args.fecha, args.hora, args.formato, args.frecuencia, args.notas_especiales, args.uid);
+    case 'verificar_disponibilidad': return verificarDisponibilidad(args.fecha || args.nueva_fecha || args.nuevaFecha, args.hora || args.nueva_hora || args.nuevaHora);
+    case 'cambiar_fecha_reserva':   return cambiarFechaReserva(bookingId, uid, nuevaFecha, nuevaHora);
+    case 'cancelar_reserva':        return cancelarReserva(bookingId, uid);
+    case 'obtener_reserva':         return obtenerReserva(bookingId);
+    case 'crear_reserva':           return crearReserva(args.nombre, args.email, args.fecha, args.hora, args.formato, args.frecuencia, args.notas_especiales || args.notasEspeciales, uid);
     default:                        return { success: false, error: `Función desconocida: ${name}` };
   }
 }
@@ -341,7 +361,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` },
           body: JSON.stringify({
-            model: 'meta/llama-3.1-8b-instruct',
+            model: 'meta/llama-3.1-70b-instruct',
             messages,
             tools: OPENAI_TOOLS,
             temperature: 0.3,
