@@ -26,6 +26,7 @@ interface ChatMessage {
   senderName: string;
   text: string;
   time: string;
+  createdAt?: any;
 }
 
 export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen: ApplicationScreen) => void }) {
@@ -47,6 +48,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
   // Chat state (Suporte & Concierge)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [clearChatAt, setClearChatAt] = useState<any>(null);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
@@ -107,11 +109,20 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
     Promise.all([fetchBookings(), fetchTriage()]).finally(() => setLoading(false));
 
+    // Listen to root chat doc for clearChatAt
+    const chatDocRef = doc(db, 'chats', user.uid);
+    const unsubscribeRoot = onSnapshot(chatDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setClearChatAt(data.clearChatAt || null);
+      }
+    });
+
     // Initialize Real-time Chat
     const chatRef = collection(db, 'chats', user.uid, 'messages');
     const chatQuery = query(chatRef, orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(chatQuery, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => {
+    const unsubscribeMessages = onSnapshot(chatQuery, (snapshot) => {
+      let msgs = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -119,23 +130,38 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
           senderName: data.role === 'user' ? 'Você' : 'Concierge',
           text: data.text,
           time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          createdAt: data.createdAt
         } as ChatMessage;
       });
+
+      // Filter messages by clearChatAt
+      if (clearChatAt) {
+        const clearTime = clearChatAt.toDate ? clearChatAt.toDate().getTime() : 0;
+        msgs = msgs.filter(m => {
+          if (!m.createdAt) return true; // Show pending local writes
+          const msgTime = m.createdAt.toDate ? m.createdAt.toDate().getTime() : 0;
+          return msgTime > clearTime;
+        });
+      }
+
       // Add welcome message if empty
       if (msgs.length === 0) {
         msgs.push({
           id: 'welcome-msg',
           sender: 'concierge',
           senderName: 'Atendimento',
-          text: `Olá, ${user.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Como podemos ajudar com a sua residência hoje?`,
+          text: `Olá, ${user.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Como podemos ajudar con a sua residência hoje?`,
           time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         });
       }
       setChatMessages(msgs);
     });
 
-    return () => unsubscribe();
-  }, [user]);
+    return () => {
+      unsubscribeRoot();
+      unsubscribeMessages();
+    };
+  }, [user, clearChatAt]);
  
   const fetchReferrals = async () => {
     if (!user) return;
@@ -297,6 +323,21 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       setStreamingMessage("Desculpe, ocorreu um erro de conexão. Por favor, tente novamente.");
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  // Clear Chat history handler
+  const handleClearChat = async () => {
+    if (!user) return;
+    if (window.confirm("Deseja realmente limpar o histórico do chat? (As mensagens serão ocultadas para você, mas permanecem arquivadas para o suporte)")) {
+      try {
+        const chatDocRef = doc(db, 'chats', user.uid);
+        await setDoc(chatDocRef, {
+          clearChatAt: serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        console.error("Erro ao limpar histórico do chat:", e);
+      }
     }
   };
 
@@ -1292,9 +1333,21 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       </p>
                     </div>
 
-                    <span className="flex items-center gap-2 px-3.5 py-1.5 bg-green-100 text-green-700 text-[10px] font-extrabold rounded-full tracking-wider shadow-inner">
-                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> CONCIERGE ONLINE
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {chatMessages.length > 1 && (
+                        <button
+                          onClick={handleClearChat}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#561668]/5 hover:bg-[#561668]/10 text-[#561668] text-[10px] font-extrabold rounded-full tracking-wider border border-[#561668]/10 transition-all cursor-pointer active-scale"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">delete_sweep</span>
+                          LIMPAR CHAT
+                        </button>
+                      )}
+
+                      <span className="flex items-center gap-2 px-3.5 py-1.5 bg-green-100 text-green-700 text-[10px] font-extrabold rounded-full tracking-wider shadow-inner">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> CONCIERGE ONLINE
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
