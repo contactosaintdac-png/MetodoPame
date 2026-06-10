@@ -122,6 +122,15 @@ const TOOL_DECLARATIONS = {
   ]
 };
 
+const OPENAI_TOOLS = TOOL_DECLARATIONS.map(t => ({
+  type: 'function',
+  function: {
+    name: t.name,
+    description: t.description,
+    parameters: t.parameters
+  }
+}));
+
 // ─── Funciones de Firestore ────────────────────────────────────────────────────
 
 async function buscarReserva(nombre: string): Promise<ToolResult> {
@@ -311,79 +320,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ text: `[SYSTEM_ERROR] Faltan variables de entorno de Firebase Admin en Vercel (Project: ${config.fbProject}, Email: ${config.fbEmail}, Key: ${config.fbKey}). El sistema no puede conectarse a la base de datos.` });
   }
 
-  // ── Gemini con Function Calling ───────────────────────────────────────────────
-  if (process.env.GEMINI_API_KEY) {
+  // ── NVIDIA Llama 3.1 con Function Calling ────────────────────────────────────
+  if (process.env.NVIDIA_API_KEY) {
     try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
-      let currentContents = [...contents];
+      let messages: any[] = [
+        { role: 'system', content: getSystemInstruction(context) },
+        ...contents.map((c: any) => ({
+          role: c.role === 'model' ? 'assistant' : 'user',
+          content: c.parts?.[0]?.text || ''
+        }))
+      ];
 
       for (let round = 0; round < 6; round++) {
-        const geminiRes = await fetch(geminiUrl, {
+        const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` },
           body: JSON.stringify({
-            contents: currentContents,
-            systemInstruction: { parts: [{ text: getSystemInstruction(context) }] },
-            tools: [TOOL_DECLARATIONS],
-            generationConfig: { temperature: 0.3, topK: 40, topP: 0.95, maxOutputTokens: 500 }
+            model: 'meta/llama-3.1-8b-instruct',
+            messages,
+            tools: OPENAI_TOOLS,
+            temperature: 0.3,
+            max_tokens: 500
           })
         });
 
-        if (!geminiRes.ok) {
-          const errText = await geminiRes.text();
-          console.error('[chat] Gemini error', geminiRes.status, errText.slice(0, 500));
-          throw new Error(`Gemini ${geminiRes.status}`);
+        if (!r.ok) {
+           const errText = await r.text();
+           console.error('[chat] NVIDIA error', r.status, errText.slice(0, 500));
+           throw new Error(`NVIDIA ${r.status}`);
         }
 
-        const data = await geminiRes.json();
-        const candidate = data.candidates?.[0];
-        if (!candidate) break;
+        const data = await r.json();
+        const message = data.choices?.[0]?.message;
+        if (!message) break;
 
-        const parts: any[] = candidate.content?.parts || [];
-        const functionCalls = parts.filter((p: any) => p.functionCall);
+        // Se agrega el mensaje del asistente (que puede contener tool_calls)
+        messages.push(message);
 
-        // Sin function calls → respuesta final de texto
-        if (functionCalls.length === 0) {
-          const text = parts.find((p: any) => p.text)?.text || '';
-          return res.status(200).json({ text });
+        // Si no hay tool calls, devolver la respuesta de texto final al frontend
+        if (!message.tool_calls || message.tool_calls.length === 0) {
+          return res.status(200).json({ text: message.content || '' });
         }
 
-        // Ejecutar todas las herramientas
-        const toolResponses: any[] = [];
-        for (const part of functionCalls) {
-          const result = await executeTool(part.functionCall.name, part.functionCall.args);
-          toolResponses.push({ functionResponse: { name: part.functionCall.name, response: result } });
+        // Ejecutar las herramientas solicitadas
+        for (const toolCall of message.tool_calls) {
+          let args = {};
+          try { args = JSON.parse(toolCall.function.arguments); } catch(e){}
+          const result = await executeTool(toolCall.function.name, args);
+          
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            name: toolCall.function.name,
+            content: JSON.stringify(result)
+          });
         }
-
-        // Agregar ronda al historial y continuar
-        currentContents = [...currentContents, { role: 'model', parts }, { role: 'user', parts: toolResponses }];
       }
 
-      return res.status(200).json({ text: 'Disculpe, tuve un inconveniente. Por favor intente nuevamente.' });
-
+      return res.status(200).json({ text: 'Disculpe, tuve un inconveniente procesando su solicitud. Por favor intente nuevamente.' });
     } catch (e: any) {
-      console.error('[chat] Gemini catch:', e.message);
-      return res.status(500).json({ error: `Error interno Gemini: ${e.message}` });
+      console.error('[chat] NVIDIA catch:', e.message);
+      return res.status(500).json({ error: `Error interno Llama/NVIDIA: ${e.message}` });
     }
   }
 
-  // ── NVIDIA NIM (fallback sin function calling) ────────────────────────────────
-  if (process.env.NVIDIA_API_KEY) {
-    try {
-      const messages = [{ role: 'system', content: getSystemInstruction(context) }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
-      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` }, body: JSON.stringify({ model: 'meta/llama-3.1-8b-instruct', messages, temperature: 0.4, max_tokens: 250 }) });
-      if (r.ok) { const d = await r.json(); return res.status(200).json({ text: d.choices?.[0]?.message?.content || '' }); }
-    } catch (e: any) { console.error('[chat] NVIDIA:', e.message); }
-  }
-
-  // ── OpenAI (fallback) ─────────────────────────────────────────────────────────
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      const messages = [{ role: 'system', content: getSystemInstruction(context) }, ...contents.map((c: any) => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts?.[0]?.text || '' }))];
-      const r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.4, max_tokens: 250 }) });
-      if (r.ok) { const d = await r.json(); return res.status(200).json({ text: d.choices?.[0]?.message?.content || '' }); }
-    } catch (e: any) { console.error('[chat] OpenAI:', e.message); }
-  }
-
-  return res.status(500).json({ error: 'No AI backend configured.' });
+  return res.status(500).json({ error: 'No AI backend configured (NVIDIA API KEY missing).' });
 }
