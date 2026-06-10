@@ -206,6 +206,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing contents array' });
   }
 
+  // ── Diagnóstico de configuración ─────────────────────────────────────────────
+  const config = {
+    hasGemini:   !!process.env.GEMINI_API_KEY,
+    hasNvidia:   !!process.env.NVIDIA_API_KEY,
+    hasOpenAI:   !!process.env.OPENAI_API_KEY,
+    hasFirebaseProject: !!process.env.FIREBASE_PROJECT_ID,
+    hasFirebaseEmail:   !!process.env.FIREBASE_CLIENT_EMAIL,
+    hasFirebaseKey:     !!process.env.FIREBASE_PRIVATE_KEY,
+    hasResend:   !!process.env.RESEND_API_KEY,
+  };
+  console.log('[chat.ts] Config check:', JSON.stringify(config));
+
   // ── Gemini con Function Calling (preferido) ──────────────────────────────────
   if (process.env.GEMINI_API_KEY) {
     try {
@@ -235,8 +247,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!geminiRes.ok) {
           const errText = await geminiRes.text();
-          console.error('Gemini error:', errText);
-          break;
+          console.error('[chat.ts] Gemini API error status:', geminiRes.status, 'body:', errText);
+          throw new Error(`Gemini API ${geminiRes.status}: ${errText.slice(0, 300)}`);
         }
 
         const data = await geminiRes.json();

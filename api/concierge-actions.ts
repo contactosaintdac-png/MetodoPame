@@ -7,18 +7,33 @@
 import * as admin from 'firebase-admin';
 import { Resend } from 'resend';
 
-// ─── Inicialización Firebase Admin (singleton) ────────────────────────────────
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+// ─── Inicialización Firebase Admin — LAZY (solo cuando se necesita) ───────────
+// Si las credenciales no están configuradas, las funciones devuelven error graceful
+// en lugar de crashear todo el módulo al importarlo.
+
+let _db: admin.firestore.Firestore | null = null;
+
+function getDb(): admin.firestore.Firestore {
+  if (_db) return _db;
+
+  if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
+    throw new Error('Firebase Admin credentials not configured (FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY missing in Vercel env)');
+  }
+
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId:   process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey:  process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+  }
+
+  _db = admin.firestore();
+  return _db;
 }
 
-const db = admin.firestore();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const PAME_EMAIL = process.env.PAME_EMAIL || 'metodopame.homedetail@gmail.com';
@@ -59,7 +74,7 @@ export async function buscarReserva(nombre: string): Promise<ToolResult> {
     const nombreLower = nombre.toLowerCase().trim();
 
     // Búsqueda exacta primero
-    const exactQuery = await db.collection('reservas_index')
+    const exactQuery = await getDb().collection('reservas_index')
       .where('nombre_lower', '==', nombreLower)
       .where('estado', '!=', 'Cancelado')
       .limit(3)
@@ -71,7 +86,7 @@ export async function buscarReserva(nombre: string): Promise<ToolResult> {
     }
 
     // Búsqueda parcial: buscar si el nombre_lower inicia con el texto
-    const partialQuery = await db.collection('reservas_index')
+    const partialQuery = await getDb().collection('reservas_index')
       .where('nombre_lower', '>=', nombreLower)
       .where('nombre_lower', '<=', nombreLower + '\uf8ff')
       .where('estado', '!=', 'Cancelado')
@@ -97,7 +112,7 @@ export async function buscarReserva(nombre: string): Promise<ToolResult> {
 
 export async function verificarDisponibilidad(fecha: string, hora?: string): Promise<ToolResult> {
   try {
-    let queryRef = db.collection('reservas_index')
+    let queryRef = getDb().collection('reservas_index')
       .where('fecha', '==', fecha)
       .where('estado', '==', 'Confirmado');
 
@@ -145,8 +160,8 @@ export async function cambiarFechaReserva(
   nuevaHora?: string
 ): Promise<ToolResult> {
   try {
-    const indexRef  = db.collection('reservas_index').doc(bookingId);
-    const bookingRef = db.collection('users').doc(uid).collection('bookings').doc(bookingId);
+    const indexRef  = getDb().collection('reservas_index').doc(bookingId);
+    const bookingRef = getDb().collection('users').doc(uid).collection('bookings').doc(bookingId);
 
     const [indexSnap, bookingSnap] = await Promise.all([indexRef.get(), bookingRef.get()]);
 
@@ -210,8 +225,8 @@ export async function cambiarFechaReserva(
 
 export async function cancelarReserva(bookingId: string, uid: string): Promise<ToolResult> {
   try {
-    const indexRef   = db.collection('reservas_index').doc(bookingId);
-    const bookingRef = db.collection('users').doc(uid).collection('bookings').doc(bookingId);
+    const indexRef   = getDb().collection('reservas_index').doc(bookingId);
+    const bookingRef = getDb().collection('users').doc(uid).collection('bookings').doc(bookingId);
 
     const indexSnap = await indexRef.get();
     if (!indexSnap.exists) {
@@ -260,7 +275,7 @@ export async function cancelarReserva(bookingId: string, uid: string): Promise<T
 
 export async function obtenerReserva(bookingId: string): Promise<ToolResult> {
   try {
-    const snap = await db.collection('reservas_index').doc(bookingId).get();
+    const snap = await getDb().collection('reservas_index').doc(bookingId).get();
     if (!snap.exists) {
       return { success: false, error: 'No se encontró la reserva con ese ID.' };
     }
@@ -287,7 +302,7 @@ export async function crearReserva(
     const precio = formato === 'completo' ? 450 : 350;
 
     // Crear documento en reservas_index (sin uid del cliente aún)
-    const newDoc = await db.collection('reservas_index').add({
+    const newDoc = await getDb().collection('reservas_index').add({
       uid:              'pendiente',
       bookingId:        '',
       nombre,
