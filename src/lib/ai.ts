@@ -1,8 +1,8 @@
-import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
+import { getAI, getGenerativeModel } from "firebase/ai";
 import { app } from "./firebase"; // Adjust if necessary to match the firebase export
 
-// Initialize AI service with GoogleAIBackend (Gemini Developer API)
-export const ai = getAI(app, { backend: new GoogleAIBackend() });
+// Initialize AI service
+export const ai = getAI(app);
 
 // Configuration optimized for chat
 const generationConfig = {
