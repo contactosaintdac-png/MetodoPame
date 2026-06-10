@@ -6,7 +6,7 @@ import {
   cancelarReserva,
   obtenerReserva,
   crearReserva
-} from './concierge-actions';
+} from './_lib/concierge-actions';
 
 // ─── System Prompt ─────────────────────────────────────────────────────────────
 
