@@ -164,7 +164,20 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
         const bSnap = await getDocs(query(collectionGroup(db, 'bookings')));
         setBookings(bSnap.docs.map(d => ({ docId: d.id, ref: d.ref, ...d.data() })));
       } catch (e) {
-        console.warn('collectionGroup bookings indisponível — necessita index.', e);
+        console.warn('collectionGroup bookings indisponível — necessita index. Usando fallback de busca por usuário.', e);
+        try {
+          const uSnap = await getDocs(query(collection(db, 'users')));
+          let allBookings: any[] = [];
+          for (const uDoc of uSnap.docs) {
+            const userBookingsSnap = await getDocs(collection(db, 'users', uDoc.id, 'bookings'));
+            userBookingsSnap.docs.forEach(d => {
+              allBookings.push({ docId: d.id, ref: d.ref, ...d.data() });
+            });
+          }
+          setBookings(allBookings);
+        } catch (errFallback) {
+          console.error('Fallback query failed:', errFallback);
+        }
       }
       try {
         const rSnap = await getDocs(query(collection(db, 'referrals')));
