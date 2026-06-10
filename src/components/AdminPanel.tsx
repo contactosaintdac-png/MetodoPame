@@ -72,7 +72,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [users, setUsers]                   = useState<any[]>([]);
   const [loading, setLoading]               = useState(true);
   const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
-  const [agendaView, setAgendaView]         = useState<'lista' | 'calendario'>('calendario');
+  const [agendaView, setAgendaView]         = useState<'lista' | 'calendario' | 'google'>('calendario');
   const [agendaDate, setAgendaDate]         = useState<Date>(new Date());
 
   const [showAddModal, setShowAddModal]     = useState(false);
@@ -801,6 +801,16 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 >
                   Calendário
                 </button>
+                <button
+                  onClick={() => setAgendaView('google')}
+                  className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${
+                    agendaView === 'google'
+                      ? 'bg-white text-[#561668] silk-lift'
+                      : 'text-[#80737f] hover:text-[#561668]'
+                  }`}
+                >
+                  Google Calendar
+                </button>
               </div>
 
               <div className="flex items-center gap-3">
@@ -945,7 +955,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       </div>
                     )}
                   </>
-                ) : (
+                ) : agendaView === 'calendario' ? (
                   <>
                     <div className="flex justify-between items-center mb-7">
                       <div>
@@ -1033,6 +1043,19 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       })}
                     </div>
                   </>
+                ) : (
+                  <div className="w-full h-[600px] rounded-2xl overflow-hidden border border-[#efe5ee] bg-white p-2">
+                    <iframe
+                      src={`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(
+                        import.meta.env.VITE_GOOGLE_CALENDAR_ID || 'metodopame.homedetail@gmail.com'
+                      )}&ctz=America/Sao_Paulo`}
+                      style={{ border: 0 }}
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      scrolling="no"
+                    />
+                  </div>
                 )}
               </div>
 

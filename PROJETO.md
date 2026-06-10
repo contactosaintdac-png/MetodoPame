@@ -286,16 +286,17 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 
 ## 15. Google Calendar
 
-**Estado actual:** **Totalmente integrado y activo**.
+**Estado actual:** **Totalmente integrado y activo** (tanto en sincronización en segundo plano como en visualización frontend).
 
-**Arquitectura de seguridad:** El frontend llama al endpoint seguro `/api/create-calendar-event`. Esta Vercel Function firma digitalmente las solicitudes (RS256) usando una **Service Account de Google Cloud** cargada de manera segura mediante variables de entorno en el backend (`GOOGLE_SERVICE_ACCOUNT_KEY` y `GOOGLE_CALENDAR_ID`), manteniendo las llaves privadas a salvo.
+**Arquitectura de seguridad:** El frontend llama al endpoint seguro `/api/create-calendar-event`. Esta Vercel Function firma digitalmente las solicitudes (RS256) usando una **Service Account de Google Cloud** cargada de manera segura mediante variables de entorno en el backend (`GOOGLE_SERVICE_ACCOUNT_KEY` O `GOOGLE_CALENDAR_ID`), manteniendo las llaves privadas a salvo.
 *Si las variables de entorno no están configuradas (por ejemplo, en desarrollo local), la API simula el agendamiento de forma exitosa sin interrumpir la experiencia de usuario (graceful fallback).*
 
-**Eventos que crea el sistema:**
-- En el calendario real de Pame:
+**Funcionalidades de Calendario:**
+- **Visualización en Admin (/admin):** Los administradores pueden alternar en la pestaña de Agenda entre la vista de lista, la vista de calendario de Firestore y el **Google Calendar real integrado** (mediante un iframe responsivo conectado a `VITE_GOOGLE_CALENDAR_ID`).
+- **Creación automática de eventos:**
   - Automático al confirmar una reserva (con todos los detalles del cliente, turno, aditivos y especialista asignada).
   - Automático al agendar un **Café Virtual** (candidata a especialista) desde la pantalla de éxito del formulario `/equipe`.
-- En el calendario del cliente: botón "Adicionar à minha agenda" (link de plantilla manual para Google Calendar personal, sin requerir permisos).
+- **En el calendario del cliente:** Botón "Adicionar à minha agenda" (link de plantilla manual para Google Calendar personal, sin requerir permisos de la API).
 
 ---
 
@@ -318,6 +319,7 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 - ✅ La entrevista se llama "Café Virtual com a Pame" — NUNCA "entrevista"
 - ✅ Cambios en Avaliação da Residência aplican solo a nuevas reservas, no al paquete activo
 - ✅ El triage se llama "Avaliação da Residência" — NUNCA "triage" ni "triagem"
+- ✅ **Campaña de Recomendación Simplificada (WhatsApp):** Para captar clientes urgentes ante la pérdida de una limpia fija, se lanzó una campaña manual por WhatsApp (imagen + copia VIP). La regla de negocio es: el referente gana 1 Faxina Full Detail gratis si su recomendado contrata *cualquier* servicio (avulso o mensual). Se mantiene en pausa temporal la automatización de la campaña en la plataforma para evitar fricción de registro.
 
 ---
 
@@ -333,6 +335,8 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 - ~~**Sistema de evaluaciones (estrellas) del cliente sobre el servicio**~~ (Resuelto, persistencia directa en Firestore)
 - ~~**Renovación Premium de la Área del Cliente (`/minha-area`)**~~ (Resuelto, integración de las 4 pantallas del Stitch con interactividad completa)
 - ~~**Calendário no Painel do Administrador (Maestro de Agendas)**~~ (Resuelto, toggle dinâmico lista/calendário com controle de meses e badges inteligentes)
+- ~~**Google Calendar Frontend Toggle** — Integración visual del Google Calendar real de Pame en la pestaña Agenda de `/admin` mediante iframe alternable.~~
+- ~~**Estrategia de Campaña de Recomendación** — Estruturación de copys y gráficos VIP de difusión manual en WhatsApp para clientes y ex-clientes para captación de clientes de emergencia (1 recomendado = 1 faxina gratis).~~
 - **Autogestão de Disponibilidade** — Especialistas agora podem gerenciar a própria disponibilidade via interface interativa no dashboard de equipe.
 - **Gating Dinâmico de Admins** — Bootstrapping automático via Firestore para validação de roles.
 - **Tipagem Estrita (TypeScript) e UX** — Interfaces (`Employee`, `Booking`) padronizadas, remoção de telas e tabs não funcionais.
