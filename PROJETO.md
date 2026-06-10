@@ -11,6 +11,9 @@
 > 4. **Integrações e APIs**: Cambios en integraciones externas como Resend, Mercado Pago, Google Calendar, WhatsApp API.
 > 5. **Arquitetura de Dados**: Nuevas colecciones, subcolecciones, campos clave o reglas de seguridad en Firestore.
 > 6. **Estado do Projeto (Pendientes y Concluidos)**: Actualización de la lista de tareas de la Sección 18 para reflejar fielmente lo completado y los próximos pasos.
+> 
+> **REGLAS CRÍTICAS DE DESARROLLO / INTEGRACIÓN CONTINUA:**
+> - **REGLA DE ORO DE GIT / DEPLOY:** Ante **CUALQUIER MODIFICACIÓN** al código o documentación (por más pequeña, mínima o simple que sea, incluyendo correcciones ortográficas, de formato, de configuración, comentarios o lógica), la IA **DEBE REALIZAR UN GIT PUSH** (`git add .`, `git commit -m "..."`, `git push`) de forma obligatoria e inmediata. No esperar confirmación ni acumular cambios. El pipeline de Vercel/CI-CD depende de esto para que el cliente pruebe los cambios de inmediato.
 
 ---
 
