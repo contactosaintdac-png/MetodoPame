@@ -143,12 +143,33 @@ async function buscarReserva(nombre: string): Promise<ToolResult> {
   try {
     const db = getDb();
     const nombreLower = nombre.toLowerCase().trim();
-    const exactQ = await db.collection('reservas_index').where('nombre_lower', '==', nombreLower).where('estado', '!=', 'Cancelado').limit(3).get();
-    if (!exactQ.empty) return { success: true, data: { reservas: exactQ.docs.map(d => ({ id: d.id, ...d.data() })), total: exactQ.size } };
-    const partialQ = await db.collection('reservas_index').where('nombre_lower', '>=', nombreLower).where('nombre_lower', '<=', nombreLower + '\uf8ff').where('estado', '!=', 'Cancelado').limit(5).get();
-    if (!partialQ.empty) return { success: true, data: { reservas: partialQ.docs.map(d => ({ id: d.id, ...d.data() })), total: partialQ.size } };
+    
+    const exactSnap = await db.collection('reservas_index').where('nombre_lower', '==', nombreLower).limit(10).get();
+    let reservas = exactSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    reservas = reservas.filter(r => r.estado !== 'Cancelado');
+    
+    if (reservas.length > 0) {
+      return { success: true, data: { reservas, total: reservas.length } };
+    }
+    
+    const partialSnap = await db.collection('reservas_index')
+      .where('nombre_lower', '>=', nombreLower)
+      .where('nombre_lower', '<=', nombreLower + '\uf8ff')
+      .limit(20)
+      .get();
+      
+    let partialReservas = partialSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    partialReservas = partialReservas.filter(r => r.estado !== 'Cancelado');
+    
+    if (partialReservas.length > 0) {
+      return { success: true, data: { reservas: partialReservas, total: partialReservas.length } };
+    }
+    
     return { success: false, error: `No encontré reservas activas para "${nombre}". Por favor verifique el nombre.` };
-  } catch (e: any) { console.error('[buscarReserva]', e.message); return { success: false, error: e.message }; }
+  } catch (e: any) { 
+    console.error('[buscarReserva]', e.message); 
+    return { success: false, error: e.message }; 
+  }
 }
 
 async function verificarDisponibilidad(fecha: string, hora?: string): Promise<ToolResult> {
@@ -168,30 +189,62 @@ async function cambiarFechaReserva(bookingId: string, uid: string, nuevaFecha: s
     if (!bookingId) return { success: false, error: 'Identificador de reserva (bookingId) inválido o no suministrado.' };
     const db = getDb();
     const indexRef   = db.collection('reservas_index').doc(bookingId);
-    const iSnap = await indexRef.get();
-    if (!iSnap.exists) return { success: false, error: `No se encontró la reserva con ID "${bookingId}" en la base de datos.` };
     
-    const iData = iSnap.data() as any;
-    const resolvedUid = uid || iData.uid || 'pendiente';
-    const fechaAnterior = iData.fecha || ''; 
-    const horaAnterior = iData.hora || '';
+    const resolvedUid = uid && uid !== 'pendiente' ? uid : null;
+    const bookingRef = resolvedUid ? db.collection('users').doc(resolvedUid).collection('bookings').doc(bookingId) : null;
+    
+    const [iSnap, bSnap] = await Promise.all([
+      indexRef.get(),
+      bookingRef ? bookingRef.get() : Promise.resolve(null)
+    ]);
+    
+    const iExists = iSnap.exists;
+    const bExists = bSnap && bSnap.exists;
+    
+    if (!iExists && !bExists) {
+      return { success: false, error: `No se encontró la reserva con ID "${bookingId}" en la base de datos.` };
+    }
+    
+    const iData = iExists ? (iSnap.data() as any) : {};
+    const bData = bExists ? (bSnap.data() as any) : {};
+    
+    const finalUid = resolvedUid || iData.uid || 'pendiente';
+    const fechaAnterior = iData.fecha || bData.date || ''; 
+    const horaAnterior = iData.hora || bData.time || '';
     
     const iUpd: any = { fecha: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
     if (nuevaHora) iUpd.hora = nuevaHora;
-    if (resolvedUid && resolvedUid !== 'pendiente') {
-      iUpd.uid = resolvedUid;
+    if (finalUid && finalUid !== 'pendiente') {
+      iUpd.uid = finalUid;
     }
-    await indexRef.update(iUpd);
     
-    if (resolvedUid && resolvedUid !== 'pendiente') {
-      const bookingRef = db.collection('users').doc(resolvedUid).collection('bookings').doc(bookingId);
-      const bSnap = await bookingRef.get();
-      if (bSnap.exists) {
+    if (iExists) {
+      await indexRef.update(iUpd);
+    } else {
+      await indexRef.set({
+        uid: finalUid,
+        bookingId: bookingId,
+        nombre: bData.nombre || 'Cliente',
+        nombre_lower: (bData.nombre || 'Cliente').toLowerCase().trim(),
+        email: bData.email || '',
+        fecha: nuevaFecha,
+        hora: nuevaHora || bData.time || '09:00',
+        formato: bData.service || 'completo',
+        frecuencia: bData.frecuencia || 'avulso',
+        estado: bData.status || 'Confirmado',
+        createdAt: bData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    
+    if (finalUid && finalUid !== 'pendiente') {
+      const targetBookingRef = db.collection('users').doc(finalUid).collection('bookings').doc(bookingId);
+      if (bExists) {
         const bUpd: any = { date: nuevaFecha, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
         if (nuevaHora) bUpd.time = nuevaHora;
-        await bookingRef.update(bUpd);
+        await targetBookingRef.update(bUpd);
       } else {
-        await bookingRef.set({
+        await targetBookingRef.set({
           date: nuevaFecha,
           time: nuevaHora || iData.hora || '09:00',
           service: iData.formato || 'completo',
@@ -203,14 +256,14 @@ async function cambiarFechaReserva(bookingId: string, uid: string, nuevaFecha: s
       }
     }
     
-    const uSnap = resolvedUid && resolvedUid !== 'pendiente' ? await db.collection('users').doc(resolvedUid).get() : null;
+    const uSnap = finalUid && finalUid !== 'pendiente' ? await db.collection('users').doc(finalUid).get() : null;
     const uData = uSnap && uSnap.exists ? (uSnap.data() as any) : {};
     
-    const nombreCliente = iData.nombre || uData.displayName || 'Cliente';
-    const emailCliente = iData.email || uData.email || '';
+    const nombreCliente = iData.nombre || bData.nombre || uData.displayName || 'Cliente';
+    const emailCliente = iData.email || bData.email || uData.email || '';
     
     if (emailCliente) {
-      enviarNotificacion({ accion: 'cambio_fecha', nombreCliente, emailCliente, fechaAnterior, horaAnterior, nuevaFecha, nuevaHora: nuevaHora || horaAnterior, empleadaNombre: iData.empleada_nombre, empleadaEmail: iData.empleada_email, formato: iData.formato || '', precio: iData.precio || 0 });
+      enviarNotificacion({ accion: 'cambio_fecha', nombreCliente, emailCliente, fechaAnterior, horaAnterior, nuevaFecha, nuevaHora: nuevaHora || horaAnterior, empleadaNombre: iData.empleada_nombre || '', empleadaEmail: iData.empleada_email || '', formato: iData.formato || bData.service || '', precio: iData.precio || bData.price || 0 });
     }
     return { success: true, data: { mensaje: `Reserva cambiada: ${fechaAnterior} → ${nuevaFecha}${nuevaHora ? ` a las ${nuevaHora}` : ''}.`, bookingId, fechaAnterior, nuevaFecha } };
   } catch (e: any) { console.error('[cambiarFechaReserva]', e.message); return { success: false, error: e.message }; }
@@ -221,25 +274,38 @@ async function cancelarReserva(bookingId: string, uid: string): Promise<ToolResu
     if (!bookingId) return { success: false, error: 'Identificador de reserva (bookingId) inválido o no suministrado.' };
     const db = getDb();
     const indexRef   = db.collection('reservas_index').doc(bookingId);
-    const iSnap = await indexRef.get();
-    if (!iSnap.exists) return { success: false, error: `No se encontró la reserva con ID "${bookingId}" en la base de datos.` };
+    
+    const resolvedUid = uid && uid !== 'pendiente' ? uid : null;
+    const bookingRef = resolvedUid ? db.collection('users').doc(resolvedUid).collection('bookings').doc(bookingId) : null;
+    
+    const [iSnap, bSnap] = await Promise.all([
+      indexRef.get(),
+      bookingRef ? bookingRef.get() : Promise.resolve(null)
+    ]);
+    
+    const iExists = iSnap.exists;
+    const bExists = bSnap && bSnap.exists;
+    
+    if (!iExists && !bExists) {
+      return { success: false, error: `No se encontró la reserva con ID "${bookingId}" en la base de datos.` };
+    }
 
-    const iData = iSnap.data() as any;
-    const resolvedUid = uid || iData.uid || 'pendiente';
+    const iData = iExists ? (iSnap.data() as any) : {};
+    const bData = bExists ? (bSnap.data() as any) : {};
+    const finalUid = resolvedUid || iData.uid || 'pendiente';
 
     const iUpd: any = { estado: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    if (resolvedUid && resolvedUid !== 'pendiente') {
-      iUpd.uid = resolvedUid;
+    if (finalUid && finalUid !== 'pendiente') {
+      iUpd.uid = finalUid;
     }
     await indexRef.update(iUpd);
 
-    if (resolvedUid && resolvedUid !== 'pendiente') {
-      const bookingRef = db.collection('users').doc(resolvedUid).collection('bookings').doc(bookingId);
-      const bSnap = await bookingRef.get();
-      if (bSnap.exists) {
-        await bookingRef.update({ status: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    if (finalUid && finalUid !== 'pendiente') {
+      const targetBookingRef = db.collection('users').doc(finalUid).collection('bookings').doc(bookingId);
+      if (bExists) {
+        await targetBookingRef.update({ status: 'Cancelado', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
       } else {
-        await bookingRef.set({
+        await targetBookingRef.set({
           date: iData.fecha || '',
           time: iData.hora || '09:00',
           service: iData.formato || 'completo',
@@ -251,16 +317,16 @@ async function cancelarReserva(bookingId: string, uid: string): Promise<ToolResu
       }
     }
 
-    const uSnap = resolvedUid && resolvedUid !== 'pendiente' ? await db.collection('users').doc(resolvedUid).get() : null;
+    const uSnap = finalUid && finalUid !== 'pendiente' ? await db.collection('users').doc(finalUid).get() : null;
     const uData = uSnap && uSnap.exists ? (uSnap.data() as any) : {};
 
-    const nombreCliente = iData.nombre || uData.displayName || 'Cliente';
-    const emailCliente = iData.email || uData.email || '';
+    const nombreCliente = iData.nombre || bData.nombre || uData.displayName || 'Cliente';
+    const emailCliente = iData.email || bData.email || uData.email || '';
 
     if (emailCliente) {
-      enviarNotificacion({ accion: 'cancelacion', nombreCliente, emailCliente, fechaAnterior: iData.fecha, horaAnterior: iData.hora, empleadaNombre: iData.empleada_nombre, empleadaEmail: iData.empleada_email });
+      enviarNotificacion({ accion: 'cancelacion', nombreCliente, emailCliente, fechaAnterior: iData.fecha || bData.date || '', horaAnterior: iData.hora || bData.time || '', empleadaNombre: iData.empleada_nombre || '', empleadaEmail: iData.empleada_email || '' });
     }
-    return { success: true, data: { mensaje: `Reserva del ${iData.fecha} cancelada.`, bookingId } };
+    return { success: true, data: { mensaje: `Reserva del ${iData.fecha || bData.date} cancelada.`, bookingId } };
   } catch (e: any) { console.error('[cancelarReserva]', e.message); return { success: false, error: e.message }; }
 }
 
