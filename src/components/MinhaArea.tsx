@@ -231,17 +231,49 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         hasUnreadAdmin: true
       }, { merge: true });
 
-      // 2. Build history for Gemini
-      const history = chatMessages
+      // 2. Build and clean history for Gemini (strict user/model alternating roles)
+      const rawHistory = chatMessages
         .filter(m => m.id !== 'welcome-msg') // exclude hardcoded welcome
         .map(m => ({
-          role: m.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }]
+          role: (m.sender === 'user' ? 'user' : 'model') as 'user' | 'model',
+          text: m.text || ''
         }));
 
+      // If the snapshot listener already updated the state with the message we just sent,
+      // exclude it from history so we don't send it twice.
+      if (rawHistory.length > 0 && 
+          rawHistory[rawHistory.length - 1].role === 'user' && 
+          rawHistory[rawHistory.length - 1].text === textToSend) {
+        rawHistory.pop();
+      }
+
+      // Group consecutive messages of the same role (merge their texts) to avoid consecutive role errors.
+      const consolidated: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+      for (const msg of rawHistory) {
+        if (consolidated.length > 0 && consolidated[consolidated.length - 1].role === msg.role) {
+          consolidated[consolidated.length - 1].parts[0].text += "\n" + msg.text;
+        } else {
+          consolidated.push({
+            role: msg.role,
+            parts: [{ text: msg.text }]
+          });
+        }
+      }
+
+      // If the consolidated history ends with a 'user' message, we must pop it and prepend its content
+      // to the current message we are sending. This ensures that the history passed to startChat
+      // never ends with a 'user' message when we are about to call sendMessageStream (which is another 'user' message).
+      let finalSendText = textToSend;
+      if (consolidated.length > 0 && consolidated[consolidated.length - 1].role === 'user') {
+        const lastUserMsg = consolidated.pop();
+        if (lastUserMsg) {
+          finalSendText = lastUserMsg.parts[0].text + "\n" + textToSend;
+        }
+      }
+
       // 3. Request streaming response from Gemini
-      const chat = conciergeModel.startChat({ history });
-      const result = await chat.sendMessageStream(textToSend);
+      const chat = conciergeModel.startChat({ history: consolidated });
+      const result = await chat.sendMessageStream(finalSendText);
       
       let fullResponse = '';
       for await (const chunk of result.stream) {
