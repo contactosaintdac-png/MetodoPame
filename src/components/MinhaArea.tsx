@@ -49,6 +49,31 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   // Chat state (Suporte & Concierge)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [clearChatAt, setClearChatAt] = useState<any>(null);
+
+  const displayMessages = (() => {
+    let filtered = chatMessages;
+    if (clearChatAt) {
+      const clearTime = clearChatAt.toDate ? clearChatAt.toDate().getTime() : 0;
+      filtered = chatMessages.filter(m => {
+        if (!m.createdAt) return true; // Show pending local writes
+        const msgTime = m.createdAt.toDate ? m.createdAt.toDate().getTime() : 0;
+        return msgTime > clearTime;
+      });
+    }
+
+    if (filtered.length === 0) {
+      return [
+        {
+          id: 'welcome-msg',
+          sender: 'concierge' as const,
+          senderName: 'Atendimento',
+          text: `Olá, ${user?.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Como podemos ajudar con a sua residência hoje?`,
+          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        }
+      ];
+    }
+    return filtered;
+  })();
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
@@ -122,7 +147,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
     const chatRef = collection(db, 'chats', user.uid, 'messages');
     const chatQuery = query(chatRef, orderBy('createdAt', 'asc'));
     const unsubscribeMessages = onSnapshot(chatQuery, (snapshot) => {
-      let msgs = snapshot.docs.map(doc => {
+      const msgs = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -133,27 +158,6 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
           createdAt: data.createdAt
         } as ChatMessage;
       });
-
-      // Filter messages by clearChatAt
-      if (clearChatAt) {
-        const clearTime = clearChatAt.toDate ? clearChatAt.toDate().getTime() : 0;
-        msgs = msgs.filter(m => {
-          if (!m.createdAt) return true; // Show pending local writes
-          const msgTime = m.createdAt.toDate ? m.createdAt.toDate().getTime() : 0;
-          return msgTime > clearTime;
-        });
-      }
-
-      // Add welcome message if empty
-      if (msgs.length === 0) {
-        msgs.push({
-          id: 'welcome-msg',
-          sender: 'concierge',
-          senderName: 'Atendimento',
-          text: `Olá, ${user.displayName?.split(' ')[0] || 'Cliente'}. Boas-vindas ao canal Concierge do Método Pame. Como podemos ajudar con a sua residência hoje?`,
-          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        });
-      }
       setChatMessages(msgs);
     });
 
@@ -161,7 +165,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       unsubscribeRoot();
       unsubscribeMessages();
     };
-  }, [user, clearChatAt]);
+  }, [user]);
  
   const fetchReferrals = async () => {
     if (!user) return;
@@ -209,7 +213,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   // Scroll chat to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, isTyping]);
+  }, [displayMessages, isTyping]);
 
   if (!user) return null;
 
@@ -258,7 +262,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       }, { merge: true });
 
       // 2. Build and clean history for Gemini (strict user/model alternating roles)
-      const rawHistory = chatMessages
+      const rawHistory = displayMessages
         .filter(m => m.id !== 'welcome-msg') // exclude hardcoded welcome
         .map(m => ({
           role: (m.sender === 'user' ? 'user' : 'model') as 'user' | 'model',
@@ -1334,7 +1338,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                     </div>
 
                     <div className="flex items-center gap-3">
-                      {chatMessages.length > 1 && (
+                      {displayMessages.length > 1 && (
                         <button
                           onClick={handleClearChat}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#561668]/5 hover:bg-[#561668]/10 text-[#561668] text-[10px] font-extrabold rounded-full tracking-wider border border-[#561668]/10 transition-all cursor-pointer active-scale"
@@ -1358,7 +1362,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       {/* Chat Shell */}
                       <div className="silk-lift rounded-3xl p-5 md:p-6 flex flex-col bg-[#fff7fd]">
                         <div className="silk-inset bg-[#faf1fa]/50 rounded-2xl h-80 p-4 overflow-y-auto mb-4 flex flex-col gap-3.5 custom-scroll">
-                          {chatMessages.map((msg) => {
+                          {displayMessages.map((msg) => {
                             const isUser = msg.sender === 'user';
                             return (
                               <div
