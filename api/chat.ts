@@ -388,7 +388,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` },
           body: JSON.stringify({
-            model: 'meta/llama-4-maverick-17b-128e-instruct',
+            model: 'meta/llama-3.3-70b-instruct',
             messages,
             tools: OPENAI_TOOLS,
             temperature: 0.3,
