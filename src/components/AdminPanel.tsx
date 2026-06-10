@@ -1177,31 +1177,83 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             ╚══════════════════════════════╝ */}
         {activeTab === 'indicacoes' && (
           <div>
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-extrabold text-[#561668]">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="font-display italic text-3xl font-semibold text-[#561668]">
                 Círculo de Excelência (Indicações VIP)
-                {referrals.filter(r => r.status === 'pending').length > 0 && (
-                  <span className="ml-3 text-white text-xs px-2.5 py-1 rounded-full font-bold align-middle" style={{ background: '#561668' }}>
-                    {referrals.filter(r => r.status === 'pending').length} Pendentes
-                  </span>
-                )}
               </h2>
             </div>
 
+            {/* Statistics Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Total referrals */}
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Total de Indicações</p>
+                  <h3 className="text-3xl font-extrabold text-[#561668] mt-1.5">{referrals.length}</h3>
+                  <p className="text-[10px] text-[#80737f] mt-0.5">Registradas no sistema</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-[#561668]/10 text-[#561668] flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[24px]">group</span>
+                </div>
+              </div>
+
+              {/* Pending Completion */}
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Aguardando Conclusão</p>
+                  <h3 className="text-3xl font-extrabold text-amber-600 mt-1.5">
+                    {referrals.filter(r => r.status === 'pending').length}
+                  </h3>
+                  <p className="text-[10px] text-[#80737f] mt-0.5">Amigos com plano ativo</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[24px]">hourglass_empty</span>
+                </div>
+              </div>
+
+              {/* Free Cleanings Available */}
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Cortesias Liberadas</p>
+                  <h3 className="text-3xl font-extrabold text-green-600 mt-1.5">
+                    {referrals.filter(r => r.status === 'completed').length}
+                  </h3>
+                  <p className="text-[10px] text-[#80737f] mt-0.5">Aguardando agendamento</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[24px]">stars</span>
+                </div>
+              </div>
+
+              {/* Free Cleanings Claimed */}
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Cortesias Usufruídas</p>
+                  <h3 className="text-3xl font-extrabold text-[#703081] mt-1.5">
+                    {referrals.filter(r => r.status === 'rewarded').length}
+                  </h3>
+                  <p className="text-[10px] text-[#80737f] mt-0.5">Serviços entregues</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-[#703081]/10 text-[#703081] flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[24px]">check_circle</span>
+                </div>
+              </div>
+            </div>
+
             {loading ? (
-              <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f]">Carregando indicações...</div>
+              <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f] animate-pulse-silk">Carregando indicações...</div>
             ) : referrals.length === 0 ? (
               <div className="silk-lift rounded-3xl p-16 text-center flex flex-col items-center">
                 <span className="material-symbols-outlined text-6xl text-[#d1c2d0] mb-4">stars</span>
-                <h3 className="text-lg font-bold text-[#561668] mb-2">Nenhuma indicação ainda</h3>
+                <h3 className="font-display italic text-2xl font-semibold text-[#561668] mb-2">Nenhuma indicação ainda</h3>
                 <p className="text-[#80737f] text-sm">Quando os clientes recomendarem o método, eles aparecerão aqui.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                <div className="overflow-x-auto silk-lift rounded-[2rem] p-8">
+                <div className="overflow-x-auto silk-lift rounded-[2rem] p-8 border border-white/60">
                   <table className="w-full text-sm text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-[#efe5ee]/40 text-[#80737f] uppercase font-bold tracking-wider text-[10px]">
+                      <tr className="border-b border-[#efe5ee]/40 text-[#80737f] uppercase font-bold tracking-wider text-[10px] pb-3">
                         <th className="pb-3 text-left">Quem Indicou (Referente)</th>
                         <th className="pb-3 text-left">Amigo (Referido)</th>
                         <th className="pb-3 text-center">Status</th>
@@ -1222,12 +1274,24 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
 
                         return (
                           <tr key={ref.id} className="border-b border-[#efe5ee]/20 last:border-none hover:bg-[#faf1fa]/25 transition-colors">
-                            <td className="py-4 text-left font-bold text-[#561668]">
-                              {ref.referrerName}
+                            <td className="py-4 text-left">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-[#561668]/10 text-[#561668] font-bold text-sm flex items-center justify-center">
+                                  {ref.referrerName.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="font-bold text-sm text-[#1e1a20]">{ref.referrerName}</span>
+                              </div>
                             </td>
-                            <td className="py-4 text-left font-bold text-[#1e1a20]">
-                              {ref.referredName}
-                              <p className="text-[10px] text-[#80737f] font-normal">{ref.referredEmail}</p>
+                            <td className="py-4 text-left">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-[#703081]/10 text-[#703081] font-bold text-sm flex items-center justify-center">
+                                  {ref.referredName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <span className="font-bold text-sm text-[#1e1a20]">{ref.referredName}</span>
+                                  <p className="text-[10px] text-[#80737f] font-normal mt-0.5">{ref.referredEmail}</p>
+                                </div>
+                              </div>
                             </td>
                             <td className="py-4 text-center">
                               <span className={`px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider font-extrabold ${statusColors}`}>
@@ -1238,7 +1302,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                               {ref.status === 'pending' && (
                                 <button
                                   onClick={() => handleUpdateReferral(ref.id, 'completed')}
-                                  className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors"
+                                  className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors active-scale cursor-pointer"
                                 >
                                   Liberar Cortesia
                                 </button>
@@ -1246,7 +1310,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                               {ref.status === 'completed' && (
                                 <button
                                   onClick={() => handleUpdateReferral(ref.id, 'rewarded')}
-                                  className="px-4 py-2 bg-[#561668] text-white hover:opacity-90 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-opacity shadow-sm"
+                                  className="px-4 py-2 bg-[#561668] text-white hover:opacity-90 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-opacity shadow-sm active-scale cursor-pointer"
                                 >
                                   Marcar como Entregue
                                 </button>
