@@ -1049,18 +1049,18 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                         <div className="absolute top-0 right-0 p-4 opacity-10">
                           <span className="material-symbols-outlined text-[80px]">stars</span>
                         </div>
-                        <h3 className="text-lg font-bold mb-3 relative z-10">Benefícios do Círculo</h3>
+                        <h3 className="text-lg font-bold mb-3 relative z-10">Recompensa VIP Gana-Gana</h3>
                         <p className="text-xs opacity-90 leading-relaxed mb-4 relative z-10">
-                          Ao estender a curadoria do Método Pame para pessoas de sua confiança que contratarem o **Pacote Mensal**:
+                          Indique o Método Pame para seus amigos. Quando algum deles contratar o **Pacote Mensal**:
                         </p>
                         <ul className="flex flex-col gap-2.5 text-xs font-semibold relative z-10">
                           <li className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-sm bg-white/20 p-1 rounded-full">check</span>
-                            Você é reconhecido com: 1 Diária de Cuidados Residenciais (Full Detail)
+                            Você ganha: 1 Faxina Completa Full Detail Grátis
                           </li>
                           <li className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-sm bg-white/20 p-1 rounded-full">check</span>
-                            Seu convidado recebe: R$ 100 de cortesia de boas-vindas na primeira mensalidade
+                            Seu amigo ganha: R$ 100 de desconto no primeiro mês
                           </li>
                         </ul>
                       </div>
@@ -1075,12 +1075,12 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                             <input
                               type="text"
                               readOnly
-                              value={`https://www.metodopame.com/?ref=${user?.uid}`}
+                              value={`https://metodopame.com/?ref=${user?.uid}`}
                               className="bg-transparent border-none outline-none text-xs flex-1 px-2 select-all font-semibold text-[#561668]"
                             />
                             <button
                               onClick={() => {
-                                navigator.clipboard.writeText(`https://www.metodopame.com/?ref=${user?.uid}`);
+                                navigator.clipboard.writeText(`https://metodopame.com/?ref=${user?.uid}`);
                                 const btn = document.getElementById('copyRefBtn');
                                 if (btn) {
                                   btn.innerText = 'Copiado!';
@@ -1097,7 +1097,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
                         <a
                           href={`https://wa.me/?text=${encodeURIComponent(
-                            `Olá! Lembrei de você. Estou usando o Método Pame para cuidados e curadoria da minha residência e tem sido uma experiência excelente. Eles possuem o Círculo de Excelência, um programa de indicação exclusivo para que membros estendam esse cuidado para pessoas próximas. Consegui liberar um convite VIP para você, que inclui um benefício especial de boas-vindas de R$ 100 na primeira assinatura mensal. Caso queira conhecer o serviço, aqui está o seu acesso exclusivo: https://www.metodopame.com/?ref=${user?.uid}`
+                            `Olá! Estou usando o Método Pame para cuidados residenciais de alto padrão e recomendo muito. Eles criaram o Círculo de Excelência: se você contratar um Pacote Mensal através do meu link, você ganha R$ 100 de desconto na primeira mensalidade e eu ganho uma faxina de presente! Aqui está o meu convite VIP: https://metodopame.com/?ref=${user?.uid}`
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
