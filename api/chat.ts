@@ -122,7 +122,7 @@ const TOOL_DECLARATIONS = {
   ]
 };
 
-const OPENAI_TOOLS = TOOL_DECLARATIONS.map(t => ({
+const OPENAI_TOOLS = TOOL_DECLARATIONS.functionDeclarations.map(t => ({
   type: 'function',
   function: {
     name: t.name,
