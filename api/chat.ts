@@ -314,7 +314,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ── Gemini con Function Calling ───────────────────────────────────────────────
   if (process.env.GEMINI_API_KEY) {
     try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
       let currentContents = [...contents];
 
       for (let round = 0; round < 6; round++) {
