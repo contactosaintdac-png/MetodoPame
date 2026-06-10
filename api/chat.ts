@@ -25,7 +25,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing contents array' });
   }
 
-  // 1. Try OpenAI if OPENAI_API_KEY is present
+  // 1. Try NVIDIA NIM if NVIDIA_API_KEY is present
+  if (process.env.NVIDIA_API_KEY) {
+    try {
+      // Map Gemini style contents to standard messages
+      const messages = [
+        { role: 'system', content: SYSTEM_INSTRUCTION },
+        ...contents.map(c => ({
+          role: c.role === 'model' ? 'assistant' : 'user',
+          content: c.parts?.[0]?.text || ''
+        }))
+      ];
+
+      const nvidiaResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'meta/llama-3.1-8b-instruct',
+          messages,
+          temperature: 0.4,
+          max_tokens: 250
+        })
+      });
+
+      if (nvidiaResponse.ok) {
+        const data = await nvidiaResponse.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        return res.status(200).json({ text });
+      } else {
+        const errText = await nvidiaResponse.text();
+        console.error("NVIDIA API error:", errText);
+      }
+    } catch (e) {
+      console.error("Failed to call NVIDIA:", e);
+    }
+  }
+
+  // 2. Try OpenAI if OPENAI_API_KEY is present
   if (process.env.OPENAI_API_KEY) {
     try {
       // Map Gemini style contents to OpenAI messages
@@ -64,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 2. Try Gemini if GEMINI_API_KEY is present
+  // 3. Try Gemini if GEMINI_API_KEY is present
   if (process.env.GEMINI_API_KEY) {
     try {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`;
@@ -101,6 +140,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(500).json({
-    error: 'AI Config Error: Neither OPENAI_API_KEY nor GEMINI_API_KEY backend environment variable is set or valid.'
+    error: 'AI Config Error: Neither NVIDIA_API_KEY, OPENAI_API_KEY, nor GEMINI_API_KEY backend environment variable is set or valid.'
   });
 }
