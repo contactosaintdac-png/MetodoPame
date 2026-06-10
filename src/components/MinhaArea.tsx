@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, collectionGroup, where, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { conciergeModel } from '../lib/ai';
+import { streamGemini } from '../lib/ai';
 import { ApplicationScreen, TriageData } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -272,13 +272,15 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       }
 
       // 3. Request streaming response from Gemini
-      const chat = conciergeModel.startChat({ history: consolidated });
-      const result = await chat.sendMessageStream(finalSendText);
+      const contents = [
+        ...consolidated,
+        { role: 'user' as const, parts: [{ text: finalSendText }] }
+      ];
+      const resultStream = streamGemini(contents);
       
       let fullResponse = '';
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        fullResponse += chunkText;
+      for await (const chunk of resultStream) {
+        fullResponse += chunk;
         setStreamingMessage(fullResponse);
       }
 
