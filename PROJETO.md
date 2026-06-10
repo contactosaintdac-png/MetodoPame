@@ -237,6 +237,7 @@ Acceso exclusivo para Pame y el desarrollador. Funcionalidades:
 - `send-admin-notification.ts` — email a Pame cuando entra reserva nueva
 - `send-specialist-assignment.ts` — email a la funcionaria asignada
 - `send-reminder.ts` — Cron Job diario 10:00 AM, busca servicios del día siguiente y envía recordatorios
+- `chat.ts` — Chatbot Concierge. Recibe el historial de conversación y devuelve la respuesta de la IA. Soporta OpenAI (GPT-4o-mini) y Gemini (Gemini 2.5 Flash Lite) de manera transparente según la llave configurada en el backend.
 
 ### Variables de entorno en Vercel (configurar en dashboard):
 ```
@@ -250,6 +251,8 @@ MP_ACCESS_TOKEN=          ← Mercado Pago (backend, NUNCA en frontend)
 FIREBASE_PROJECT_ID=      ← Firebase Admin (para Cron Job)
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
+OPENAI_API_KEY=           ← API Key de OpenAI (opcional, activa GPT-4o-mini para Concierge)
+GEMINI_API_KEY=           ← API Key de Gemini (opcional, activa Gemini 2.5 Flash Lite para Concierge)
 ```
 
 ---
