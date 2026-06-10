@@ -50,8 +50,8 @@ Plataforma web para el negocio de limpieza residencial de alto padrón de Pamela
 
 - **Estética:** Quiet Luxury
 - **Color principal:** Morado `#561668`
-- **Fondo:** Blanco `#ffffff`
-- **Tipografía:** Sans-serif limpia
+- **Fondo:** Blanco `#ffffff` com textura sutil e estática de ruído/grão de papel (`body::after` com opacidade `0.012`)
+- **Tipografía:** Display Serif elegante (**Cormorant Garamond** em itálico para cabeçalhos e títulos principais) pareada com Sans-serif geométrica (**Manrope** para corpo e elementos de UI)
 - **Tono de marca:** Elegante, femenino, alto padrón
 
 ---
@@ -329,6 +329,7 @@ FIREBASE_PRIVATE_KEY=
 - **Gating Dinâmico de Admins** — Bootstrapping automático via Firestore para validação de roles.
 - **Tipagem Estrita (TypeScript) e UX** — Interfaces (`Employee`, `Booking`) padronizadas, remoção de telas e tabs não funcionais.
 - **Campanha de Indicações Círculo de Excelência (Frontend & Lógica)** — Captura do parâmetro `?ref` na URL com salvamento e limpeza dinâmica de endereço (App.tsx), aplicação do desconto VIP de R$ 100 com banner explicativo no checkout (PricingMatrix.tsx), e aba de indicações ativa no portal do cliente com botão do WhatsApp e lista de indicações com fallback de mock premium (MinhaArea.tsx).
+- **Redesenho Visual Premium (Diretrizes Taste Skill)** — Importação e aplicação da fonte display serifada *Cormorant Garamond* em itálico para títulos principais, injeção de textura física de papel via ruído estático em CSS, estabilização de viewports móveis (`dvh`), micro-interações táteis `active-scale` nos cliques e implementação de Skeleton Loaders animados na Área de Clientes.
 
 ### 🟡 Importante
 *(Ninguno por el momento)*
