@@ -1,10 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy, where } from 'firebase/firestore';
 import { notifyEmployeeRemoval, notifyEmployeeAssignment } from '../lib/NotificationService';
 
 import type { Employee, Booking } from '../types';
+
+const MOCK_REFERRALS = [
+  {
+    id: 'mock-ref-1',
+    referrerId: 'mock-user-1',
+    referrerName: 'Gabriela Costa',
+    referrerEmail: 'gabriela.costa@exemplo.com',
+    referredId: 'mock-user-2',
+    referredName: 'Clarice Moura',
+    referredEmail: 'clarice.moura@exemplo.com',
+    status: 'pending',
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 5, nanoseconds: 0 },
+    updatedAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 5, nanoseconds: 0 }
+  },
+  {
+    id: 'mock-ref-2',
+    referrerId: 'mock-user-3',
+    referrerName: 'Helena Vasconcellos',
+    referrerEmail: 'helena.v@exemplo.com',
+    referredId: 'mock-user-4',
+    referredName: 'Beatriz Santos',
+    referredEmail: 'beatriz.santos@exemplo.com',
+    status: 'completed',
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 12, nanoseconds: 0 },
+    updatedAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 10, nanoseconds: 0 }
+  },
+  {
+    id: 'mock-ref-3',
+    referrerId: 'mock-user-5',
+    referrerName: 'Maria Oliveira',
+    referrerEmail: 'maria.o@exemplo.com',
+    referredId: 'mock-user-6',
+    referredName: 'Ana Souza',
+    referredEmail: 'ana.souza@exemplo.com',
+    status: 'rewarded',
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 30, nanoseconds: 0 },
+    updatedAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 28, nanoseconds: 0 }
+  }
+];
 
 const DAYS_OF_WEEK = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const SHIFTS = [
@@ -30,6 +69,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [employees, setEmployees]           = useState<Employee[]>([]);
   const [bookings, setBookings]             = useState<any[]>([]);
   const [referrals, setReferrals]           = useState<any[]>([]);
+  const [users, setUsers]                   = useState<any[]>([]);
   const [loading, setLoading]               = useState(true);
   const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
   const [agendaView, setAgendaView]         = useState<'lista' | 'calendario'>('calendario');
@@ -50,6 +90,44 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [activeChats, setActiveChats] = useState<any[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [selectedChatMessages, setSelectedChatMessages] = useState<any[]>([]);
+
+  // ─── Indicações States ────────────────────────────────────────────────────────
+  const [refSearch, setRefSearch] = useState('');
+  const [refStatusFilter, setRefStatusFilter] = useState<'all' | 'pending' | 'completed' | 'rewarded'>('all');
+  const [showAddReferralModal, setShowAddReferralModal] = useState(false);
+  const [newRefType, setNewRefType] = useState<'registered' | 'custom'>('registered');
+  const [selectedReferrerId, setSelectedReferrerId] = useState('');
+  const [customReferrerName, setCustomReferrerName] = useState('');
+  const [customReferrerEmail, setCustomReferrerEmail] = useState('');
+  const [referredName, setReferredName] = useState('');
+  const [referredEmail, setReferredEmail] = useState('');
+  
+  // Simulation Mode
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const [simulatedReferrals, setSimulatedReferrals] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isSimulationMode && simulatedReferrals.length === 0) {
+      setSimulatedReferrals(MOCK_REFERRALS);
+    }
+  }, [isSimulationMode, simulatedReferrals.length]);
+
+  const currentReferralsList = isSimulationMode ? simulatedReferrals : referrals;
+  
+  const filteredReferrals = currentReferralsList.filter(ref => {
+    if (refStatusFilter !== 'all' && ref.status !== refStatusFilter) {
+      return false;
+    }
+    if (refSearch) {
+      const search = refSearch.toLowerCase();
+      const refName = (ref.referrerName || '').toLowerCase();
+      const refEmail = (ref.referrerEmail || '').toLowerCase();
+      const refdName = (ref.referredName || '').toLowerCase();
+      const refdEmail = (ref.referredEmail || '').toLowerCase();
+      return refName.includes(search) || refEmail.includes(search) || refdName.includes(search) || refdEmail.includes(search);
+    }
+    return true;
+  });
 
   // ─── Data fetching ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -94,6 +172,12 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
       } catch (e) {
         console.warn('collection referrals fetch falhou.', e);
       }
+      try {
+        const uSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'client')));
+        setUsers(uSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.warn('collection users fetch falhou.', e);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -102,11 +186,82 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   };
 
   const handleUpdateReferral = async (referralId: string, newStatus: string) => {
+    if (isSimulationMode) {
+      setSimulatedReferrals(prev =>
+        prev.map(r => r.id === referralId ? { ...r, status: newStatus, updatedAt: { seconds: Math.floor(Date.now() / 1000) } } : r)
+      );
+      return;
+    }
     try {
       await updateDoc(doc(db, 'referrals', referralId), { status: newStatus, updatedAt: serverTimestamp() });
       fetchEmployees(); // Re-fetch everything to update list
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleAddReferralManual = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    let refName = '';
+    let refId = '';
+    
+    if (newRefType === 'registered') {
+      if (!selectedReferrerId) return;
+      const foundUser = users.find(u => u.id === selectedReferrerId);
+      refName = foundUser ? foundUser.name : 'Cliente Registrado';
+      refId = selectedReferrerId;
+    } else {
+      if (!customReferrerName || !customReferrerEmail) return;
+      refName = customReferrerName;
+      refId = `custom-email-${customReferrerEmail}`;
+    }
+    
+    if (!referredName || !referredEmail) return;
+    
+    const newRefDoc = {
+      referrerId: refId,
+      referrerName: refName,
+      referrerEmail: newRefType === 'registered' ? (users.find(u => u.id === selectedReferrerId)?.email || '') : customReferrerEmail,
+      referredId: null,
+      referredName: referredName,
+      referredEmail: referredEmail,
+      bookingId: null,
+      status: 'pending',
+      createdAt: isSimulationMode ? { seconds: Math.floor(Date.now() / 1000) } : serverTimestamp(),
+      updatedAt: isSimulationMode ? { seconds: Math.floor(Date.now() / 1000) } : serverTimestamp()
+    };
+    
+    if (isSimulationMode) {
+      setSimulatedReferrals(prev => [
+        { id: `mock-ref-${Date.now()}`, ...newRefDoc },
+        ...prev
+      ]);
+      setShowAddReferralModal(false);
+      // Reset form
+      setSelectedReferrerId('');
+      setCustomReferrerName('');
+      setCustomReferrerEmail('');
+      setReferredName('');
+      setReferredEmail('');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      await addDoc(collection(db, 'referrals'), newRefDoc);
+      setShowAddReferralModal(false);
+      // Reset form
+      setSelectedReferrerId('');
+      setCustomReferrerName('');
+      setCustomReferrerEmail('');
+      setReferredName('');
+      setReferredEmail('');
+      await fetchEmployees();
+    } catch (err) {
+      console.error("Erro ao adicionar indicação manual", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1177,11 +1332,63 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             ╚══════════════════════════════╝ */}
         {activeTab === 'indicacoes' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-display italic text-3xl font-semibold text-[#561668]">
-                Círculo de Excelência (Indicações VIP)
-              </h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+              <div>
+                <h2 className="font-display italic text-3xl font-semibold text-[#561668]">
+                  Círculo de Excelência (Indicações VIP)
+                </h2>
+                <p className="text-xs text-[#80737f] mt-1 font-medium">Gerencie a campanha de recomendações de luxo e libere cortesias.</p>
+              </div>
+              
+              <div className="flex items-center gap-4 self-end md:self-auto">
+                {/* Simulation Mode Toggle */}
+                <div className="flex items-center gap-2.5 px-4 py-2 bg-[#561668]/5 border border-[#561668]/10 rounded-full">
+                  <span className="text-[10px] font-bold text-[#561668] uppercase tracking-wider">Modo Simulador</span>
+                  <button
+                    onClick={() => {
+                      setIsSimulationMode(!isSimulationMode);
+                      if (!isSimulationMode && simulatedReferrals.length === 0) {
+                        setSimulatedReferrals(MOCK_REFERRALS);
+                      }
+                    }}
+                    className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-250 cursor-pointer relative ${
+                      isSimulationMode ? 'bg-[#561668]' : 'bg-[#d1c2d0]'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 bg-white rounded-full transition-transform duration-250 ${
+                        isSimulationMode ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Nova Indicação Button */}
+                <button
+                  onClick={() => setShowAddReferralModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-[#561668] text-white hover:opacity-90 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-opacity shadow-sm active-scale cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[14px]">add</span>
+                  Nova Indicação VIP
+                </button>
+              </div>
             </div>
+
+            {/* Simulation Active Notice Banner */}
+            {isSimulationMode && (
+              <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 text-amber-800 rounded-3xl flex items-center justify-between animate-fade-in">
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[20px] text-amber-600 animate-pulse">info</span>
+                  <span className="text-xs font-semibold">Você está no Modo Simulador. As alterações e criações não serão gravadas no Firestore de produção.</span>
+                </div>
+                <button
+                  onClick={() => setIsSimulationMode(false)}
+                  className="text-xs font-bold underline hover:opacity-85 text-amber-700 cursor-pointer"
+                >
+                  Sair do Modo Simulador
+                </button>
+              </div>
+            )}
 
             {/* Statistics Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -1189,8 +1396,8 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
               <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Total de Indicações</p>
-                  <h3 className="text-3xl font-extrabold text-[#561668] mt-1.5">{referrals.length}</h3>
-                  <p className="text-[10px] text-[#80737f] mt-0.5">Registradas no sistema</p>
+                  <h3 className="text-3xl font-extrabold text-[#561668] mt-1.5">{currentReferralsList.length}</h3>
+                  <p className="text-[10px] text-[#80737f] mt-0.5">Registradas no painel</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-[#561668]/10 text-[#561668] flex items-center justify-center">
                   <span className="material-symbols-outlined text-[24px]">group</span>
@@ -1202,9 +1409,9 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 <div>
                   <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Aguardando Conclusão</p>
                   <h3 className="text-3xl font-extrabold text-amber-600 mt-1.5">
-                    {referrals.filter(r => r.status === 'pending').length}
+                    {currentReferralsList.filter(r => r.status === 'pending').length}
                   </h3>
-                  <p className="text-[10px] text-[#80737f] mt-0.5">Amigos com plano ativo</p>
+                  <p className="text-[10px] text-[#80737f] mt-0.5">Pendente mensalidade</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[24px]">hourglass_empty</span>
@@ -1216,7 +1423,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 <div>
                   <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Cortesias Liberadas</p>
                   <h3 className="text-3xl font-extrabold text-green-600 mt-1.5">
-                    {referrals.filter(r => r.status === 'completed').length}
+                    {currentReferralsList.filter(r => r.status === 'completed').length}
                   </h3>
                   <p className="text-[10px] text-[#80737f] mt-0.5">Aguardando agendamento</p>
                 </div>
@@ -1230,7 +1437,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 <div>
                   <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider">Cortesias Usufruídas</p>
                   <h3 className="text-3xl font-extrabold text-[#703081] mt-1.5">
-                    {referrals.filter(r => r.status === 'rewarded').length}
+                    {currentReferralsList.filter(r => r.status === 'rewarded').length}
                   </h3>
                   <p className="text-[10px] text-[#80737f] mt-0.5">Serviços entregues</p>
                 </div>
@@ -1240,13 +1447,50 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
               </div>
             </div>
 
-            {loading ? (
+            {/* Filters Row */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
+              {/* Search Box */}
+              <div className="w-full sm:w-80 relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[#80737f] text-[18px]">search</span>
+                <input
+                  type="text"
+                  placeholder="Pesquisar referente ou amigo..."
+                  value={refSearch}
+                  onChange={(e) => setRefSearch(e.target.value)}
+                  className="w-full pl-11 pr-4 py-2.5 bg-[#faf1fa]/45 border border-[#efe5ee] rounded-2xl text-xs focus:outline-none focus:border-[#561668]/30 transition-colors placeholder:text-[#80737f]/60"
+                />
+              </div>
+
+              {/* Status Filters */}
+              <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scroll-none">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'pending', label: 'Pendentes' },
+                  { id: 'completed', label: 'Liberados' },
+                  { id: 'rewarded', label: 'Usufruídos' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setRefStatusFilter(item.id as any)}
+                    className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer active-scale shrink-0 ${
+                      refStatusFilter === item.id
+                        ? 'bg-[#561668] text-white shadow-sm'
+                        : 'bg-white text-[#80737f] hover:text-[#561668] border border-[#efe5ee]/40'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {loading && !isSimulationMode ? (
               <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f] animate-pulse-silk">Carregando indicações...</div>
-            ) : referrals.length === 0 ? (
+            ) : filteredReferrals.length === 0 ? (
               <div className="silk-lift rounded-3xl p-16 text-center flex flex-col items-center">
                 <span className="material-symbols-outlined text-6xl text-[#d1c2d0] mb-4">stars</span>
-                <h3 className="font-display italic text-2xl font-semibold text-[#561668] mb-2">Nenhuma indicação ainda</h3>
-                <p className="text-[#80737f] text-sm">Quando os clientes recomendarem o método, eles aparecerão aqui.</p>
+                <h3 className="font-display italic text-2xl font-semibold text-[#561668] mb-2">Nenhuma indicação encontrada</h3>
+                <p className="text-[#80737f] text-sm">Não há indicações que correspondam à busca ou ao filtro selecionado.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
@@ -1261,7 +1505,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       </tr>
                     </thead>
                     <tbody>
-                      {referrals.map((ref) => {
+                      {filteredReferrals.map((ref) => {
                         const statusColors = 
                           ref.status === 'rewarded' ? 'bg-[#561668]/15 text-[#561668]' :
                           ref.status === 'completed' ? 'bg-green-50 text-green-700' :
@@ -1272,6 +1516,12 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                           ref.status === 'completed' ? 'Cortesia Liberada' :
                           'Pendente Mensalidade';
 
+                        const formattedDate = ref.createdAt
+                          ? (ref.createdAt.seconds 
+                              ? new Date(ref.createdAt.seconds * 1000).toLocaleDateString()
+                              : (ref.createdAt.toDate ? ref.createdAt.toDate().toLocaleDateString() : '—'))
+                          : '—';
+
                         return (
                           <tr key={ref.id} className="border-b border-[#efe5ee]/20 last:border-none hover:bg-[#faf1fa]/25 transition-colors">
                             <td className="py-4 text-left">
@@ -1279,7 +1529,12 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                                 <div className="w-9 h-9 rounded-xl bg-[#561668]/10 text-[#561668] font-bold text-sm flex items-center justify-center">
                                   {ref.referrerName.charAt(0).toUpperCase()}
                                 </div>
-                                <span className="font-bold text-sm text-[#1e1a20]">{ref.referrerName}</span>
+                                <div>
+                                  <span className="font-bold text-sm text-[#1e1a20]">{ref.referrerName}</span>
+                                  {ref.referrerEmail && (
+                                    <p className="text-[10px] text-[#80737f] font-normal mt-0.5">{ref.referrerEmail}</p>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-4 text-left">
@@ -1289,12 +1544,21 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                                 </div>
                                 <div>
                                   <span className="font-bold text-sm text-[#1e1a20]">{ref.referredName}</span>
-                                  <p className="text-[10px] text-[#80737f] font-normal mt-0.5">{ref.referredEmail}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <p className="text-[10px] text-[#80737f] font-normal">{ref.referredEmail}</p>
+                                    <span className="text-[8px] text-[#80737f]/50">•</span>
+                                    <p className="text-[10px] text-[#80737f] font-normal">{formattedDate}</p>
+                                  </div>
                                 </div>
                               </div>
                             </td>
                             <td className="py-4 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider font-extrabold ${statusColors}`}>
+                              <span className={`px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider font-extrabold inline-flex items-center gap-1.5 ${statusColors}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  ref.status === 'rewarded' ? 'bg-[#561668]' :
+                                  ref.status === 'completed' ? 'bg-green-500 animate-pulse' :
+                                  'bg-yellow-500 animate-pulse'
+                                }`} />
                                 {statusLabel}
                               </span>
                             </td>
@@ -1324,6 +1588,124 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       })}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* Add Referral Modal */}
+            {showAddReferralModal && (
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                <div className="bg-[#fff7fd] rounded-[2.5rem] w-full max-w-lg p-8 border border-white/60 shadow-2xl animate-fade-in relative text-left">
+                  <button
+                    onClick={() => setShowAddReferralModal(false)}
+                    className="absolute top-6 right-6 w-9 h-9 rounded-full bg-[#561668]/5 hover:bg-[#561668]/10 text-[#561668] flex items-center justify-center transition-colors active-scale cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">close</span>
+                  </button>
+                  
+                  <h3 className="font-display italic text-2xl font-bold text-[#561668] mb-1">Nova Indicação VIP</h3>
+                  <p className="text-xs text-[#80737f] mb-6">Cadastre uma indicação manualmente no Círculo de Excelência.</p>
+                  
+                  <form onSubmit={handleAddReferralManual} className="space-y-5">
+                    <div>
+                      <label className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider block mb-2">Quem Indicou (Referente)</label>
+                      <div className="flex gap-4 p-1.5 bg-[#faf1fa]/60 rounded-2xl border border-[#efe5ee]/40 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setNewRefType('registered')}
+                          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                            newRefType === 'registered'
+                              ? 'bg-white text-[#561668] shadow-sm font-extrabold'
+                              : 'text-[#80737f] hover:text-[#561668]'
+                          }`}
+                        >
+                          Cliente Cadastrado
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewRefType('custom')}
+                          className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                            newRefType === 'custom'
+                              ? 'bg-white text-[#561668] shadow-sm font-extrabold'
+                              : 'text-[#80737f] hover:text-[#561668]'
+                          }`}
+                        >
+                          Inserir Manualmente
+                        </button>
+                      </div>
+                      
+                      {newRefType === 'registered' ? (
+                        <select
+                          value={selectedReferrerId}
+                          onChange={(e) => setSelectedReferrerId(e.target.value)}
+                          required
+                          className="w-full bg-[#faf1fa]/40 border border-[#efe5ee] rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#561668]/30 transition-colors"
+                        >
+                          <option value="">Selecione o cliente que indicou...</option>
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            placeholder="Nome do referente"
+                            value={customReferrerName}
+                            onChange={(e) => setCustomReferrerName(e.target.value)}
+                            required
+                            className="w-full bg-[#faf1fa]/40 border border-[#efe5ee] rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#561668]/30 transition-colors"
+                          />
+                          <input
+                            type="email"
+                            placeholder="E-mail do referente"
+                            value={customReferrerEmail}
+                            onChange={(e) => setCustomReferrerEmail(e.target.value)}
+                            required
+                            className="w-full bg-[#faf1fa]/40 border border-[#efe5ee] rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#561668]/30 transition-colors"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="border-t border-[#efe5ee]/40 my-2 pt-2">
+                      <label className="text-[10px] font-bold text-[#80737f] uppercase tracking-wider block mb-2">Amigo Indicado (Novo Cliente)</label>
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          placeholder="Nome do amigo indicado"
+                          value={referredName}
+                          onChange={(e) => setReferredName(e.target.value)}
+                          required
+                          className="w-full bg-[#faf1fa]/40 border border-[#efe5ee] rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#561668]/30 transition-colors"
+                        />
+                        <input
+                          type="email"
+                          placeholder="E-mail do amigo indicado"
+                          value={referredEmail}
+                          onChange={(e) => setReferredEmail(e.target.value)}
+                          required
+                          className="w-full bg-[#faf1fa]/40 border border-[#efe5ee] rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#561668]/30 transition-colors"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3 justify-end pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddReferralModal(false)}
+                        className="px-6 py-3 bg-[#561668]/5 hover:bg-[#561668]/10 text-[#561668] rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors active-scale cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-6 py-3 bg-[#561668] text-white hover:opacity-90 rounded-2xl text-xs font-bold uppercase tracking-wider transition-opacity shadow-sm active-scale cursor-pointer"
+                      >
+                        Salvar Indicação
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}

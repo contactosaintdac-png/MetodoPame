@@ -15,7 +15,7 @@ import Sidebar from './components/Sidebar';
 import MinhaArea from './components/MinhaArea';
 import AdminPanel from './components/AdminPanel';
 import { useAuth } from './contexts/AuthContext';
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 const getInitialScreen = (): ApplicationScreen => {
@@ -94,6 +94,13 @@ export default function App() {
         }
 
         setUserRole('client');
+        await setDoc(userRef, {
+          email: user.email,
+          name: user.displayName || 'Cliente Método Pame',
+          photoURL: user.photoURL || null,
+          role: 'client',
+          lastLoginAt: serverTimestamp()
+        }, { merge: true });
       } catch (err) {
         console.error('Error determining user role:', err);
         setUserRole('client'); // fallback
