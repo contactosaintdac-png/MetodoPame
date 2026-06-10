@@ -307,7 +307,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     } catch (e: any) {
       console.error('[chat] Gemini catch:', e.message);
-      // Continúa a los fallbacks
+      return res.status(500).json({ error: `Error interno Gemini: ${e.message}` });
     }
   }
 

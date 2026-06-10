@@ -335,9 +335,14 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         text: fullResponse,
         createdAt: serverTimestamp()
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error sending message to Concierge AI:", err);
-      setStreamingMessage("Desculpe, ocorreu um erro de conexão. Por favor, tente novamente.");
+      // Save error to Firestore so it's visible in the UI
+      await addDoc(collection(db, 'chats', user.uid, 'messages'), {
+        role: 'model',
+        text: `⚠️ Error de sistema: ${err.message}`,
+        createdAt: serverTimestamp()
+      });
     } finally {
       setIsTyping(false);
     }
