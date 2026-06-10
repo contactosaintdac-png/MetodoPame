@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, collectionGroup, where, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { streamGemini } from '../lib/ai';
 import { ApplicationScreen, TriageData } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -301,18 +300,27 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         }
       }
 
-      // 3. Request streaming response from Gemini
+      // 3. Request response from secure backend function /api/chat
       const contents = [
         ...consolidated,
         { role: 'user' as const, parts: [{ text: finalSendText }] }
       ];
-      const resultStream = streamGemini(contents);
-      
-      let fullResponse = '';
-      for await (const chunk of resultStream) {
-        fullResponse += chunk;
-        setStreamingMessage(fullResponse);
+
+      const chatResponse = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ contents }),
+      });
+
+      if (!chatResponse.ok) {
+        const errData = await chatResponse.json();
+        throw new Error(errData.error || `Server error ${chatResponse.status}`);
       }
+
+      const data = await chatResponse.json();
+      const fullResponse = data.text;
 
       // 4. Save AI response to Firestore
       await addDoc(messagesRef, {
@@ -320,8 +328,6 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         text: fullResponse,
         createdAt: serverTimestamp()
       });
-      
-      setStreamingMessage('');
     } catch (err) {
       console.error("Error sending message to Concierge AI:", err);
       setStreamingMessage("Desculpe, ocorreu um erro de conexão. Por favor, tente novamente.");

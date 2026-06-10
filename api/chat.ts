@@ -1,0 +1,106 @@
+import { VercelRequest, VercelResponse } from '@vercel/node';
+
+const SYSTEM_INSTRUCTION = "Eres el Concierge exclusivo del Método Pame (un servicio élite de curaduría de la casa y limpieza profunda de lujo). Tu tono es SIEMPRE extremadamente cordial, cálido y elegante. NUNCA prometas disponibilidad de agendas sin confirmar y NO hables de precios. Tu objetivo es tomar nota de requerimientos especiales, alergias o protocolos y ser servicial. REGLA DE ORO: No hables mucho. Tus respuestas DEBEN ser de 2 líneas, 3 como máximo. Sé conciso y al grano, pero siempre manteniendo el nivel de lujo.";
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { contents } = req.body;
+  if (!contents || !Array.isArray(contents)) {
+    return res.status(400).json({ error: 'Missing contents array' });
+  }
+
+  // 1. Try OpenAI if OPENAI_API_KEY is present
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      // Map Gemini style contents to OpenAI messages
+      const messages = [
+        { role: 'system', content: SYSTEM_INSTRUCTION },
+        ...contents.map(c => ({
+          role: c.role === 'model' ? 'assistant' : 'user',
+          content: c.parts?.[0]?.text || ''
+        }))
+      ];
+
+      const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages,
+          temperature: 0.4,
+          max_tokens: 250
+        })
+      });
+
+      if (openAiResponse.ok) {
+        const data = await openAiResponse.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        return res.status(200).json({ text });
+      } else {
+        const errText = await openAiResponse.text();
+        console.error("OpenAI API error:", errText);
+      }
+    } catch (e) {
+      console.error("Failed to call OpenAI:", e);
+    }
+  }
+
+  // 2. Try Gemini if GEMINI_API_KEY is present
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      const geminiResponse = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: {
+            parts: [{ text: SYSTEM_INSTRUCTION }]
+          },
+          generationConfig: {
+            temperature: 0.4,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 250
+          }
+        })
+      });
+
+      if (geminiResponse.ok) {
+        const data = await geminiResponse.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return res.status(200).json({ text });
+      } else {
+        const errText = await geminiResponse.text();
+        console.error("Gemini API error:", errText);
+      }
+    } catch (e) {
+      console.error("Failed to call Gemini:", e);
+    }
+  }
+
+  return res.status(500).json({
+    error: 'AI Config Error: Neither OPENAI_API_KEY nor GEMINI_API_KEY backend environment variable is set or valid.'
+  });
+}
