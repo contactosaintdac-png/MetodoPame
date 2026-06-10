@@ -327,6 +327,33 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           createdAt: serverTimestamp()
         });
 
+        // ── Índice global para Concierge IA ──────────────────────────────────
+        // Permite que la IA busque reservas por nombre sin conocer el UID del cliente.
+        try {
+          await setDoc(doc(db, 'reservas_index', bookingRef.id), {
+            uid:              user.uid,
+            bookingId:        bookingRef.id,
+            nombre:           bookingName,
+            nombre_lower:     bookingName.toLowerCase().trim(),
+            email:            user.email || '',
+            fecha:            bookingDateState,
+            hora:             '09:00',
+            formato:          selectedFormat,
+            frecuencia:       triageData.frequency === 'monthly' ? 'mensal' : 'avulso',
+            estado:           'Confirmado',
+            empleada_nombre:  assignedEmployee?.name || '',
+            empleada_email:   assignedEmployee?.email || '',
+            empleada_id:      assignedEmployee?.id || '',
+            precio:           totalPrice,
+            notas_especiales: '',
+            createdAt:        serverTimestamp(),
+            updatedAt:        serverTimestamp()
+          });
+        } catch (indexErr) {
+          console.error('Error al escribir reservas_index (no bloquea el flujo):', indexErr);
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         const referrerUid = localStorage.getItem('pame_referrer_uid');
         if (referrerUid && selectedPlanMode === 'mensal') {
           try {
@@ -395,6 +422,32 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
         });
+
+        // ── Índice global para Concierge IA ──────────────────────────────────
+        try {
+          await setDoc(doc(db, 'reservas_index', bookingRef.id), {
+            uid:              currentUser.uid,
+            bookingId:        bookingRef.id,
+            nombre:           bookingName,
+            nombre_lower:     bookingName.toLowerCase().trim(),
+            email:            currentUser.email || '',
+            fecha:            bookingDateState,
+            hora:             '09:00',
+            formato:          selectedFormat,
+            frecuencia:       triageData.frequency === 'monthly' ? 'mensal' : 'avulso',
+            estado:           'Confirmado',
+            empleada_nombre:  '',
+            empleada_email:   '',
+            empleada_id:      '',
+            precio:           totalPrice,
+            notas_especiales: '',
+            createdAt:        serverTimestamp(),
+            updatedAt:        serverTimestamp()
+          });
+        } catch (indexErr) {
+          console.error('Error al escribir reservas_index (no bloquea el flujo):', indexErr);
+        }
+        // ────────────────────────────────────────────────────────────────────
         
         const referrerUid = localStorage.getItem('pame_referrer_uid');
         if (referrerUid && selectedPlanMode === 'mensal') {

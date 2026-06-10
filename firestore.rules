@@ -67,5 +67,15 @@ service cloud.firestore {
         allow read, write: if isAdmin() || isOwner(userId);
       }
     }
+
+    // Rules for AI Concierge — Global Reservation Index
+    // Clients can write their own bookings to this index (PricingMatrix mirror).
+    // Admins can read/write all. Server-side (Firebase Admin SDK) bypasses these rules.
+    match /reservas_index/{bookingId} {
+      // Clients can create their own index entry (needed for PricingMatrix)
+      allow create: if request.auth != null;
+      // Only admins can read or modify index entries from the client
+      allow read, update, delete: if isAdmin();
+    }
   }
 }
