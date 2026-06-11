@@ -24,8 +24,13 @@ service cloud.firestore {
       // Admins have full access
       allow read, write: if isAdmin();
       
-      // Active specialists can read their own profile data
+      // Active specialists can read their own profile data and request updates (cannot change status, active flag or email)
       allow read: if request.auth != null && request.auth.token.email == resource.data.email;
+      allow update: if request.auth != null 
+                    && request.auth.token.email == resource.data.email
+                    && request.resource.data.status == resource.data.status
+                    && request.resource.data.active == resource.data.active
+                    && request.resource.data.email == resource.data.email;
     }
 
     // Rules for Clients and bookings
@@ -84,6 +89,15 @@ service cloud.firestore {
       allow create: if true;
       // Only admins can read, update or delete waitlist entries
       allow read, update, delete: if isAdmin();
+    }
+
+    // Rules for collectionGroup bookings (enables fetching all bookings for admins, and assigned bookings for specialists)
+    match /{path=**}/bookings/{bookingId} {
+      allow read, write: if isAdmin();
+      allow read: if request.auth != null 
+                    && resource.data.assignedEmployeeId != null
+                    && exists(/databases/$(database)/documents/employees/$(resource.data.assignedEmployeeId))
+                    && request.auth.token.email == get(/databases/$(database)/documents/employees/$(resource.data.assignedEmployeeId)).data.email;
     }
   }
 }
