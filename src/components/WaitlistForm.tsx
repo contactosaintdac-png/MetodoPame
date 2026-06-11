@@ -181,8 +181,14 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
             </span>
           </h1>
           <div className="w-16 h-1 bg-white/30 rounded-full my-1" />
-          <p className="text-sm text-white/80 leading-relaxed max-w-sm">
-            Para garantir o padrão de luxo e cuidado absoluto em cada detalhe, limitamos o número de clientes mensais. Garanta sua vaga.
+          <p className="text-sm text-white/85 leading-relaxed max-w-sm">
+            Esta é a lista de acesso prioritário para o novo sistema de agendamento online do Método Pame.
+          </p>
+          <p className="text-sm text-white/80 leading-relaxed max-w-sm mt-3.5">
+            Por aqui, você reserva seus dias e gerencia seus atendimentos direto pelo celular. Sem precisar ligar ou enviar mensagens.
+          </p>
+          <p className="text-sm text-white/80 leading-relaxed max-w-sm mt-3.5">
+            Liberamos as vagas em lotes de 10 clientes para manter o padrão de cuidado em cada casa. Garanta o seu convite antes do lançamento oficial.
           </p>
         </div>
 
