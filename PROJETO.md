@@ -61,7 +61,7 @@ Plataforma web para el negocio de limpieza residencial de alto padrón de Pamela
 El site tiene DOS flujos completamente independientes desde la entrada:
 
 ### Flujo Cliente → `/` (split screen)
-Botón "Para Residências" → Avaliação da Residência → Matriz de Investimento → Pagamento → Área do Cliente
+Botón "Para Residências" → Lista de Espera (Acesso Prioritário) o Login directo (para clientes activos) → Área do Cliente (Triage y Checkout restringido)
 
 ### Flujo Funcionária → `/equipe`
 Formulario de candidatura independiente. Sin ninguna conexión con el flujo del cliente. Sin precios, sin datos comerciales.
@@ -72,8 +72,14 @@ Formulario de candidatura independiente. Sin ninguna conexión con el flujo del 
 
 ## 5. Flujo del cliente detallado
 
+### Lista de Espera (Acesso Prioritário)
+Para controlar la demanda inicial, los clientes residenciales nuevos son dirigidos a la Lista de Espera (`/lista`):
+- **Formulario**: Captura `name`, `whatsapp`, `email`, `neighborhood`, `serviceType`, y `source` (origen de contacto).
+- **Referidos**: Si hay una recomendación activa (`pame_referrer_uid` en localStorage), se asocian `referredByUid` y `referredByName` al registro en Firestore para darle prioridad.
+- **Acción Viral**: La pantalla de éxito incluye un botón para "Indicar uma Amiga" vía WhatsApp con un mensaje pre-formateado.
+
 ### Avaliação da Residência (antes llamado "Triage" — NO usar ese nombre)
-4 pasos obligatorios antes de ver cualquier precio:
+Clientes aprobados o pre-registrados acceden a este flujo de 4 pasos obligatorios antes de ver la Matriz de Investimento:
 
 1. **Histórico Recente** — ¿Cuándo fue la última limpieza profunda?
    - Há menos de 7 dias
@@ -108,13 +114,13 @@ A partir de la casa base, cada elemento adicional suma:
 - +R$ 50 por quarto extra
 - +R$ 30 por banheiro extra  
 - +R$ 80 por andar extra
-- *(Concluído: Implementado em [PricingMatrix.tsx](file:///c:/Users/leshx/Downloads/DESARROLLO/M%C3%A9todo-Pame/src/components/PricingMatrix.tsx))*
 
 ### Campanha de Recomendação — Círculo de Excelência
 Para incentivar contratos de mensalistas (*faxinas fixas*), aplica-se a seguinte regra de desconto dinâmico no Checkout:
 - **Quem indica (Referente)**: Ganha **1 Faxina Completa Full Detail de cortesia** quando o amigo indicado fecha o primeiro mês de um *Pacote Mensal* (4 visitas).
 - **Quem é indicado (Referido)**: Ganha **R$ 100 de desconto** no primeiro mês de contratação de qualquer *Pacote Mensal*.
   - *Lógica no Checkout*: O sistema detecta a chave `pame_referrer_uid` no localStorage (previamente capturada da URL em `App.tsx`) e subtrai R$ 100 del total en el momento de la contratación de un paquete mensual. Al confirmar la reserva, se guarda el `referrerUid` en Firestore, y se limpia el `pame_referrer_uid` del localStorage.
+  - *Lógica na Lista de Espera*: Si la amiga recomendada se inscribe en la Lista de Espera, el sistema asocia `referredByUid` y `referredByName` en su registro en Firestore, priorizando su aprobación y manteniendo el descuento para cuando contrate el Pacote Mensal.
 
 ### Serviços Adicionais de Alta Gama (+R$ 50 cada uno)
 1. Organização de Roupas
@@ -144,13 +150,22 @@ La aplicación ejecuta una validación de cargo (`userRole`) mediante Firestore 
 - **Seguridad estricta:** Si intentan acceder a `/admin`, son redirigidos automáticamente a la pantalla de bienvenida. En `/equipe`, se muestra un banner advirtiendo que ya tienen sesión de cliente iniciada.
 
 ### Funcionárias (Especialistas)
-- Login con **email + contraseña generada por el sistema** (creada por Pame desde `/admin`).
+- Login con **email + contraseña generada por el sistema** (creada por Pame desde `/admin` o auto-generada desde `/equipe` al postularse).
 - Acceso exclusivo en `/equipe`.
 - **Seguridad estricta:** NUNCA pueden acceder al flujo de clientes ni ver precios. Si intentan ingresar a `/`, `/pricing` o `/minha-area`, la aplicación las redirige inmediatamente a `/equipe` de vuelta a su panel.
 
 ### Administrador (Pame + Dev)
 - Acceso a `/admin` protegido para `metodopame.homedetail@gmail.com` y `contactosaintdac@gmail.com`.
 - Ve todo — reservas, clientes, funcionárias, reportes financieros.
+
+### Reglas de Seguridad en Firestore (firestore.rules)
+La base de datos implementa restricciones de acceso estrictas y seguras:
+- **Administradores (`isAdmin()`)**: Acceso completo de lectura y escritura en todas las colecciones.
+- **Propietarios (`isOwner(userId)`)**: Los clientes solo pueden leer y escribir documentos dentro de su propio nodo de usuario (`/users/{userId}`).
+- **Lista de Espera (`/waitlist`)**: Permiso de creación público (`allow create: if true`) para que cualquier visitante pueda registrarse, pero lectura y edición exclusivas del administrador.
+- **Funcionarias (`/employees`)**: Creación pública permitida solo bajo estado `pending` y `active == false`. Las especialistas activas solo pueden leer su propio documento y actualizar campos no críticos (no pueden cambiar su email, status o flag de activación).
+- **Asignaciones de Reservas (`collectionGroup bookings`)**: Las especialistas solo pueden realizar lecturas en la colección de reservas para aquellos documentos donde estén explícitamente asignadas (cruzando su email autenticado contra el ID de empleada asignada en la reserva).
+- **Concierge Index (`/reservas_index`)**: Permite a clientes crear reservas (necesario para el checkout), pero la lectura y edición masiva está reservada para administradores y el backend seguro.
 
 ---
 
@@ -205,6 +220,8 @@ Campos obligatorios:
 - Bairros y zonas de Tijucas disponibles
 - Tipo de turno disponible (Meio Manhã / Meio Tarde / Turno Completo)
 
+**Auto-registro de Credenciales**: El formulario incluye campos para que la candidata ingrese su **E-mail** y **Senha**. Al enviar el formulario, el sistema crea automáticamente su cuenta en Firebase Auth en segundo plano (usando una instancia secundaria de Firebase para no desloguear al usuario actual) y guarda el registro en la colección `/employees` con `status: 'pending'`.
+
 **Al enviar el formulario:** Aparece pantalla de confirmación con agendamiento del **"Café Virtual com a Pame"** — así se llama la entrevista. NUNCA llamarlo "entrevista".
 
 **En el panel admin:** Pame puede aprobar o rechazar cada candidatura.
@@ -219,9 +236,10 @@ Acceso exclusivo para Pame y el desarrollador. Funcionalidades:
 - Dashboard: reservas del día, ingresos, servicios pendientes
 - Gestión de pedidos: ver, editar, cancelar reservas (Modo Dios)
 - Visualização da Agenda: alternância dinâmica entre Vista de Lista e Calendário Mensal com badges interativos coloridos (lilás para atribuídos, vermelho/salmão para não atribuídos).
-- Agenda general: Google Calendar integrado
+- Agenda general: Google Calendar integrado (iframe responsivo)
 - Gestión de clientes: perfiles, historial, paquetes activos
 - Gestión de funcionárias: fichas, disponibilidad, credenciales, historial, activar/desactivar/eliminar
+- Gestión de la Lista de Espera: Tab dedicado con métricas (Total, Pendientes, Registrados) que permite contactar por WhatsApp (plantillas), realizar el pre-registro (creación de cuenta en Firestore) o eliminar de la lista.
 - Revisión de candidaturas: aprobar o rechazar con opción de agendar Café Virtual
 - Reportes financieros: ingresos por mes, servicios por tipo, add-ons más contratados
 - Gestão de Indicações (Círculo VIP): Visualização de estatísticas gerais da campanha de recomendação e controle total das cortesías geradas (status pendente, liberada ou usufruída) para referentes e indicados.
@@ -237,8 +255,9 @@ Acceso exclusivo para Pame y el desarrollador. Funcionalidades:
 - `send-admin-notification.ts` — email a Pame cuando entra reserva nueva
 - `send-specialist-assignment.ts` — email a la funcionaria asignada
 - `send-reminder.ts` — Cron Job diario 10:00 AM, busca servicios del día siguiente y envía recordatorios
-- `chat.ts` — Chatbot Concierge con **Gemini Function Calling**. La IA puede ejecutar acciones reales: buscar, reagendar, cancelar y crear reservas en Firestore. Soporta NVIDIA y OpenAI como fallbacks sin function calling.
-- `concierge-actions.ts` — Módulo de 6 funciones ejecutables por la IA: `buscarReserva`, `verificarDisponibilidad`, `cambiarFechaReserva`, `cancelarReserva`, `obtenerReserva`, `crearReserva`. Usa Firebase Admin SDK. Cada acción dispara emails via Resend a: cliente, funcionaria, Pame y dev.
+- `create-preference.ts` — Crea la preferencia de pago en la API de Mercado Pago
+- `create-calendar-event.ts` — Crea el evento en Google Calendar usando una Service Account de Google Cloud de forma segura
+- `chat.ts` — Chatbot Concierge impulsado por **Llama 3.3 70B Instruct en NVIDIA NIM con Function Calling nativo**. La IA puede ejecutar acciones reales en la base de datos (buscar, reagendar, cancelar y crear reservas).
 
 ### Variables de entorno en Vercel (configurar en dashboard):
 ```
@@ -254,9 +273,9 @@ MP_ACCESS_TOKEN=          ← Mercado Pago (backend, NUNCA en frontend)
 FIREBASE_PROJECT_ID=      ← Firebase Admin (para Cron Job y Concierge IA)
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
-GEMINI_API_KEY=           ← API Key de Gemini ✓ CONFIGURADO — Requerida para Function Calling
-OPENAI_API_KEY=           ← API Key de OpenAI (fallback opcional)
-NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin function calling)
+NVIDIA_API_KEY=           ← API Key de NVIDIA NIM ✓ CONFIGURADO — Requerida para el Concierge IA
+GEMINI_API_KEY=           ← API Key de Gemini (opcional / legacy)
+OPENAI_API_KEY=           ← API Key de OpenAI (opcional / legacy)
 ```
 
 ---
@@ -265,11 +284,7 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 
 **Plan gratuito:** 3.000 emails/mes — suficiente para el volumen inicial de Pame.
 
-**Estado actual:** Las funciones están implementadas pero hay un error `{data: null, error: {...}}` al enviar. Causa probable: API key no cargada correctamente en Vercel O dominio remitente no verificado en Resend.
-
-**TODO pendiente — diagnóstico:** Modificar las funciones en `/api/` para que logueen el error completo de Resend con mensaje y código exacto.
-
-**Dominio:** Dominio propio adquirido (`www.metodopame.com`). Siguiente paso: verificarlo en Resend para que los emails salgan desde `contato@metodopame.com`.
+**Estado actual:** Totalmente activo y configurado. El dominio propio (`www.metodopame.com`) ha sido verificado en Resend. Los correos se envían de forma segura desde `reservas@metodopame.com` hacia los clientes, especialistas, Pame y auditoría del desarrollador.
 
 ---
 
@@ -302,7 +317,7 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 
 ## 16. Notificaciones
 
-**Email (Resend):** Implementado, pendiente de diagnóstico de error.
+**Email (Resend):** Totalmente activo y configurado. Las notificaciones automáticas se envían de forma segura desde `reservas@metodopame.com` en cada evento crítico (cambio de fecha por IA, cancelación, confirmaciones de reserva y asignación de especialistas).
 
 **WhatsApp:** Para el futuro cuando el negocio esté facturando. Usar WhatsApp Business API via 360dialog. Costo: ~R$ 0,05 por mensaje de tipo Utility. Para el volumen de Pame: ~R$ 3-8/mes.
 
@@ -319,11 +334,20 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 - ✅ La entrevista se llama "Café Virtual com a Pame" — NUNCA "entrevista"
 - ✅ Cambios en Avaliação da Residência aplican solo a nuevas reservas, no al paquete activo
 - ✅ El triage se llama "Avaliação da Residência" — NUNCA "triage" ni "triagem"
-- ✅ **Campaña de Recomendación Simplificada (WhatsApp):** Para captar clientes urgentes ante la pérdida de una limpia fija, se lanzó una campaña manual por WhatsApp (imagen + copia VIP). La regla de negocio es: el referente gana 1 Faxina Full Detail gratis si su recomendado contrata *cualquier* servicio (avulso o mensual). Se mantiene en pausa temporal la automatización de la campaña en la plataforma para evitar fricción de registro.
+- ✅ **Campanha de Recomendação Círculo de Excelência:** Se implementó y activó por completo la campaña automatizada en el site (detección de `?ref`, descuento de R$ 100 automático en checkout y panel de control de referidos en admin). Pame puede alternar entre la campaña automatizada digital y la difusión manual por WhatsApp según convenga.
 
 ---
 
-## 18. Pendientes activos (en orden de prioridad)
+## 18. Rastreamento e Analytics
+
+Se encuentra implementado el rastreo de eventos y visitas de usuarios en producción:
+- **Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`)**: Rastreo básico de visitas a páginas y conversiones de checkout.
+- **Meta Pixel (`VITE_META_PIXEL_ID`)**: Rastreo de eventos clave (registro en lista de espera, inicio de triage, inicio de pago).
+- **Lógica Resiliente (`tracking.ts`)**: Se cargan dinámicamente según variables de entorno de Vercel en `src/main.tsx`. Si no están declaradas, la inicialización no causa errores en consola (graceful exclusion).
+
+---
+
+## 19. Pendientes activos (en orden de prioridad)
 
 ### 🟢 Completado
 - ~~**Diagnosticar error de Resend** — modificar funciones en `/api/` para loguear error completo~~ (Resuelto, emails funcionando)
@@ -340,19 +364,20 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 - **Autogestão de Disponibilidade** — Especialistas agora podem gerenciar a própria disponibilidade via interface interativa no dashboard de equipe.
 - **Gating Dinâmico de Admins** — Bootstrapping automático via Firestore para validação de roles.
 - **Tipagem Estrita (TypeScript) e UX** — Interfaces (`Employee`, `Booking`) padronizadas, remoção de telas e tabs não funcionais.
-- **Campanha de Indicações Círculo de Excelência (Frontend & Lógica)** — Captura do parâmetro `?ref` na URL com salvamento e limpeza dinâmica de endereço (App.tsx), aplicação do desconto VIP de R$ 100 com banner explicativo no checkout (PricingMatrix.tsx), e aba de indicações ativa no portal del cliente com botão do WhatsApp e lista de indicações com fallback de mock premium (MinhaArea.tsx).
+- **Campanha de Indicações Círculo de Excelência (Frontend & Lógica)** — Captura do parâmetro `?ref` na URL com salvamento e limpeza dinâmica de endereço (App.tsx), aplicação do desconto VIP de R$ 100 com banner explicativo no checkout (PricingMatrix.tsx), e aba de indicações activa no portal del cliente com botão do WhatsApp e lista de indicações con fallback de mock premium (MinhaArea.tsx).
 - **Redesenho Visual Premium (Diretrizes Taste Skill)** — Importação e aplicação da fonte display serifada *Cormorant Garamond* em itálico para títulos principais, injeção de textura física de papel via ruído estático em CSS, estabilização de viewports móveis (`dvh`), micro-interações táteis `active-scale` nos cliques e implementação de Skeleton Loaders animados na Área de Clientes.
-- **Painel de Gestão de Indicações no Admin** — Integração e redesenho da aba de controle da campanha de recomendação no painel da Pame com painel de estatísticas neumórficas, tabela de controle detalhada (Referente, Amigo, Status e Ações), filtros avançados de busca/status, sincronização automática de perfis de clientes logados, criação manual híbrida de indicações e Modo Simulador interativo.
+- **Painel de Gestão de Indicações no Admin** — Integração e redesenho da aba de controle da campanha de recomendação no painel da Pame com painel de estatísticas neumórficas, tabela de controle detalhada (Referente, Amigo, Status e Ações), filtros avanzados de busca/status, sincronización automática de perfis de clientes logados, criação manual híbrida de indicações e Modo Simulador interativo.
 - **Sprint de Estabilização e Validações Gerais** — Lançamento da suite de validação e roteamento seguro de sessões:
-  - **Recrutamento:** Máscaras de CPF/WhatsApp em tempo real, uploads obrigatórios de foto/antecedentes, slot restrito (17:30-20:00) para Café Virtual, e fallback resiliente da API de calendário com e-mail de alerta em caso de falha de token.
-  - **Faturamento Real:** Utilitário `src/utils/invoice.ts` para geração de PDFs de faturas premium Quiet Luxury com botão de impressão interativa.
+  - **Recrutamento:** Máscaras de CPF/WhatsApp em tempo real, uploads obrigatórios de foto/antecedentes, slot restrito (17:30-20:00) para Café Virtual, e fallback resiliente da API de calendário con e-mail de alerta em caso de falha de token.
+  - **Faturamento Real:** Utilitário `src/utils/invoice.ts` para geração de PDFs de faturas premium Quiet Luxury con botón de impresión interativa.
   - **Limpeza de UX na Área do Cliente:** Remoção de blocos obsoletos (catering/enxovais, recomendações), limpeza de protocolos fictícios em FAQs e redirecionamento de botões de reserva para o Checkout real.
   - **Painel da Especialista:** Agenda mensal com modo Calendário, configuração de disponibilidade em pílulas táteis semanais, edição protegida de perfil via Firestore `pendingUpdate` e integração del canal de ajuda via WhatsApp.
-  - **Painel Admin:** Interface de aprovação/recusa de atualizações de funcionárias com comparação lado a lado, modal administrativo para agendar Café Virtual, e barra lateral enxuta sem links inativos.
-  - **Roteamento Inteligente (App.tsx):** Redirecionamento instantâneo de administradores para `/admin`, triagem obrigatória automática para novos clientes, e livre tráfego para a página de preços `/pricing` para usuários registrados.
-- **Automatização de Registro de Especialistas (Funcionárias)** — Inclusão de campos de E-mail e Senha no formulário, criação de conta no Firebase Auth em segundo plano de forma isolada, e armazenamento em Firestore na coleção `/employees` em estado `pending` para conformidade com regras.
-- **Rastreamento e Prontidão de Lançamento (Analytics & Pixel)** — Criação do utilitário `src/lib/tracking.ts` integrado em `src/main.tsx` para inicialização dinâmica de Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`) e Meta Pixel (`VITE_META_PIXEL_ID`) se configurados no ambiente.
-- **Correções de Segurança e Búsqueda Global (Security Rules)** — Atualização e deploy do arquivo `firestore.rules` com suporte a consultas `collectionGroup` (agilizando o painel administrativo), regras de leitura para que as especialistas leiam apenas seus agendamentos, e de atualização restrita para que atualizem seus perfis de forma segura.
+  - **Painel Admin:** Interface de aprovação/recusa de atualizações de funcionárias com comparación lado a lado, modal administrativo para agendar Café Virtual, e barra lateral enxuta sem links inativos.
+  - **Roteamento Inteligente (App.tsx):** Redirecionamento instantâneo de administradores para `/admin`, triagem obrigatória automática para nuevos clientes, y livre tráfego para la página de precios `/pricing` para usuarios registrados.
+- **Automatização de Registro de Especialistas (Funcionárias)** — Inclusão de campos de E-mail e Senha no formulario, creación de conta no Firebase Auth em segundo plano de forma isolada, e armazenamento em Firestore na coleção `/employees` em estado `pending` para conformidade con regras.
+- **Rastreamento e Prontidão de Lançamento (Analytics & Pixel)** — Criação del utilitário `src/lib/tracking.ts` integrado en `src/main.tsx` para inicialización dinámica de Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`) y Meta Pixel (`VITE_META_PIXEL_ID`) se configurados no ambiente.
+- **Correções de Segurança e Búsqueda Global (Security Rules)** — Atualização e deploy del arquivo `firestore.rules` com suporte a consultas `collectionGroup` (agilizando o painel administrativo), regras de leitura para que as especialistas leiam apenas seus agendamentos, e de atualização restrita para que atualizem seus perfis de forma segura.
+- **Sistema de Lista de Espera (Acesso Prioritário) e Redirecionamento** — Criação del componente `WaitlistForm.tsx` (`/lista`), redirecionamento de novos clientes residenciais para la lista, captura de código de indicação (`ref`), aba de gerenciamento no Painel Admin com envio de templates de WhatsApp, exclusão de registros e pré-registro direto (creación automatizada de perfis de clientes no Firestore).
 
 ### 🟡 Importante
 *(Ninguno por el momento)*
@@ -365,7 +390,7 @@ NVIDIA_API_KEY=           ← API Key de NVIDIA NIM (fallback opcional, sin func
 
 ---
 
-## 19. Lo que NO está y NO debe agregarse sin decisión
+## 20. Lo que NO está y NO debe agregarse sin decisión
 
 - Sistema de chat interno entre cliente y Pame
 - App nativa iOS/Android (el PWA cubre esta necesidad por ahora)
