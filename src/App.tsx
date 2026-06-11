@@ -25,7 +25,7 @@ const getInitialScreen = (): ApplicationScreen => {
   if (path === '/admin')  return 'admin';
   if (path === '/minha-area') return 'minha-area';
   if (path === '/pricing') return 'pricing';
-  if (path === '/triage')  return 'triage';
+  if (path === '/avaliacao')  return 'triage';
   if (path === '/lista' || path === '/waitlist') return 'waitlist';
   return 'welcome';
 };
@@ -188,7 +188,7 @@ export default function App() {
 
     const paths: Record<ApplicationScreen, string> = {
       welcome:      '/',
-      triage:       '/triage',
+      triage:       '/avaliacao',
       pricing:      '/pricing',
       recruitment:  '/equipe',
       'minha-area': '/minha-area',
