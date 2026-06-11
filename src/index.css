@@ -163,3 +163,47 @@ body::after {
 .animate-pulse-silk {
   animation: pulse-silk 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Classes extras do Redesenho do Stitch */
+.silk-card {
+  background: rgba(255, 247, 253, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 20px 20px 60px #e0d7e0, -20px -20px 60px #ffffff;
+}
+
+.silk-input {
+  background: #fff7fd;
+  box-shadow: inset 4px 4px 8px #e0d7e0, inset -4px -4px 8px #ffffff;
+  transition: all 0.3s ease;
+}
+
+.silk-input:focus {
+  box-shadow: inset 2px 2px 4px #e0d7e0, inset -2px -2px 4px #ffffff, 0 0 0 1px #561668;
+}
+
+.luxury-gradient-text {
+  background: linear-gradient(135deg, #561668 0%, #340043 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-overlay {
+  background: linear-gradient(to right, rgba(255, 247, 253, 0.95) 30%, rgba(255, 247, 253, 0) 100%);
+}
+
+.hero-gradient {
+  background: linear-gradient(to bottom, rgba(86, 22, 104, 0.1), rgba(255, 247, 253, 1));
+}
+
+.input-inset {
+  box-shadow: inset 2px 2px 5px rgba(226, 217, 230, 0.8), inset -2px -2px 5px rgba(255, 255, 255, 1);
+  border: none;
+  background-color: #fff7fd;
+}
+
+.input-inset:focus {
+  box-shadow: inset 2px 2px 5px rgba(226, 217, 230, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 1);
+  outline: 1px solid #561668;
+}
+

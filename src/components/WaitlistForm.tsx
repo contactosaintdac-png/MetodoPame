@@ -26,7 +26,13 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isFocused, setIsFocused] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Trigger floating glassmorphic toast
+  const triggerToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   // Load referrer if present in localStorage
   useEffect(() => {
@@ -98,7 +104,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-lg bg-white rounded-3xl border border-[#efe5ee] shadow-[0_8px_32px_rgba(86,22,104,0.08)] p-8 md:p-10 flex flex-col items-center text-center gap-6"
+          className="w-full max-w-lg bg-white rounded-[2rem] border border-[#efe5ee] silk-card p-8 md:p-12 flex flex-col items-center text-center gap-6"
         >
           <div className="w-20 h-20 bg-[#faf1fa] border border-[#efe5ee] rounded-full flex items-center justify-center text-[#561668] shadow-sm">
             <span className="material-symbols-outlined text-4xl font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -111,7 +117,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
             <p className="text-xs font-bold uppercase tracking-widest text-[#80737f] mt-1.5">Método Pame · Lista de Espera</p>
           </div>
 
-          <div className="bg-[#faf1fa] p-6 rounded-2xl border border-[#efe5ee] w-full text-left flex flex-col gap-4">
+          <div className="bg-[#faf1fa] p-6 rounded-2xl border border-[#efe5ee] w-full text-left flex flex-col gap-4 shadow-inner">
             <p className="text-sm font-bold text-[#561668]">O que acontece agora?</p>
             <p className="text-[14px] text-[#4e434e] leading-relaxed">
               Você está na lista prioritária. Enviaremos o link de agendamento por WhatsApp e e-mail assim que as novas vagas de atendimento forem liberadas.
@@ -127,7 +133,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
           <div className="w-full flex flex-col gap-3">
             <button
               onClick={handleShareClick}
-              className="w-full h-14 bg-[#561668] hover:bg-[#703081] !text-white text-xs font-extrabold uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-md"
+              className="w-full h-14 bg-[#561668] hover:bg-[#703081] !text-white text-xs font-extrabold uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-md hover:shadow-lg duration-300"
             >
               <span className="material-symbols-outlined text-lg">share</span>
               Indicar uma Amiga
@@ -146,244 +152,694 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row w-full bg-[#fff7fd]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+    <div className="min-h-screen bg-[#fff7fd] relative w-full overflow-x-hidden text-[#1e1a20] antialiased" style={{ fontFamily: 'Manrope, sans-serif' }}>
       
-      {/* Left side banner */}
-      <div className="w-full md:w-5/12 bg-[#561668] p-8 md:p-16 text-white flex flex-col justify-between relative overflow-hidden min-h-[300px] md:min-h-screen">
-        <div className="absolute inset-0 opacity-10 mix-blend-overlay pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
-        
-        {/* Brand */}
-        <div className="flex items-center gap-3 z-10">
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 p-1">
-            <img 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" 
-              alt="Método Pame" 
-              className="w-full h-full object-cover rounded-full" 
-            />
+      {/* Floating glassmorphic toast notification */}
+      {toastMessage && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#561668]/95 backdrop-blur-md text-white text-xs font-bold px-5 py-3 rounded-full shadow-lg flex items-center gap-2 border border-white/20 animate-bounce">
+          <span className="material-symbols-outlined text-sm">info</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* ── DESKTOP LAYOUT (PC) ── */}
+      <div className="hidden md:block w-full">
+        {/* Desktop Header */}
+        <header className="fixed top-0 left-0 w-full z-50 bg-[#fff7fd]/60 backdrop-blur-xl border-b border-white/20">
+          <div className="max-w-[1280px] mx-auto px-6 h-20 flex justify-between items-center">
+            <div className="flex items-center">
+              <img
+                alt="Método Pame"
+                className="h-12 w-auto object-contain cursor-pointer"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIA_N5gBskAWImYfX1Lu-eaQYlyjrqmU_nUqevCNxBi5yEV_ktx2emcvYqRiOu1u0DLlWJYSgsKo9XYCVzU89FJkVzRxSWOgvMxAwtfZtgfrvDFcpd-gECZBKrlQHXqrgT4EygocjuLYzi9v527uMXIO_6oHEjFeyhX9WD277WScjGHctILD2vAGD_gIr0kZ-HoTskVCSY5y1mc4mARmvG8elHa4t14C0ZZgu1xc4Uyd5yNdtECAeYLtvEEw1mH47rDFskr2Gnl_Vk"
+                onClick={() => onScreenChange('welcome')}
+              />
+            </div>
+            <nav className="flex items-center gap-10">
+              <button
+                onClick={() => onScreenChange('welcome')}
+                className="text-xs uppercase tracking-[0.25em] font-extrabold text-[#4e434e] hover:text-[#561668] transition-colors cursor-pointer"
+              >
+                Voltar
+              </button>
+              <a className="text-xs uppercase tracking-[0.25em] font-extrabold text-[#4e434e] hover:text-[#561668] transition-colors" href="#exp">
+                A Experiência
+              </a>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('pc-form-box');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="bg-[#561668] text-white px-8 py-3 rounded-full text-xs font-extrabold uppercase tracking-widest hover:shadow-xl hover:shadow-[#561668]/20 transition-all active:scale-95 cursor-pointer"
+              >
+                Acesso Prioritário
+              </button>
+            </nav>
           </div>
-          <span className="text-xs font-black uppercase tracking-[0.25em]">Método Pame</span>
-        </div>
+        </header>
 
-        {/* Catchphrase */}
-        <div className="my-auto py-8 md:py-0 z-10 flex flex-col gap-4 text-left">
-          <button
-            onClick={() => onScreenChange('welcome')}
-            className="self-start flex items-center gap-2 text-white/60 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors mb-4 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-            Voltar
-          </button>
+        {/* Hero Section */}
+        <section className="relative min-h-[90vh] flex items-center pt-20 overflow-hidden">
+          {/* Full Bleed Background */}
+          <div className="absolute inset-0 z-0">
+            <img
+              alt="Luxury Interior"
+              className="w-full h-full object-cover"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNszep7MsfJsOi_9TRLEqOTBDDQjfrczJguOdLVfC2-PSRV5s6EgND1q3HJhGQOlBO_Mb5D3DJ9vHhP9MriNBPAfBMfEOEmWgOw6Z0p3-wSKA9_im41yYO2gT5CnKZ1O8EtGHxHl6PYLUGtaOwOB2W0u2m5Lemo6CesCi6oKYojP5-kzCGSr9o-hDFIABQ6eE7sXckqdQyABPfahZdVbSIaD0D6l880UcOw9eHAaxyhzbZDVk47NcQRS_jW2toJr_BSEnxjI-stabg"
+            />
+            <div className="absolute inset-0 hero-overlay"></div>
+          </div>
           
-          <h1 className="font-display italic text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-tight">
-            Lista de Espera <br />
-            <span className="font-sans font-extrabold text-white text-2xl md:text-3xl tracking-normal not-italic block mt-2 opacity-90">
-              Acesso Antecipado
-            </span>
-          </h1>
-          <div className="w-16 h-1 bg-white/30 rounded-full my-1" />
-          <p className="text-sm text-white/85 leading-relaxed max-w-sm">
-            Esta é a lista de acesso prioritário para o novo sistema de agendamento online do Método Pame.
-          </p>
-          <p className="text-sm text-white/80 leading-relaxed max-w-sm mt-3.5">
-            Por aqui, você reserva seus dias e gerencia seus atendimentos direto pelo celular. Sem precisar ligar ou enviar mensagens.
-          </p>
-          <p className="text-sm text-white/80 leading-relaxed max-w-sm mt-3.5">
-            Liberamos as vagas em lotes de 10 clientes para manter o padrão de cuidado em cada casa. Garanta o seu convite antes do lançamento oficial.
-          </p>
-        </div>
+          <div className="max-w-[1280px] mx-auto px-6 relative z-10 w-full grid grid-cols-2 gap-16 items-center">
+            {/* Left Column Content */}
+            <div className="space-y-10 text-left">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 text-[#561668]">
+                  <span className="w-12 h-[1px] bg-[#561668]"></span>
+                  <span className="text-xs font-extrabold uppercase tracking-[0.3em]">Residências de Elite</span>
+                </div>
+                <h1 className="font-display italic text-6xl md:text-7xl leading-tight luxury-gradient-text" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}>
+                  Lista de Espera <br />
+                  <span className="not-italic font-extrabold tracking-tight">Exclusiva</span>
+                </h1>
+                <p className="text-sm text-[#4e434e] max-w-md leading-relaxed">
+                  A excelência residencial do Método Pame agora em um formato digital de concierge. Garanta seu lugar no topo da nossa lista de atendimento prioritário.
+                </p>
+              </div>
+              
+              <div className="flex flex-col gap-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-[#fcd7ff] flex items-center justify-center text-[#561668] shrink-0 shadow-lg shadow-[#561668]/10">
+                    <span className="material-symbols-outlined">verified_user</span>
+                  </div>
+                  <div>
+                    <h3 className="font-sans font-bold text-lg text-[#1e1a20]">Curadoria Técnica</h3>
+                    <p className="text-[#4e434e]/70 text-xs mt-0.5">Protocolos desenhados para a preservação de materiais nobres.</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-[#fcd7ff] flex items-center justify-center text-[#561668] shrink-0 shadow-lg shadow-[#561668]/10">
+                    <span className="material-symbols-outlined">schedule</span>
+                  </div>
+                  <div>
+                    <h3 className="font-sans font-bold text-lg text-[#1e1a20]">Gestão Inteligente</h3>
+                    <p className="text-[#4e434e]/70 text-xs mt-0.5">Reserva de slots e histórico de atendimento em um só clique.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Right Column Form Card */}
+            <div className="flex justify-end" id="pc-form-box">
+              <div className="silk-card w-full max-w-lg p-8 md:p-10 rounded-[2rem] text-left">
+                {referrerName && (
+                  <div className="mb-6 p-4 bg-[#faf1fa]/80 border border-[#efe5ee] rounded-2xl flex items-center gap-3">
+                    <span className="material-symbols-outlined text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                    <div>
+                      <p className="text-xs font-bold text-[#561668]">Convidada por {referrerName}</p>
+                      <p className="text-[10px] text-[#80737f] font-semibold">Seu cadastro receberá prioridade de agendamento.</p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mb-6 text-left">
+                  <h2 className="text-2xl font-extrabold text-[#561668] mb-1.5">Solicitar Admissão</h2>
+                  <p className="text-[#4e434e] text-xs font-medium">Preencha os campos abaixo para iniciar seu processo de admissão na agenda exclusiva.</p>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Nome Completo */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#4e434e]/60 ml-2" htmlFor="pc-name">Nome Completo</label>
+                    <input
+                      id="pc-name"
+                      required
+                      className="w-full silk-input border-none rounded-xl px-5 py-3 outline-none focus:ring-0 text-sm text-[#1e1a20] placeholder:text-[#4e434e]/30"
+                      placeholder="Ex: Arthur Montgomery"
+                      type="text"
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                    />
+                  </div>
+                  
+                  {/* WhatsApp & Email (Side by Side) */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#4e434e]/60 ml-2" htmlFor="pc-whatsapp">WhatsApp</label>
+                      <input
+                        id="pc-whatsapp"
+                        required
+                        className="w-full silk-input border-none rounded-xl px-5 py-3 outline-none focus:ring-0 text-sm text-[#1e1a20] placeholder:text-[#4e434e]/30"
+                        placeholder="(48) 99999-0000"
+                        type="tel"
+                        value={whatsapp}
+                        onChange={e => handleWhatsappChange(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#4e434e]/60 ml-2" htmlFor="pc-email">E-mail</label>
+                      <input
+                        id="pc-email"
+                        required
+                        className="w-full silk-input border-none rounded-xl px-5 py-3 outline-none focus:ring-0 text-sm text-[#1e1a20] placeholder:text-[#4e434e]/30"
+                        placeholder="contato@luxo.com"
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Bairro (Dropdown) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#4e434e]/60 ml-2" htmlFor="pc-neighborhood">Bairro de Residência</label>
+                    <div className="relative">
+                      <select
+                        id="pc-neighborhood"
+                        required
+                        className="w-full silk-input border-none rounded-xl px-5 py-3 outline-none focus:ring-0 text-sm text-[#1e1a20] appearance-none bg-transparent"
+                        value={neighborhood}
+                        onChange={e => setNeighborhood(e.target.value)}
+                      >
+                        <option value="" disabled>Selecione seu bairro (Tijucas e região)</option>
+                        <option value="Centro">Centro</option>
+                        <option value="Praça">Praça</option>
+                        <option value="XV de Novembro">XV de Novembro</option>
+                        <option value="Areias">Areias</option>
+                        <option value="Universitário">Universitário</option>
+                        <option value="Sul do Rio">Sul do Rio</option>
+                        <option value="Outro (Tijucas / Região)">Outro (Tijucas / Região)</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#561668]/40 text-lg">keyboard_arrow_down</span>
+                    </div>
+                  </div>
+                  
+                  {/* Serviço (Dropdown) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#4e434e]/60 ml-2" htmlFor="pc-servico">Serviço Desejado</label>
+                    <div className="relative">
+                      <select
+                        id="pc-servico"
+                        required
+                        className="w-full silk-input border-none rounded-xl px-5 py-3 outline-none focus:ring-0 text-sm text-[#1e1a20] appearance-none bg-transparent"
+                        value={serviceType}
+                        onChange={e => setServiceType(e.target.value)}
+                      >
+                        <option value="" disabled>Selecione a categoria de serviço</option>
+                        <option value="Pacote Mensal (4x no mês)">Pacote Mensal (4x no mês) - Recomendado</option>
+                        <option value="Serviço Avulso (Limpeza Única)">Serviço Avulso (Limpeza Única)</option>
+                        <option value="Limpeza Pós-Obra">Limpeza Pós-Obra</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#561668]/40 text-lg">keyboard_arrow_down</span>
+                    </div>
+                  </div>
+                  
+                  {/* Como nos conheceu (Dropdown) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#4e434e]/60 ml-2" htmlFor="pc-source">Como nos conheceu?</label>
+                    <div className="relative">
+                      <select
+                        id="pc-source"
+                        required
+                        className="w-full silk-input border-none rounded-xl px-5 py-3 outline-none focus:ring-0 text-sm text-[#1e1a20] appearance-none bg-transparent"
+                        value={source}
+                        onChange={e => setSource(e.target.value)}
+                      >
+                        <option value="" disabled>Selecione uma opção</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="Indicação de Amigo">Indicação de amigo/cliente</option>
+                        <option value="Já era cliente da Pame">Já era cliente da Pame</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#561668]/40 text-lg">keyboard_arrow_down</span>
+                    </div>
+                  </div>
+                  
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-[#561668] hover:bg-[#703081] text-white py-4.5 rounded-xl text-xs font-extrabold uppercase tracking-[0.2em] shadow-2xl shadow-[#561668]/30 hover:opacity-95 transition-all flex justify-center items-center gap-3 group mt-6 cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
+                    ) : (
+                      <>
+                        Enviar Solicitação
+                        <span className="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">trending_flat</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+                
+                <div className="mt-6 pt-4 border-t border-white/20 flex items-center justify-center gap-2 text-[#4e434e]/40">
+                  <span className="material-symbols-outlined text-sm">verified</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">Protocolo de Admissão Seguro</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        {/* Footer */}
-        <div className="z-10 pointer-events-none opacity-40">
-          <p className="text-[9px] font-bold tracking-[0.3em] uppercase">HIGH-END HOME DETAIL</p>
-        </div>
+        {/* Proof of Quality Section */}
+        <section id="exp" className="bg-[#fff7fd] py-24 border-t border-[#efe5ee]">
+          <div className="max-w-[1280px] mx-auto px-6">
+            <div className="text-center mb-16 space-y-4">
+              <h2 className="font-display italic text-4xl md:text-5xl text-[#561668]" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}>
+                A Experiência Pame
+              </h2>
+              <p className="text-[#4e434e]/60 text-sm max-w-2xl mx-auto">
+                Elevando o conceito de manutenção residencial a um padrão de hospitalidade cinco estrelas.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Feature 1 */}
+              <div className="group relative overflow-hidden rounded-2xl h-80 silk-card flex flex-col justify-end p-8 border-none shadow-xl">
+                <img
+                  alt="Living Room"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%] opacity-40"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7d2gtjLoWqqRKWQ9kEIjQz5AQTMg73guZimGFhPXZzNMVwr8HdBIK5JDLe9sjCfv8Ex8TreXMn1VeJArDMyaJvmg2KDCk_QeiAu_PQuEKI6I9EZEpq3tmvesjEitcgRG8HdBlL-G6yKyaepUMgujbxQ_hGCc2ofLYMZVv5jPCgTU5pcwoeTZB6kQQr4glD2v5R0miIZ75eqOBlACKp4-nK8RGpyssk5d0MdMynXeMild01tlQQZB-ZzBx3b2aN9V3sVjccKvNuMtl"
+                />
+                <div className="relative z-10 text-left">
+                  <h4 className="font-sans font-bold text-[#561668] text-lg mb-2">Ordem Absoluta</h4>
+                  <p className="text-xs text-[#4e434e] leading-relaxed font-medium">Sistemas de organização invisíveis que mantêm a serenidade do lar.</p>
+                </div>
+              </div>
+              
+              {/* Feature 2 */}
+              <div className="group relative overflow-hidden rounded-2xl h-80 bg-[#561668] flex flex-col justify-center items-center p-8 text-center text-white shadow-2xl">
+                <span className="material-symbols-outlined text-6xl mb-6 opacity-30" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                <h4 className="font-sans font-extrabold text-2xl mb-4">Padrão 5 Estrelas</h4>
+                <p className="text-xs text-white/70 leading-relaxed max-w-[240px]">Cada visita é regida por um checklist de 120 pontos de inspeção de qualidade superior.</p>
+                <div className="mt-8 px-6 py-2 border border-white/20 rounded-full text-[9px] font-extrabold uppercase tracking-widest">Exclusivo</div>
+              </div>
+              
+              {/* Feature 3 */}
+              <div className="group relative overflow-hidden rounded-2xl h-80 silk-card flex flex-col justify-end p-8 border-none shadow-xl">
+                <img
+                  alt="Silk Linens"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%] opacity-40"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3Rc5uVIp3uSIh_fHQN5-DDy1nRyqlvKzKtPH5ejCIUj6Zawde5l1XGinrO5FFAFst658DNCyz_iPqLKd6AbZ0nnGmD_3Hikon9Q_7I6I8ZuZSniMWaqXGdL0mSYRIJb_k_Ef2cdtjxi8wl7mw23p8fTGOY-sSGC7puSbQ9sYy1cXtqJ3BrvpS4JKlcoCIjTzEoLyn8B6EC_MDpYTdlLmt-zr-ggtmssbV1i6OfSAYBy0p-0HZiLCWz7QdTZg_98nj98wiVGA1hO6J"
+                />
+                <div className="relative z-10 text-left">
+                  <h4 className="font-sans font-bold text-[#561668] text-lg mb-2">Cuidado Tátil</h4>
+                  <p className="text-xs text-[#4e434e] leading-relaxed font-medium">Produtos de PH neutro e técnicas de toque suave para superfícies de luxo.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Desktop Footer */}
+        <footer className="bg-[#faf1fa] pt-20 pb-12 border-t border-[#efe5ee]">
+          <div className="max-w-[1280px] mx-auto px-6 font-sans">
+            <div className="flex justify-between items-start gap-12 mb-16 text-left">
+              <div className="space-y-4">
+                <img
+                  alt="Método Pame"
+                  className="h-10 w-auto opacity-80"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIA_N5gBskAWImYfX1Lu-eaQYlyjrqmU_nUqevCNxBi5yEV_ktx2emcvYqRiOu1u0DLlWJYSgsKo9XYCVzU89FJkVzRxSWOgvMxAwtfZtgfrvDFcpd-gECZBKrlQHXqrgT4EygocjuLYzi9v527uMXIO_6oHEjFeyhX9WD277WScjGHctILD2vAGD_gIr0kZ-HoTskVCSY5y1mc4mARmvG8elHa4t14C0ZZgu1xc4Uyd5yNdtECAeYLtvEEw1mH47rDFskr2Gnl_Vk"
+                />
+                <p className="text-[#4e434e]/60 text-[9px] font-extrabold uppercase tracking-widest max-w-[260px] leading-relaxed">
+                  Residências que respiram excelência e serenidade através do método exclusivo.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-24">
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-[#561668]">Navegação</h5>
+                  <ul className="space-y-2">
+                    <li>
+                      <button onClick={() => onScreenChange('welcome')} className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors cursor-pointer font-bold">
+                        Início
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => onScreenChange('welcome')} className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors cursor-pointer font-bold">
+                        O Método
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-[#561668]">Legal</h5>
+                  <ul className="space-y-2">
+                    <li><a className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors font-bold" href="#">Privacidade</a></li>
+                    <li><a className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors font-bold" href="#">Termos</a></li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-4 text-left">
+                  <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-[#561668]">Contato</h5>
+                  <ul className="space-y-2 font-bold text-xs text-[#4e434e]/70">
+                    <li>Tijucas e Região, SC</li>
+                    <li>concierge@metodopame.com.br</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center pt-8 border-t border-[#efe5ee]/50 gap-4">
+              <p className="text-[9px] font-extrabold tracking-[0.2em] uppercase text-[#4e434e]/40">
+                © 2026 MÉTODO PAME. SILENT LUXURY BY DESIGN.
+              </p>
+            </div>
+          </div>
+        </footer>
       </div>
 
-      {/* Right side form */}
-      <div className="w-full md:w-7/12 flex items-center justify-center p-6 md:p-16 bg-[#fff7fd]">
-        <div className="w-full max-w-lg bg-white rounded-3xl border border-[#efe5ee] shadow-[0_4px_24px_rgba(86,22,104,0.05)] p-6 md:p-10 text-left">
-          
-          {referrerName && (
-            <div className="mb-6 p-4 bg-[#faf1fa] border border-[#efe5ee] rounded-2xl flex items-center gap-3">
-              <span className="material-symbols-outlined text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-              <div>
-                <p className="text-xs font-bold text-[#561668]">Convidada por {referrerName}</p>
-                <p className="text-[10px] text-[#80737f] font-semibold">Seu cadastro receberá prioridade de agendamento.</p>
-              </div>
-            </div>
-          )}
-
-          <h2 className="text-xl font-extrabold text-[#1e1a20] mb-1">Preencha seus dados</h2>
-          <p className="text-xs text-[#80737f] mb-8 font-medium">Entraremos em contato assim que abrirmos novos dias na agenda.</p>
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            {/* Nome Completo */}
-            <div className="flex flex-col gap-1.5">
-              <label 
-                className={`text-[10px] font-extrabold tracking-widest uppercase ml-1 transition-colors ${isFocused === 'name' ? 'text-[#561668]' : 'text-[#703081]'}`}
-                htmlFor="wt-name"
-              >
-                Nome Completo
-              </label>
-              <input
-                id="wt-name"
-                type="text"
-                required
-                placeholder="Seu nome completo"
-                value={fullName}
-                onFocus={() => setIsFocused('name')}
-                onBlur={() => setIsFocused(null)}
-                onChange={e => setFullName(e.target.value)}
-                className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl text-sm text-[#1e1a20] placeholder-[#80737f] focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-              />
-            </div>
-
-            {/* WhatsApp */}
-            <div className="flex flex-col gap-1.5">
-              <label 
-                className={`text-[10px] font-extrabold tracking-widest uppercase ml-1 transition-colors ${isFocused === 'whatsapp' ? 'text-[#561668]' : 'text-[#703081]'}`}
-                htmlFor="wt-whatsapp"
-              >
-                WhatsApp
-              </label>
-              <input
-                id="wt-whatsapp"
-                type="tel"
-                required
-                placeholder="(48) 99999-9999"
-                value={whatsapp}
-                onFocus={() => setIsFocused('whatsapp')}
-                onBlur={() => setIsFocused(null)}
-                onChange={e => handleWhatsappChange(e.target.value)}
-                className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl text-sm text-[#1e1a20] placeholder-[#80737f] focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-              />
-            </div>
-
-            {/* E-mail */}
-            <div className="flex flex-col gap-1.5">
-              <label 
-                className={`text-[10px] font-extrabold tracking-widest uppercase ml-1 transition-colors ${isFocused === 'email' ? 'text-[#561668]' : 'text-[#703081]'}`}
-                htmlFor="wt-email"
-              >
-                E-mail
-              </label>
-              <input
-                id="wt-email"
-                type="email"
-                required
-                placeholder="seu@email.com"
-                value={email}
-                onFocus={() => setIsFocused('email')}
-                onBlur={() => setIsFocused(null)}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl text-sm text-[#1e1a20] placeholder-[#80737f] focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-              />
-            </div>
-
-            {/* Bairro */}
-            <div className="flex flex-col gap-1.5">
-              <label 
-                className={`text-[10px] font-extrabold tracking-widest uppercase ml-1 transition-colors ${isFocused === 'neighborhood' ? 'text-[#561668]' : 'text-[#703081]'}`}
-                htmlFor="wt-neighborhood"
-              >
-                Bairro de Residência (Tijucas e região)
-              </label>
-              <div className="relative">
-                <select
-                  id="wt-neighborhood"
-                  required
-                  value={neighborhood}
-                  onFocus={() => setIsFocused('neighborhood')}
-                  onBlur={() => setIsFocused(null)}
-                  onChange={e => setNeighborhood(e.target.value)}
-                  className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl text-sm text-[#1e1a20] appearance-none focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                >
-                  <option value="" disabled>Selecione seu bairro</option>
-                  <option value="Centro">Centro</option>
-                  <option value="Praça">Praça</option>
-                  <option value="XV de Novembro">XV de Novembro</option>
-                  <option value="Areias">Areias</option>
-                  <option value="Universitário">Universitário</option>
-                  <option value="Sul do Rio">Sul do Rio</option>
-                  <option value="Outro (Tijucas / Região)">Outro (Tijucas / Região)</option>
-                </select>
-                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#703081] pointer-events-none text-2xl">expand_more</span>
-              </div>
-            </div>
-
-            {/* Frequência de Interesse */}
-            <div className="flex flex-col gap-1.5">
-              <label 
-                className={`text-[10px] font-extrabold tracking-widest uppercase ml-1 transition-colors ${isFocused === 'frequency' ? 'text-[#561668]' : 'text-[#703081]'}`}
-                htmlFor="wt-frequency"
-              >
-                Qual serviço tem mais interesse?
-              </label>
-              <div className="relative">
-                <select
-                  id="wt-frequency"
-                  required
-                  value={serviceType}
-                  onFocus={() => setIsFocused('frequency')}
-                  onBlur={() => setIsFocused(null)}
-                  onChange={e => setServiceType(e.target.value)}
-                  className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl text-sm text-[#1e1a20] appearance-none focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                >
-                  <option value="" disabled>Selecione o tipo de serviço</option>
-                  <option value="Pacote Mensal (4x no mês)">Pacote Mensal (4x no mês) - Recomendado</option>
-                  <option value="Serviço Avulso (Limpeza Única)">Serviço Avulso (Limpeza Única)</option>
-                  <option value="Limpeza Pós-Obra">Limpeza Pós-Obra</option>
-                  <option value="Outro">Outro</option>
-                </select>
-                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#703081] pointer-events-none text-2xl">expand_more</span>
-              </div>
-            </div>
-
-            {/* Como conheceu */}
-            <div className="flex flex-col gap-1.5">
-              <label 
-                className={`text-[10px] font-extrabold tracking-widest uppercase ml-1 transition-colors ${isFocused === 'source' ? 'text-[#561668]' : 'text-[#703081]'}`}
-                htmlFor="wt-source"
-              >
-                Como nos conheceu?
-              </label>
-              <div className="relative">
-                <select
-                  id="wt-source"
-                  required
-                  value={source}
-                  onFocus={() => setIsFocused('source')}
-                  onBlur={() => setIsFocused(null)}
-                  onChange={e => setSource(e.target.value)}
-                  className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl text-sm text-[#1e1a20] appearance-none focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
-                >
-                  <option value="" disabled>Selecione uma opção</option>
-                  <option value="Instagram">Instagram</option>
-                  <option value="Indicação de Amigo">Indicação de amigo/cliente</option>
-                  <option value="Já era cliente da Pame">Já era cliente da Pame</option>
-                  <option value="Outro">Outro</option>
-                </select>
-                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#703081] pointer-events-none text-2xl">expand_more</span>
-              </div>
-            </div>
-
-            {/* Submit */}
+      {/* ── MOBILE LAYOUT (CELULAR) ── */}
+      <div className="block md:hidden w-full pb-20">
+        {/* Mobile Header */}
+        <header className="sticky top-0 z-50 bg-[#fff7fd]/80 backdrop-blur-md px-4 h-16 flex justify-between items-center shadow-[4px_4px_10px_#E2D9E6,-4px_-4px_10px_#FFFFFF]">
+          <div className="flex items-center gap-2">
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full h-14 bg-[#561668] hover:bg-[#703081] !text-white text-xs font-extrabold uppercase tracking-[0.2em] rounded-xl flex items-center justify-center gap-3 transition-all duration-300 disabled:opacity-50 hover:shadow-lg active:scale-95 cursor-pointer mt-4"
+              onClick={() => onScreenChange('welcome')}
+              className="material-symbols-outlined text-[#561668] text-2xl cursor-pointer"
             >
-              {isSubmitting ? (
-                <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
-              ) : (
-                <>
-                  Entrar na Lista de Espera
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                </>
-              )}
+              arrow_back
             </button>
-          </form>
+          </div>
+          <div className="font-sans font-black text-lg text-[#561668] tracking-tight">Método Pame</div>
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-[#561668]/20">
+            <img
+              alt="User Profile"
+              className="w-full h-full object-cover"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxyA7Dj01WadC7ZzmpP-srCz8rAG2ZDs1x0O7SMvPc5biVBZq7UmZBJcuwMMADxTFCHrV5SqKGSEoRgtO7vTnhabXy-ab5DVa5ZQfbkBL6FoJf4MbbDW28f_IaLaH2zcmMeujIxc5VJXO2QfUX1xO67o4wngIEHdQo_2OvqFD7GW7o3eCu6J7mkr58paalevOUNZcQNBP9ifODyFljvWH_pujgQbNMuYSM4xp8oJGTIxQCLust8JEFkjKMVSpwygjZ1LSw2mR0DB6u"
+            />
+          </div>
+        </header>
 
-        </div>
+        {/* Hero Section */}
+        <section className="relative w-full h-[400px] flex items-end overflow-hidden">
+          <div className="absolute inset-0 z-0">
+            <img
+              alt="Luxury Residence"
+              className="w-full h-full object-cover scale-105"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaeF8rJczu0O1jFq1H4JOS-wCg8HK2RaDwjabqm7t8FSfJ42MlnqexLEgafePCfsglZ4J_Vy1JanxD8AUgLuH203OwqikQSmw_OdipRq0_8EH5EONjFdcafwvCXFJo0IA1p-zuT0l4d_x6I0rFgvpOFDCZB9LpqCjFrPsLHzcGLgmn5fnNSZW6qZbJGsElrFcYRw2lDx2kR9tW7ZoNOKDGWkAv6Vse5kHPaInaMrlBKQEKHiVV5hvzMaeKn0VkiOc3rfa4SQxqdUd-"
+            />
+            <div className="absolute inset-0 hero-gradient"></div>
+          </div>
+          <div className="relative z-10 w-full px-6 pb-12 text-center">
+            <h1 className="font-display text-3.5xl text-[#561668] mb-2 leading-tight italic" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}>
+              Lista de Espera Exclusiva
+            </h1>
+            <p className="text-xs text-[#4e434e]/85 max-w-[280px] mx-auto leading-relaxed font-medium">
+              Acesso prioritário ao ecossistema de gestão e bem-estar mais exclusivo do Brasil.
+            </p>
+          </div>
+        </section>
+
+        {/* Form Section */}
+        <section className="px-5 -mt-10 relative z-20 pb-12">
+          <div className="silk-lift rounded-3xl p-6 space-y-6 text-left">
+            <div className="space-y-1 text-center mb-6">
+              <p className="text-xs font-extrabold text-[#561668] uppercase tracking-widest">Inscrição VIP</p>
+              <div className="h-[1px] w-12 bg-[#561668]/30 mx-auto mt-2"></div>
+            </div>
+            
+            {referrerName && (
+              <div className="mb-4 p-3.5 bg-[#faf1fa] border border-[#efe5ee] rounded-2xl flex items-center gap-3">
+                <span className="material-symbols-outlined text-amber-500 text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                <div>
+                  <p className="text-[11px] font-bold text-[#561668]">Convidada por {referrerName}</p>
+                  <p className="text-[9px] text-[#80737f] font-semibold">Prioridade registrada de agendamento.</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Input Groups */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Nome Completo</label>
+                <input
+                  required
+                  className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-[#d1c2d0] text-sm font-sans focus:outline-none"
+                  placeholder="Ex: Maria Luísa Fontes"
+                  type="text"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">WhatsApp</label>
+                <input
+                  required
+                  className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-[#d1c2d0] text-sm font-sans focus:outline-none"
+                  placeholder="(48) 99999-9999"
+                  type="tel"
+                  value={whatsapp}
+                  onChange={e => handleWhatsappChange(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">E-mail</label>
+                <input
+                  required
+                  className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-[#d1c2d0] text-sm font-sans focus:outline-none"
+                  placeholder="contato@exemplo.com"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
+              
+              {/* Bairro (Dropdown) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Bairro de Residência</label>
+                <div className="relative">
+                  <select
+                    required
+                    className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset text-sm font-sans appearance-none focus:outline-none"
+                    value={neighborhood}
+                    onChange={e => setNeighborhood(e.target.value)}
+                  >
+                    <option value="" disabled>Selecione seu bairro</option>
+                    <option value="Centro">Centro</option>
+                    <option value="Praça">Praça</option>
+                    <option value="XV de Novembro">XV de Novembro</option>
+                    <option value="Areias">Areias</option>
+                    <option value="Universitário">Universitário</option>
+                    <option value="Sul do Rio">Sul do Rio</option>
+                    <option value="Outro (Tijucas / Região)">Outro (Tijucas / Região)</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#d1c2d0] pointer-events-none">expand_more</span>
+                </div>
+              </div>
+              
+              {/* Serviço (Dropdown) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Serviço Desejado</label>
+                <div className="relative">
+                  <select
+                    required
+                    className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset text-sm font-sans appearance-none focus:outline-none"
+                    value={serviceType}
+                    onChange={e => setServiceType(e.target.value)}
+                  >
+                    <option value="" disabled>Selecione o serviço</option>
+                    <option value="Pacote Mensal (4x no mês)">Pacote Mensal (4x no mês)</option>
+                    <option value="Serviço Avulso (Limpeza Única)">Serviço Avulso (Limpeza Única)</option>
+                    <option value="Limpeza Pós-Obra">Limpeza Pós-Obra</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#d1c2d0] pointer-events-none">expand_more</span>
+                </div>
+              </div>
+              
+              {/* Como nos conheceu (Dropdown) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Como nos conheceu?</label>
+                <div className="relative">
+                  <select
+                    required
+                    className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset text-sm font-sans appearance-none focus:outline-none"
+                    value={source}
+                    onChange={e => setSource(e.target.value)}
+                  >
+                    <option value="" disabled>Selecione uma opção</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="Indicação de Amigo">Indicação de amigo/cliente</option>
+                    <option value="Já era cliente da Pame">Já era cliente da Pame</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#d1c2d0] pointer-events-none">expand_more</span>
+                </div>
+              </div>
+              
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-14 bg-[#561668] text-white font-extrabold rounded-2xl shadow-lg active:scale-95 transition-all mt-6 text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
+                ) : (
+                  <>
+                    Solicitar Acesso
+                    <span className="material-symbols-outlined text-lg">chevron_right</span>
+                  </>
+                )}
+              </button>
+            </form>
+            
+            <p className="text-center text-[10px] text-[#80737f] px-4 italic leading-relaxed">
+              *Sujeito a análise de perfil e disponibilidade de agenda.
+            </p>
+          </div>
+        </section>
+
+        {/* Trust Section (Luxury Pillars) */}
+        <section className="px-5 py-12 space-y-8 bg-[#faf1fa]/50 border-t border-[#efe5ee]">
+          <h2 className="font-display text-3xl text-[#561668] text-center italic" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}>
+            Pilares do Método
+          </h2>
+          
+          <div className="flex flex-col gap-5 text-left">
+            {/* Pillar 1 */}
+            <div className="silk-lift rounded-2xl p-5 flex gap-4 items-start">
+              <div className="w-11 h-11 rounded-xl bg-[#fcd7ff] flex items-center justify-center flex-shrink-0 text-[#561668]">
+                <span className="material-symbols-outlined">verified_user</span>
+              </div>
+              <div>
+                <h3 className="font-sans font-bold text-[#561668] text-md">Atendimento Personalizado</h3>
+                <p className="text-xs text-[#4e434e] mt-1 leading-relaxed">Cada detalhe planejado exclusivamente para sua rotina e necessidades únicas.</p>
+              </div>
+            </div>
+            
+            {/* Pillar 2 */}
+            <div className="silk-lift rounded-2xl p-5 flex gap-4 items-start">
+              <div className="w-11 h-11 rounded-xl bg-[#fcd7ff] flex items-center justify-center flex-shrink-0 text-[#561668]">
+                <span className="material-symbols-outlined">auto_awesome</span>
+              </div>
+              <div>
+                <h3 className="font-sans font-bold text-[#561668] text-md">Gestão Inteligente</h3>
+                <p className="text-xs text-[#4e434e] mt-1 leading-relaxed">Tecnologia e curadoria humana em perfeita harmonia para seu tempo.</p>
+              </div>
+            </div>
+            
+            {/* Pillar 3 */}
+            <div className="silk-lift rounded-2xl p-5 flex gap-4 items-start">
+              <div className="w-11 h-11 rounded-xl bg-[#fcd7ff] flex items-center justify-center flex-shrink-0 text-[#561668]">
+                <span className="material-symbols-outlined">diamond</span>
+              </div>
+              <div>
+                <h3 className="font-sans font-bold text-[#561668] text-md">Exclusividade Real</h3>
+                <p className="text-xs text-[#4e434e] mt-1 leading-relaxed">Acesso a serviços e profissionais homologados com o selo de qualidade Pame.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Narrative Section on Mobile */}
+        <section className="py-16 px-5 border-t border-[#efe5ee]">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl text-[#561668] italic mb-3" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}>
+              A Experiência Pame
+            </h2>
+            <div className="h-[1px] w-20 bg-[#561668]/20 mx-auto"></div>
+          </div>
+          
+          <div className="space-y-12 text-left">
+            {/* Moment 1 */}
+            <div>
+              <div className="relative w-full aspect-[4/5] rounded-[2rem] overflow-hidden mb-5 silk-lift">
+                <img
+                  alt="Luxury Spa"
+                  className="w-full h-full object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUzhaeopDPQ3nCOpK1z82s9jpqUDm5_evAi6UxEdfj8JKk6AKjrTsmZJy1ABqcIduYplpYTw4WixRcnPoeCpGDSgnshm-RQmw3cyqRF1PxVQPl0JOO2jRYKOhVTTrQJPuxKuVeS3nCC-yshkPlyFIOC9nsUdVNkxSxbsmbg1lbTY-T3Txs6AjXTFP4fuxDtz6TvT0GvZPmI-n5Q4YSVZc1Qf32Vk5FLoaRu-OcukLiI0yQv_1pI-Zzxi7Eh5W7S8k7GEhtIwthxqIz"
+                />
+                <div className="absolute inset-0 bg-[#561668]/5"></div>
+              </div>
+              <div className="px-1">
+                <span className="text-[10px] font-extrabold text-[#561668] uppercase tracking-widest">Momento 01</span>
+                <h4 className="font-sans font-bold text-lg text-[#561668] my-1">Harmonia Residencial</h4>
+                <p className="text-xs text-[#4e434e] leading-relaxed">Transformamos sua casa em um santuário de ordem e sofisticação.</p>
+              </div>
+            </div>
+            
+            {/* Moment 2 */}
+            <div>
+              <div className="relative w-full aspect-[4/5] rounded-[2rem] overflow-hidden mb-5 silk-lift">
+                <img
+                  alt="Concierge Service"
+                  className="w-full h-full object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMwUbsSIbBApn4GM0mKcPpShJwww2BQmKVxoHbwKd465H9F9KCAHavRE-goIsJA1SJS0RfVNDnmYBBVgVxLPt-RLezeQX_oxKVQmcIL1624pyEa-iuZ2l3rAsIckcGiTgttH9IHOiszYKlfVDgtS3fXoc111p1wINVsP1RzgLdUye6AW2kUfq52Bvlk_K8V79VyNTHi9rGv0DWyCuns-rZ8s0TWWB9w4YxL-PjReYQ8rPVFLnUmN4BDM5Tejp93QskdoJS8RaAq4Od"
+                />
+                <div className="absolute inset-0 bg-[#561668]/5"></div>
+              </div>
+              <div className="px-1">
+                <span className="text-[10px] font-extrabold text-[#561668] uppercase tracking-widest">Momento 02</span>
+                <h4 className="font-sans font-bold text-lg text-[#561668] my-1">Liberdade de Tempo</h4>
+                <p className="text-xs text-[#4e434e] leading-relaxed">Delegue o complexo para quem domina a arte da organização.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Mobile Footer */}
+        <footer className="bg-[#faf1fa]/80 pt-12 pb-32 px-6 border-t border-[#efe5ee] text-center font-sans">
+          <div className="flex flex-col items-center gap-6">
+            <div className="font-sans font-black text-xl text-[#561668] tracking-tight">Método Pame</div>
+            <div className="flex gap-4">
+              <a className="w-10 h-10 rounded-full silk-lift flex items-center justify-center text-[#561668]" href="#">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
+                </svg>
+              </a>
+            </div>
+            
+            <div className="flex flex-col gap-2.5 text-xs font-bold text-[#80737f] uppercase tracking-widest">
+              <a href="#">Privacidade</a>
+              <a href="#">Termos de Uso</a>
+              <a href="#">FAQ VIP</a>
+            </div>
+            
+            <div className="text-[10px] text-[#80737f]/60 mt-2">
+              © 2026 Método Pame. Todos os direitos reservados.
+            </div>
+          </div>
+        </footer>
+
+        {/* Bottom Navigation Bar (Fixed for Mobile Shell) */}
+        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-4 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-4px_10px_#E2D9E6] font-sans">
+          <button
+            onClick={() => triggerToast('Painel disponível apenas após admissão.')}
+            className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer"
+          >
+            <span className="material-symbols-outlined mb-1">dashboard</span>
+            <span className="text-[10px] font-bold">Dashboard</span>
+          </button>
+          <button
+            onClick={() => triggerToast('Agenda disponível apenas após admissão.')}
+            className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer"
+          >
+            <span className="material-symbols-outlined mb-1">calendar_today</span>
+            <span className="text-[10px] font-bold">Agenda</span>
+          </button>
+          <button
+            onClick={() => triggerToast('Portais disponíveis apenas para membros.')}
+            className="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 scale-95 cursor-pointer"
+          >
+            <span className="material-symbols-outlined mb-1">apps</span>
+            <span className="text-[10px] font-bold">Portais</span>
+          </button>
+          <button
+            onClick={() => triggerToast('Perfil disponível apenas após admissão.')}
+            className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer"
+          >
+            <span className="material-symbols-outlined mb-1">person</span>
+            <span className="text-[10px] font-bold">Perfil</span>
+          </button>
+        </nav>
       </div>
 
     </div>
