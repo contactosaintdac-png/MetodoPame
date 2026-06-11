@@ -127,7 +127,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
           <div className="w-full flex flex-col gap-3">
             <button
               onClick={handleShareClick}
-              className="w-full h-14 bg-[#561668] hover:bg-[#703081] text-xs font-extrabold uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-md"
+              className="w-full h-14 bg-[#561668] hover:bg-[#703081] !text-white text-xs font-extrabold uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-md"
             >
               <span className="material-symbols-outlined text-lg">share</span>
               Indicar uma Amiga
@@ -364,7 +364,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-14 bg-[#561668] hover:bg-[#703081] text-xs font-extrabold uppercase tracking-[0.2em] rounded-xl flex items-center justify-center gap-3 transition-all duration-300 disabled:opacity-50 hover:shadow-lg active:scale-95 cursor-pointer mt-4"
+              className="w-full h-14 bg-[#561668] hover:bg-[#703081] !text-white text-xs font-extrabold uppercase tracking-[0.2em] rounded-xl flex items-center justify-center gap-3 transition-all duration-300 disabled:opacity-50 hover:shadow-lg active:scale-95 cursor-pointer mt-4"
             >
               {isSubmitting ? (
                 <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
