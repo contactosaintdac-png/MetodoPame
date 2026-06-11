@@ -1,5 +1,10 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+const PAME_EMAIL = 'metodopame.homedetail@gmail.com';
+const DEV_EMAIL = 'contactosaintdac@gmail.com';
 
 function generateJWT(clientEmail: string, privateKey: string, scope: string) {
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -42,6 +47,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!serviceAccountKeyStr || !calendarId) {
     console.warn('⚠️ Google Calendar environment variables are missing. Simulating event creation.');
+    
+    if (type === 'cafe-virtual') {
+      try {
+        const { candidateName, date, time, whatsapp } = details;
+        const subject = `⚠️ [Aviso] Café Virtual Agendado (Sem Sincronização) — ${candidateName}`;
+        const html = `
+          <div style="background:#fff7fd;padding:32px;font-family:Manrope,Helvetica,Arial,sans-serif;color:#1e1a20;border:1px solid #efe5ee;border-radius:16px;max-width:600px;margin:0 auto;">
+            <h1 style="color:#561668;font-size:24px;border-bottom:1px solid #efe5ee;padding-bottom:16px;">MÉTODO PAME</h1>
+            <p style="font-size:16px;font-weight:bold;color:#703081;">Atenção Pame,</p>
+            <p style="font-size:14px;line-height:1.6;">A candidata <strong>${candidateName}</strong> acabou de agendar um <strong>Café Virtual</strong>.</p>
+            
+            <div style="background:#faf1fa;padding:20px;border-radius:12px;margin:20px 0;border-left:4px solid #561668;">
+              <p style="margin:0;font-size:13px;color:#80737f;text-transform:uppercase;font-weight:bold;letter-spacing:1px;">Detalhes do Agendamento</p>
+              <p style="margin:8px 0 0 0;font-size:14px;color:#1e1a20;"><strong>Data:</strong> ${new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p style="margin:4px 0 0 0;font-size:14px;color:#1e1a20;"><strong>Horário:</strong> ${time}h</p>
+              <p style="margin:4px 0 0 0;font-size:14px;color:#1e1a20;"><strong>WhatsApp de contato:</strong> ${whatsapp}</p>
+            </div>
+
+            <div style="background:#fff3cd;border:1px solid #ffeeba;color:#856404;padding:15px;border-radius:12px;font-size:13px;line-height:1.5;">
+              <strong>⚠️ IMPORTANTE:</strong> As variáveis de ambiente do Google Calendar não estão configuradas no servidor de produção. 
+              <strong>Este evento NÃO foi criado na sua agenda automática.</strong> Por favor, adicione-o manualmente no seu calendário para não esquecer.
+            </div>
+            
+            <p style="font-size:11px;color:#80737f;margin-top:24px;text-align:center;text-transform:uppercase;font-weight:bold;letter-spacing:1px;">Método Pame · Recrutamento</p>
+          </div>
+        `;
+        
+        await resend.emails.send({
+          from: 'Método Pame <reservas@metodopame.com>',
+          to: [PAME_EMAIL],
+          cc: [DEV_EMAIL],
+          subject: subject,
+          html: html
+        });
+        console.log(`Email de alerta (Missing env) enviado para ${PAME_EMAIL}`);
+      } catch (emailErr) {
+        console.error('Falha ao enviar email de alerta por falta de env:', emailErr);
+      }
+    }
+
     return res.status(200).json({
       mock: true,
       message: 'Event simulated because GOOGLE_SERVICE_ACCOUNT_KEY or GOOGLE_CALENDAR_ID is not configured.',
@@ -156,6 +201,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (err: any) {
     console.error('Calendar Integration Failure:', err);
+    
+    if (type === 'cafe-virtual') {
+      console.warn('⚠️ Google Calendar sync failed for Café Virtual. Falling back to simulation.');
+      try {
+        const { candidateName, date, time, whatsapp } = details;
+        const subject = `⚠️ [Aviso] Café Virtual Agendado (Sem Sincronização) — ${candidateName}`;
+        const html = `
+          <div style="background:#fff7fd;padding:32px;font-family:Manrope,Helvetica,Arial,sans-serif;color:#1e1a20;border:1px solid #efe5ee;border-radius:16px;max-width:600px;margin:0 auto;">
+            <h1 style="color:#561668;font-size:24px;border-bottom:1px solid #efe5ee;padding-bottom:16px;">MÉTODO PAME</h1>
+            <p style="font-size:16px;font-weight:bold;color:#703081;">Atenção Pame,</p>
+            <p style="font-size:14px;line-height:1.6;">A candidata <strong>${candidateName}</strong> acabou de agendar um <strong>Café Virtual</strong>.</p>
+            
+            <div style="background:#faf1fa;padding:20px;border-radius:12px;margin:20px 0;border-left:4px solid #561668;">
+              <p style="margin:0;font-size:13px;color:#80737f;text-transform:uppercase;font-weight:bold;letter-spacing:1px;">Detalhes do Agendamento</p>
+              <p style="margin:8px 0 0 0;font-size:14px;color:#1e1a20;"><strong>Data:</strong> ${new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p style="margin:4px 0 0 0;font-size:14px;color:#1e1a20;"><strong>Horário:</strong> ${time}h</p>
+              <p style="margin:4px 0 0 0;font-size:14px;color:#1e1a20;"><strong>WhatsApp de contato:</strong> ${whatsapp}</p>
+            </div>
+
+            <div style="background:#fff3cd;border:1px solid #ffeeba;color:#856404;padding:15px;border-radius:12px;font-size:13px;line-height:1.5;">
+              <strong>⚠️ IMPORTANTE:</strong> A sincronização automática com o seu Google Calendar falhou (Erro: ${err.message}). 
+              <strong>Este evento NÃO foi criado na sua agenda automática.</strong> Por favor, adicione-o manualmente no seu calendário para não esquecer.
+            </div>
+            
+            <p style="font-size:11px;color:#80737f;margin-top:24px;text-align:center;text-transform:uppercase;font-weight:bold;letter-spacing:1px;">Método Pame · Recrutamento</p>
+          </div>
+        `;
+        
+        await resend.emails.send({
+          from: 'Método Pame <reservas@metodopame.com>',
+          to: [PAME_EMAIL],
+          cc: [DEV_EMAIL],
+          subject: subject,
+          html: html
+        });
+        console.log(`Email de alerta (Catch fail) enviado para ${PAME_EMAIL}`);
+      } catch (emailErr) {
+        console.error('Falha ao enviar email de alerta por Resend (catch):', emailErr);
+      }
+
+      return res.status(200).json({ 
+        success: true, 
+        mock: true, 
+        message: 'Google Calendar sync failed, fallback simulation triggered.',
+        event: {
+          summary: `Café Virtual com a Pame — ${details.candidateName}`,
+          description: `Café Virtual com a candidata de equipe.\nWhatsApp: ${details.whatsapp}\n\nAgendamento automático via Módulo Pame.`,
+          start: { dateTime: `${details.date}T${details.time}:00` }
+        }
+      });
+    }
+
     return res.status(500).json({ error: 'Failed to create calendar event', details: err.message });
   }
 }

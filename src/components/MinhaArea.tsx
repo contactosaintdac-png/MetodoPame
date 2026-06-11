@@ -4,6 +4,7 @@ import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, co
 import { db } from '../lib/firebase';
 import { ApplicationScreen, TriageData } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { openInvoiceWindow } from '../utils/invoice';
 
 interface Booking {
   id: string;
@@ -422,16 +423,16 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
   const faqs = [
     {
-      q: 'O que inclui o Protocolo Residencial Silk & Stone?',
-      a: 'Nosso protocolo de alto padrão utiliza tecnologia de purificação de ar, agentes de limpeza biodegradáveis de alta performance sem fragrâncias sintéticas agressivas, e aspiração profunda. Inclui tratamento de superfícies nobres como mármores, madeiras enceradas e metais polidos.'
-    },
-    {
       q: 'Como é garantida a privacidade e segurança na minha residência?',
       a: 'Todas as especialistas passam por rigorosa auditoria de referências anteriores e assinam termos estritos de confidencialidade. A entrada e saída são monitoradas pela coordenação e você receberá atualizações em tempo real.'
     },
     {
       q: 'Política de cancelamento e reagendamento de serviços',
       a: 'Os reagendamentos e cancelamentos de sessões agendadas podem ser solicitados gratuitamente através do canal Concierge ou chat até 24 horas antes do horário programado.'
+    },
+    {
+      q: 'Dúvidas sobre outros protocolos?',
+      a: '[Aguardando informações oficiais da equipe Método Pame]'
     }
   ];
 
@@ -474,7 +475,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
         <div className="flex flex-col gap-4">
           <button
-            onClick={() => onScreenChange('triage')}
+            onClick={() => onScreenChange(triageData ? 'pricing' : 'triage')}
             className="w-full py-3.5 bg-[#561668] text-white font-bold rounded-2xl shadow-lg hover:bg-[#703081] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-widest cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add_circle</span>
@@ -526,7 +527,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
           </h2>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onScreenChange('triage')}
+              onClick={() => onScreenChange(triageData ? 'pricing' : 'triage')}
               className="w-10 h-10 rounded-full bg-[#561668] text-white flex items-center justify-center shadow-sm cursor-pointer"
               title="Nova Reserva"
             >
@@ -743,8 +744,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       </button>
                     </div>
 
-                    {/* Invoices List (Bento Box) */}
-                    <div className="silk-lift p-6 flex flex-col">
+                    {/* Invoices List (Bento Box - stretched to full width) */}
+                    <div className="md:col-span-3 silk-lift p-6 flex flex-col">
                       <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#efe5ee]/40">
                         <h4 className="font-sans text-md font-bold text-[#561668]">Faturas Recentes</h4>
                         <button onClick={() => setActiveTab('historico')} className="text-[10px] text-[#561668] font-extrabold uppercase tracking-wider hover:underline">
@@ -753,9 +754,9 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       </div>
 
                       {bookings.length > 0 ? (
-                        <div className="flex flex-col gap-2.5 flex-1 justify-center">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 justify-center">
                           {bookings.slice(0, 2).map((b) => (
-                            <div key={b.id} className="flex justify-between items-center p-3 silk-inset rounded-xl">
+                            <div key={b.id} className="flex justify-between items-center p-3.5 silk-inset rounded-xl">
                               <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[#561668] text-[20px]">description</span>
                                 <div className="text-left leading-tight">
@@ -765,7 +766,13 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                               </div>
                               <div className="text-right flex items-center gap-2">
                                 <p className="font-bold text-xs text-[#561668]">R$ {b.totalPrice}</p>
-                                <span className="material-symbols-outlined text-[#80737f] text-[16px] hover:text-[#561668] cursor-pointer">download</span>
+                                <span 
+                                  onClick={() => openInvoiceWindow(b as any, user?.displayName || undefined, user?.email || undefined)}
+                                  className="material-symbols-outlined text-[#80737f] text-[18px] hover:text-[#561668] cursor-pointer p-1 rounded-full hover:bg-[#faf1fa] transition-all"
+                                  title="Baixar PDF"
+                                >
+                                  download
+                                </span>
                               </div>
                             </div>
                           ))}
@@ -773,43 +780,6 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       ) : (
                         <p className="text-xs text-[#80737f] text-center my-auto italic">Nenhuma fatura disponível.</p>
                       )}
-                    </div>
-
-                    {/* Recommended Services (Bento Big) */}
-                    <div className="md:col-span-2 silk-lift p-6">
-                      <h4 className="font-sans text-md font-bold text-[#561668] mb-4 pb-2 border-b border-[#efe5ee]/40">
-                        Recomendado para Você
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="group cursor-pointer bg-[#faf1fa]/50 p-3 rounded-xl border border-[#efe5ee]/40 hover:bg-[#fff] hover:shadow-md transition-all duration-300">
-                          <div className="h-28 rounded-lg overflow-hidden relative shadow-inner mb-3">
-                            <img
-                              alt="Mindfulness"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9wQorRZ7fEW9Qo5SCuUHrLvb0u3CfMMDx5oLFmDSfZNSn3yERUMwRMCWfxp_91EUvXK0IO80H7WbEB53VQAK8_jmr02K5Ssk-pZixwuYdizG601uTkBWF4uxxqqGosJVE05O4ACqWm7JorCWgWHrJaXBZpHumUGpgexDy0ZGn83IT8XxUJZjt7tYYerkZdw3HylC1AZRL46YQ9-F70yPE0jLA8oLWQDgdLY4mgrfl2vFKb4Jc4YbHw9WgBMbYUjaTuIMm0fbGxiem"
-                            />
-                            <div className="absolute top-2 right-2">
-                              <span className="bg-[#561668] text-white text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Premium</span>
-                            </div>
-                          </div>
-                          <h6 className="font-bold text-xs text-[#561668]">Protocolo Aromaterapia Lavanda</h6>
-                          <p className="text-[10px] text-[#80737f] mt-0.5 line-clamp-1">Purificação e óleos essenciais calmantes em toda a residência.</p>
-                          <p className="mt-2 text-xs font-bold text-[#561668]">Adicional sob consulta</p>
-                        </div>
-
-                        <div className="group cursor-pointer bg-[#faf1fa]/50 p-3 rounded-xl border border-[#efe5ee]/40 hover:bg-[#fff] hover:shadow-md transition-all duration-300">
-                          <div className="h-28 rounded-lg overflow-hidden relative shadow-inner mb-3">
-                            <img
-                              alt="Ritual Piel de Seda"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8tqs5wlAyV9c98imi08HTd6TWe8bvMClbzuhQQAzDbCdCrzkhEj5_vdjMfk9cdaZ2tFck17LBG0C7XUsX8HrNQ1TaGjL_GHk5N-JZSrxYFu-ctyPVWt2Xkm9YSqsEiO293iriZwKI5XU9Wn_8Z3I7GxOAZ40viU8ueCJd4x92j1sBFaqARmKASBY1Q-1gJVp14P7WPQgwOIPE9606K42TuAx7XWvTfjKLZ8is9ZxGjLnhxEw9Hjeo8mjHzDm0PxQzmeusFLf7m4Go"
-                            />
-                          </div>
-                          <h6 className="font-bold text-xs text-[#561668]">Tratamento de Mármores Nobres</h6>
-                          <p className="text-[10px] text-[#80737f] mt-0.5 line-clamp-1">Polimento especializado e selagem de pedras importadas.</p>
-                          <p className="mt-2 text-xs font-bold text-[#561668]">Incluso na Triage Especial</p>
-                        </div>
-                      </div>
                     </div>
 
                   </div>
@@ -981,20 +951,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                               </div>
                             </div>
 
-                            <div className="pt-2 border-t border-[#efe5ee]/40">
-                              <p className="text-[8px] text-[#80737f] uppercase font-bold tracking-wider mb-2">Protocolos Premium Inclusos</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                <span className="px-2.5 py-1 bg-[#faf1fa] border border-[#efe5ee]/60 rounded-lg text-[9px] text-[#561668] flex items-center gap-1 font-bold">
-                                  <span className="material-symbols-outlined text-[12px]">sanitizer</span> Desinfecção UV
-                                </span>
-                                <span className="px-2.5 py-1 bg-[#faf1fa] border border-[#efe5ee]/60 rounded-lg text-[9px] text-[#561668] flex items-center gap-1 font-bold">
-                                  <span className="material-symbols-outlined text-[12px]">eco</span> Eco-Luxe
-                                </span>
-                                <span className="px-2.5 py-1 bg-[#faf1fa] border border-[#efe5ee]/60 rounded-lg text-[9px] text-[#561668] flex items-center gap-1 font-bold">
-                                  <span className="material-symbols-outlined text-[12px]">check_circle</span> Silencioso
-                                </span>
-                              </div>
-                            </div>
+
                           </div>
 
                           <div className="flex gap-2.5 mt-4 pt-3 border-t border-[#efe5ee]/30">
@@ -1026,7 +983,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                             <p className="text-xs text-[#80737f] mt-1">Selecione um dia destacado no calendário ou solicite uma nova data residencial.</p>
                           </div>
                           <button
-                            onClick={() => onScreenChange('triage')}
+                            onClick={() => onScreenChange(triageData ? 'pricing' : 'triage')}
                             className="mt-4 px-6 py-2.5 bg-[#561668] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#703081] transition-all shadow-md cursor-pointer"
                           >
                             Nova Reserva
@@ -1318,7 +1275,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                                   </td>
                                   <td className="px-6 py-5 text-right">
                                     <button
-                                      onClick={() => alert(`Fatura FAT-${b.id.slice(0, 4).toUpperCase()} baixada com sucesso (Simulação).`)}
+                                      onClick={() => openInvoiceWindow(b as any, user?.displayName || undefined, user?.email || undefined)}
                                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#efe5ee] bg-[#faf1fa] hover:bg-[#efe5ee] text-[#561668] font-bold text-[10px] transition-all cursor-pointer shadow-sm"
                                     >
                                       <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
@@ -1500,72 +1457,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
                     </div>
 
-                    {/* Request Form (4 Cols) */}
+                    {/* Direct Line prioritária (4 Cols) */}
                     <div className="lg:col-span-4 flex flex-col gap-6">
-                      
-                      <div className="silk-lift p-6">
-                        <h3 className="font-sans text-md font-bold text-[#561668] mb-1">
-                          Solicitação Especial
-                        </h3>
-                        <p className="text-[10px] text-[#80737f] font-semibold mb-6">
-                          Para eventos, transportes blindados, enxoval de linho ou chef gourmet privado.
-                        </p>
-
-                        <form onSubmit={handleSpecialRequest} className="space-y-4 text-left">
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-[#561668] uppercase tracking-wider ml-1">Tipo de Serviço</label>
-                            <div className="silk-inset p-3 rounded-xl">
-                              <select
-                                value={requestType}
-                                onChange={(e) => setRequestType(e.target.value)}
-                                className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-[#4e434e] cursor-pointer"
-                              >
-                                <option value="Serviços de Catering">Catering & Chef Privado</option>
-                                <option value="Transporte Privado">Transporte Executivo</option>
-                                <option value="Eventos Especiais">Eventos & Recepção</option>
-                                <option value="Enxoval Extra">Enxoval de Linho / Toalhas</option>
-                                <option value="Outros">Outras Necessidades</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-[#561668] uppercase tracking-wider ml-1">Data Necessária</label>
-                            <div className="silk-inset p-3 rounded-xl">
-                              <input
-                                type="date"
-                                required
-                                value={requestDate}
-                                onChange={(e) => setRequestDate(e.target.value)}
-                                className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-[#4e434e]"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-[#561668] uppercase tracking-wider ml-1">Detalhes e Instruções</label>
-                            <div className="silk-inset p-3 rounded-xl">
-                              <textarea
-                                value={requestDetails}
-                                onChange={(e) => setRequestDetails(e.target.value)}
-                                placeholder="Especifique restrições alimentares, horários ou exigências de protocolo..."
-                                rows={4}
-                                className="w-full bg-transparent border-none focus:ring-0 text-xs font-medium text-[#4e434e] resize-none"
-                              />
-                            </div>
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={isSubmittingRequest}
-                            className="w-full py-3.5 bg-[#561668] hover:bg-[#703081] text-white font-bold rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
-                          >
-                            {isSubmittingRequest ? 'Enviando...' : 'Enviar ao Concierge'}
-                          </button>
-                        </form>
-                      </div>
-
-                      {/* Direct Line prioritária */}
                       <div className="bg-[#561668] text-white p-6 rounded-3xl relative overflow-hidden group shadow-md text-left">
                         <div className="absolute -right-3 -top-3 opacity-10 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
                           <span className="material-symbols-outlined text-[80px]">call</span>
@@ -1579,7 +1472,6 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                           +55 (48) 9999-9999
                         </a>
                       </div>
-
                     </div>
 
                   </div>

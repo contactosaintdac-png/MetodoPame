@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Playfair+Display:ital,wght@0,700;1,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#464749",
+                    "error-container": "#ffdad6",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface-bright": "#fff7fd",
+                    "surface": "#fff7fd",
+                    "outline-variant": "#d1c2d0",
+                    "on-secondary": "#ffffff",
+                    "on-primary-container": "#eca1fb",
+                    "on-background": "#1e1a20",
+                    "outline": "#80737f",
+                    "on-tertiary-fixed": "#1e1a23",
+                    "on-tertiary-container": "#c2bac6",
+                    "on-secondary-container": "#626264",
+                    "surface-container-highest": "#e9e0e8",
+                    "primary": "#561668",
+                    "on-secondary-fixed": "#1a1c1d",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#342f35",
+                    "on-surface": "#1e1a20",
+                    "tertiary-fixed-dim": "#ccc4d0",
+                    "on-surface-variant": "#4e434e",
+                    "secondary-fixed-dim": "#c6c6c8",
+                    "tertiary-container": "#4f4a54",
+                    "background": "#fff7fd",
+                    "surface-variant": "#e9e0e8",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#4a454f",
+                    "secondary-fixed": "#e3e2e4",
+                    "primary-fixed": "#fcd7ff",
+                    "primary-container": "#703081",
+                    "on-error-container": "#93000a",
+                    "secondary": "#5d5e60",
+                    "surface-dim": "#e0d7e0",
+                    "tertiary-fixed": "#e9dfec",
+                    "inverse-primary": "#f2afff",
+                    "tertiary": "#38333d",
+                    "surface-container-low": "#faf1fa",
+                    "surface-container-high": "#efe5ee",
+                    "primary-fixed-dim": "#f2afff",
+                    "surface-tint": "#854495",
+                    "surface-container": "#f4ebf4",
+                    "secondary-container": "#e0dfe1",
+                    "inverse-on-surface": "#f7eef7",
+                    "on-primary-fixed-variant": "#6a2b7c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "max-width": "1280px",
+                    "base": "8px",
+                    "container-padding": "24px",
+                    "section-gap": "80px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Manrope"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "display-lg": ["Manrope"],
+                    "body-md": ["Manrope"],
+                    "headline-md": ["Manrope"],
+                    "label-sm": ["Manrope"],
+                    "headline-lg": ["Manrope"],
+                    "serif": ["Playfair Display", "serif"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fff7fd;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .silk-lift {
+            background: #fff7fd;
+            box-shadow: 6px 6px 12px #e2d9e6, -6px -6px 12px #ffffff;
+        }
+
+        .silk-inset {
+            background: #fff7fd;
+            box-shadow: inset 4px 4px 8px #e2d9e6, inset -4px -4px 8px #ffffff;
+        }
+
+        .glass-premium {
+            background: rgba(255, 247, 253, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .hero-gradient {
+            background: linear-gradient(to bottom, rgba(86, 22, 104, 0.1), rgba(255, 247, 253, 1));
+        }
+
+        /* Custom Inset for neomorphic inputs */
+        .input-inset {
+            box-shadow: inset 2px 2px 5px rgba(226, 217, 230, 0.8), inset -2px -2px 5px rgba(255, 255, 255, 1);
+            border: none;
+        }
+
+        .input-inset:focus {
+            box-shadow: inset 2px 2px 5px rgba(226, 217, 230, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 1);
+            outline: 1px solid #561668;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-surface overflow-x-hidden">
+<!-- Top Navigation Bar -->
+<header class="w-full top-0 sticky z-50 bg-surface/80 backdrop-blur-md px-4 h-16 flex justify-between items-center shadow-[4px_4px_10px_#E2D9E6,-4px_-4px_10px_#FFFFFF]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="menu">menu</span>
+</div>
+<div class="font-headline-md text-headline-md font-bold text-primary tracking-tight">Método Pame</div>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a sophisticated woman with a friendly smile, set against a soft-focus studio background. The lighting is warm and expensive-looking, aligning with the luxury purple and white color palette of the brand. The overall mood is approachable yet authoritative, suggesting high-end concierge service." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxyA7Dj01WadC7ZzmpP-srCz8rAG2ZDs1x0O7SMvPc5biVBZq7UmZBJcuwMMADxTFCHrV5SqKGSEoRgtO7vTnhabXy-ab5DVa5ZQfbkBL6FoJf4MbbDW28f_IaLaH2zcmMeujIxc5VJXO2QfUX1xO67o4wngIEHdQo_2OvqFD7GW7o3eCu6J7mkr58paalevOUNZcQNBP9ifODyFljvWH_pujgQbNMuYSM4xp8oJGTIxQCLust8JEFkjKMVSpwygjZ1LSw2mR0DB6u"/>
+</div>
+</header>
+<main class="w-full">
+<!-- Hero Section -->
+<section class="relative w-full h-[530px] flex items-end overflow-hidden">
+<div class="absolute inset-0 z-0">
+<img alt="Luxury Residence" class="w-full h-full object-cover scale-105" data-alt="A breathtaking, wide-angle shot of a high-fidelity luxury residential interior featuring floor-to-ceiling glass walls that look out onto a serene twilight landscape. The interior design is minimalist and opulent, with soft purple ambient lighting and polished marble surfaces. A subtle blur overlay creates a dreamy, silk-like atmosphere that enhances the quiet luxury aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaeF8rJczu0O1jFq1H4JOS-wCg8HK2RaDwjabqm7t8FSfJ42MlnqexLEgafePCfsglZ4J_Vy1JanxD8AUgLuH203OwqikQSmw_OdipRq0_8EH5EONjFdcafwvCXFJo0IA1p-zuT0l4d_x6I0rFgvpOFDCZB9LpqCjFrPsLHzcGLgmn5fnNSZW6qZbJGsElrFcYRw2lDx2kR9tW7ZoNOKDGWkAv6Vse5kHPaInaMrlBKQEKHiVV5hvzMaeKn0VkiOc3rfa4SQxqdUd-"/>
+<div class="absolute inset-0 hero-gradient"></div>
+</div>
+<div class="relative z-10 w-full px-6 pb-12 text-center">
+<h1 class="font-serif text-4xl md:text-5xl text-primary mb-4 leading-tight italic">
+                    Lista de Espera Exclusiva
+                </h1>
+<p class="font-body-lg text-on-surface-variant max-w-sm mx-auto">
+                    Acesso prioritário ao ecossistema de gestão e bem-estar mais exclusivo do Brasil.
+                </p>
+</div>
+</section>
+<!-- Form Section -->
+<section class="px-6 -mt-16 relative z-20 pb-16">
+<div class="silk-lift rounded-3xl p-8 space-y-6">
+<div class="space-y-1 text-center mb-8">
+<p class="font-label-sm text-primary uppercase tracking-widest">Inscrição VIP</p>
+<div class="h-[1px] w-12 bg-primary/30 mx-auto mt-2"></div>
+</div>
+<!-- Input Groups -->
+<div class="space-y-4">
+<div class="space-y-2">
+<label class="font-label-sm text-on-surface-variant ml-2">Nome Completo</label>
+<input class="w-full h-14 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-outline-variant font-body-md" placeholder="Ex: Maria Luísa Fontes" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-sm text-on-surface-variant ml-2">WhatsApp</label>
+<input class="w-full h-14 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-outline-variant font-body-md" placeholder="+55 (11) 99999-9999" type="tel"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-sm text-on-surface-variant ml-2">E-mail</label>
+<input class="w-full h-14 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-outline-variant font-body-md" placeholder="contato@exemplo.com" type="email"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-sm text-on-surface-variant ml-2">Serviço Desejado</label>
+<div class="relative">
+<select class="w-full h-14 rounded-2xl px-5 bg-surface text-on-surface input-inset appearance-none font-body-md focus:ring-0">
+<option disabled="" selected="">Selecione uma opção</option>
+<option>Consultoria Residencial</option>
+<option>Gestão de Estilo de Vida</option>
+<option>Mentoria Pame Exclusive</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 text-outline-variant pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-sm text-on-surface-variant ml-2">Código VIP (Opcional)</label>
+<input class="w-full h-14 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-outline-variant font-body-md" placeholder="Insira seu código" type="text"/>
+</div>
+</div>
+<button class="w-full h-16 bg-primary text-on-primary font-bold rounded-2xl shadow-lg active:scale-95 transition-all mt-8 font-body-lg flex items-center justify-center gap-3">
+                    Solicitar Acesso
+                    <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+<p class="text-center font-label-sm text-outline px-4 italic">
+                    *Sujeito a análise de perfil e disponibilidade de agenda.
+                </p>
+</div>
+</section>
+<!-- Trust Section (Luxury Pillars) -->
+<section class="px-6 py-12 space-y-8 bg-surface-container-low/50">
+<h2 class="font-serif text-3xl text-primary text-center">Pilares do Método</h2>
+<div class="flex flex-col gap-6">
+<!-- Pillar 1 -->
+<div class="silk-lift rounded-2xl p-6 flex gap-5 items-start">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed-dim flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="verified_user">verified_user</span>
+</div>
+<div>
+<h3 class="font-headline-md text-primary text-lg mb-1">Atendimento Personalizado</h3>
+<p class="font-body-md text-on-surface-variant">Cada detalhe planejado exclusivamente para sua rotina e necessidades únicas.</p>
+</div>
+</div>
+<!-- Pillar 2 -->
+<div class="silk-lift rounded-2xl p-6 flex gap-5 items-start">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed-dim flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<h3 class="font-headline-md text-primary text-lg mb-1">Gestão Inteligente</h3>
+<p class="font-body-md text-on-surface-variant">Tecnologia e curadoria humana em perfeita harmonia para seu tempo.</p>
+</div>
+</div>
+<!-- Pillar 3 -->
+<div class="silk-lift rounded-2xl p-6 flex gap-5 items-start">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed-dim flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="diamond">diamond</span>
+</div>
+<div>
+<h3 class="font-headline-md text-primary text-lg mb-1">Exclusividade Real</h3>
+<p class="font-body-md text-on-surface-variant">Acesso a serviços e profissionais homologados com o selo de qualidade Pame.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Narrative: A Experiência Pame -->
+<section class="py-20 px-6">
+<div class="text-center mb-12">
+<h2 class="font-serif text-3xl text-primary italic mb-4">A Experiência Pame</h2>
+<div class="h-[1px] w-24 bg-primary/20 mx-auto"></div>
+</div>
+<div class="space-y-12">
+<!-- Moment 1 -->
+<div class="group">
+<div class="relative w-full aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 silk-lift">
+<img alt="Luxury Spa" class="w-full h-full object-cover" data-alt="A macro shot of a luxury spa environment, focusing on soft textures like plush white towels and a single lavender sprig on a stone surface. The lighting is extremely soft and diffused, creating a serene, high-end sanctuary vibe. The color palette is dominated by off-whites and pale purples, reinforcing the 'Silk' aesthetic of the brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUzhaeopDPQ3nCOpK1z82s9jpqUDm5_evAi6UxEdfj8JKk6AKjrTsmZJy1ABqcIduYplpYTw4WixRcnPoeCpGDSgnshm-RQmw3cyqRF1PxVQPl0JOO2jRYKOhVTTrQJPuxKuVeS3nCC-yshkPlyFIOC9nsUdVNkxSxbsmbg1lbTY-T3Txs6AjXTFP4fuxDtz6TvT0GvZPmI-n5Q4YSVZc1Qf32Vk5FLoaRu-OcukLiI0yQv_1pI-Zzxi7Eh5W7S8k7GEhtIwthxqIz"/>
+<div class="absolute inset-0 bg-primary/10 group-hover:bg-transparent transition-colors duration-500"></div>
+</div>
+<div class="px-2">
+<span class="font-label-sm text-primary uppercase">Momento 01</span>
+<h4 class="font-headline-md text-xl text-primary my-2">Harmonia Residencial</h4>
+<p class="font-body-md text-on-surface-variant">Transformamos sua casa em um santuário de ordem e sofisticação.</p>
+</div>
+</div>
+<!-- Moment 2 -->
+<div class="group">
+<div class="relative w-full aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 silk-lift">
+<img alt="Concierge Service" class="w-full h-full object-cover" data-alt="An elegant, close-up shot of a professional concierge handing a gold-embossed card to a client. Only the hands and a portion of a high-end navy suit are visible. The background is a blurred luxury hotel lobby with warm, golden accents and soft purple shadows. The scene communicates high-touch service and premium authority." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMwUbsSIbBApn4GM0mKcPpShJwww2BQmKVxoHbwKd465H9F9KCAHavRE-goIsJA1SJS0RfVNDnmYBBVgVxLPt-RLezeQX_oxKVQmcIL1624pyEa-iuZ2l3rAsIckcGiTgttH9IHOiszYKlfVDgtS3fXoc111p1wINVsP1RzgLdUye6AW2kUfq52Bvlk_K8V79VyNTHi9rGv0DWyCuns-rZ8s0TWWB9w4YxL-PjReYQ8rPVFLnUmN4BDM5Tejp93QskdoJS8RaAq4Od"/>
+<div class="absolute inset-0 bg-primary/10 group-hover:bg-transparent transition-colors duration-500"></div>
+</div>
+<div class="px-2">
+<span class="font-label-sm text-primary uppercase">Momento 02</span>
+<h4 class="font-headline-md text-xl text-primary my-2">Liberdade de Tempo</h4>
+<p class="font-body-md text-on-surface-variant">Delegue o complexo para quem domina a arte da organização.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-highest/30 pt-16 pb-32 px-6">
+<div class="flex flex-col items-center text-center gap-8">
+<div class="font-headline-md text-2xl font-bold text-primary">Método Pame</div>
+<div class="flex gap-6">
+<a class="w-12 h-12 rounded-full silk-lift flex items-center justify-center text-primary" href="#">
+<svg class="w-6 h-6 fill-current" viewbox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+</a>
+</div>
+<div class="flex flex-col gap-3 font-label-sm text-outline tracking-wider uppercase">
+<a href="#">Privacidade</a>
+<a href="#">Termos de Uso</a>
+<a href="#">FAQ VIP</a>
+</div>
+<div class="text-[10px] text-outline-variant mt-4">
+                © 2024 Método Pame. Todos os direitos reservados.
+            </div>
+</div>
+</footer>
+<!-- Bottom Navigation Bar (Fixed for Mobile Shell) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-4 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-4px_10px_#E2D9E6]">
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1">
+<span class="material-symbols-outlined mb-1" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-sm text-label-sm">Schedule</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 scale-95">
+<span class="material-symbols-outlined mb-1" data-icon="apps">apps</span>
+<span class="font-label-sm text-label-sm">Portals</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</div>
+</nav>
+<script>
+        // Micro-interactions for form inputs
+        document.querySelectorAll('input, select').forEach(element => {
+            element.addEventListener('focus', () => {
+                element.parentElement.classList.add('scale-[1.02]');
+                element.parentElement.style.transition = 'transform 0.3s ease';
+            });
+            element.addEventListener('blur', () => {
+                element.parentElement.classList.remove('scale-[1.02]');
+            });
+        });
+
+        // Simple scroll reveal effect
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                    entry.target.classList.remove('opacity-0', 'translate-y-10');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.silk-lift').forEach(el => {
+            el.classList.add('transition-all', 'duration-700', 'opacity-0', 'translate-y-10');
+            observer.observe(el);
+        });
+    </script>
+</body></html>

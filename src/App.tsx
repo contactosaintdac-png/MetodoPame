@@ -118,6 +118,14 @@ export default function App() {
   useEffect(() => {
     if (loading || roleLoading) return;
 
+    // 0. Admin: Redirect to admin panel if on welcome/home
+    if (userRole === 'admin') {
+      if (currentScreen === 'welcome') {
+        handleScreenChange('admin');
+      }
+      return;
+    }
+
     // 1. Specialist: Force to /equipe (recruitment screen) and block client views
     if (userRole === 'specialist') {
       if (currentScreen !== 'recruitment') {
@@ -143,7 +151,7 @@ export default function App() {
     }
 
     // 4. Client pricing flow protection
-    if (currentScreen === 'pricing' && triageData.frequency === '') {
+    if (currentScreen === 'pricing' && triageData.frequency === '' && !user) {
       handleScreenChange('welcome');
       return;
     }
@@ -159,10 +167,15 @@ export default function App() {
           if (currentScreen === 'welcome' || currentScreen === 'triage') {
             setTimeout(() => handleScreenChange('minha-area'), 50);
           }
+        } else {
+          // If the client has no triage data yet, redirect to triage from welcome/home screen
+          if (currentScreen === 'welcome') {
+            setTimeout(() => handleScreenChange('triage'), 50);
+          }
         }
       }).catch(err => console.error('Error loading triage:', err));
     }
-  }, [user, loading, roleLoading, userRole]);
+  }, [user, loading, roleLoading, userRole, currentScreen]);
 
   const handleScreenChange = (screen: ApplicationScreen) => {
     // Isolated routes: once in recruitment or admin you stay there

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lista de Espera Exclusiva | MÉTODO PAME</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Playfair+Display:ital,wght@1,400;1,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ccc4d0",
+                        "tertiary-fixed": "#e9dfec",
+                        "on-primary-fixed-variant": "#6a2b7c",
+                        "surface-container-highest": "#e9e0e8",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#faf1fa",
+                        "primary-fixed-dim": "#f2afff",
+                        "tertiary-container": "#4f4a54",
+                        "on-tertiary-fixed": "#1e1a23",
+                        "on-surface-variant": "#4e434e",
+                        "on-secondary-fixed": "#1a1c1d",
+                        "tertiary": "#38333d",
+                        "on-surface": "#1e1a20",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#e0dfe1",
+                        "inverse-surface": "#342f35",
+                        "surface-tint": "#854495",
+                        "primary": "#561668",
+                        "secondary-fixed-dim": "#c6c6c8",
+                        "surface-variant": "#e9e0e8",
+                        "secondary": "#5d5e60",
+                        "outline-variant": "#d1c2d0",
+                        "surface-dim": "#e0d7e0",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#f7eef7",
+                        "primary-fixed": "#fcd7ff",
+                        "on-tertiary-fixed-variant": "#4a454f",
+                        "surface-container-high": "#efe5ee",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff7fd",
+                        "on-secondary-container": "#626264",
+                        "inverse-primary": "#f2afff",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#80737f",
+                        "on-background": "#1e1a20",
+                        "on-primary": "#ffffff",
+                        "surface": "#fff7fd",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#340043",
+                        "on-primary-container": "#eca1fb",
+                        "surface-container": "#f4ebf4",
+                        "on-tertiary-container": "#c2bac6",
+                        "secondary-fixed": "#e3e2e4",
+                        "primary-container": "#703081",
+                        "on-secondary-fixed-variant": "#464749",
+                        "background": "#fff7fd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "container-padding": "24px",
+                        "section-gap": "80px",
+                        "base": "8px",
+                        "max-width": "1280px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "serif": ["Playfair Display", "serif"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #fff7fd;
+            color: #1e1a20;
+            overflow-x: hidden;
+            font-family: 'Manrope', sans-serif;
+        }
+        .silk-card {
+            background: rgba(255, 247, 253, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 20px 20px 60px #e0d7e0, -20px -20px 60px #ffffff;
+        }
+        .silk-input {
+            background: #fff7fd;
+            box-shadow: inset 4px 4px 8px #e0d7e0, inset -4px -4px 8px #ffffff;
+            transition: all 0.3s ease;
+        }
+        .silk-input:focus {
+            box-shadow: inset 2px 2px 4px #e0d7e0, inset -2px -2px 4px #ffffff, 0 0 0 1px #854495;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .luxury-gradient-text {
+            background: linear-gradient(135deg, #561668 0%, #340043 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-overlay {
+            background: linear-gradient(to right, rgba(255, 247, 253, 0.95) 30%, rgba(255, 247, 253, 0) 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Header -->
+<header class="fixed top-0 w-full z-50 bg-surface/60 backdrop-blur-xl border-b border-white/20">
+<div class="max-w-max-width mx-auto px-container-padding h-20 flex justify-between items-center">
+<div class="flex items-center">
+<img alt="Método Pame" class="h-12 w-auto object-contain mix-blend-multiply opacity-90" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIA_N5gBskAWImYfX1Lu-eaQYlyjrqmU_nUqevCNxBi5yEV_ktx2emcvYqRiOu1u0DLlWJYSgsKo9XYCVzU89FJkVzRxSWOgvMxAwtfZtgfrvDFcpd-gECZBKrlQHXqrgT4EygocjuLYzi9v527uMXIO_6oHEjFeyhX9WD277WScjGHctILD2vAGD_gIr0kZ-HoTskVCSY5y1mc4mARmvG8elHa4t14C0ZZgu1xc4Uyd5yNdtECAeYLtvEEw1mH47rDFskr2Gnl_Vk"/>
+</div>
+<nav class="hidden md:flex items-center gap-10">
+<a class="font-label-sm uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors" href="#">O Método</a>
+<a class="font-label-sm uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors" href="#">Serviços</a>
+<a class="font-label-sm uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors" href="#">Concierge</a>
+<button class="bg-primary text-on-primary px-8 py-3 rounded-full font-label-sm uppercase tracking-[0.1em] hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95">
+                    Acesso Prioritário
+                </button>
+</nav>
+<button class="md:hidden text-primary">
+<span class="material-symbols-outlined text-3xl">menu</span>
+</button>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative min-h-[90vh] flex items-center pt-20 overflow-hidden">
+<!-- Full Bleed Background -->
+<div class="absolute inset-0 z-0">
+<img alt="Luxury Interior" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNszep7MsfJsOi_9TRLEqOTBDDQjfrczJguOdLVfC2-PSRV5s6EgND1q3HJhGQOlBO_Mb5D3DJ9vHhP9MriNBPAfBMfEOEmWgOw6Z0p3-wSKA9_im41yYO2gT5CnKZ1O8EtGHxHl6PYLUGtaOwOB2W0u2m5Lemo6CesCi6oKYojP5-kzCGSr9o-hDFIABQ6eE7sXckqdQyABPfahZdVbSIaD0D6l880UcOw9eHAaxyhzbZDVk47NcQRS_jW2toJr_BSEnxjI-stabg"/>
+<div class="absolute inset-0 hero-overlay hidden md:block"></div>
+<div class="absolute inset-0 bg-surface/80 md:hidden"></div>
+</div>
+<div class="max-w-max-width mx-auto px-container-padding relative z-10 w-full grid md:grid-cols-2 gap-16 items-center">
+<!-- Left Content -->
+<div class="space-y-10">
+<div class="space-y-4">
+<div class="flex items-center gap-3 text-primary">
+<span class="w-12 h-[1px] bg-primary"></span>
+<span class="font-label-sm uppercase tracking-[0.3em]">Residências de Elite</span>
+</div>
+<h1 class="font-serif italic text-6xl md:text-7xl leading-tight luxury-gradient-text">
+                            Lista de Espera <br/>
+<span class="not-italic font-extrabold tracking-tight">Exclusiva</span>
+</h1>
+<p class="font-body-lg text-on-surface-variant max-w-md leading-relaxed">
+                            A excelência residencial do Método Pame agora em um formato digital de concierge. Garanta seu lugar no topo da nossa lista de atendimento prioritário.
+                        </p>
+</div>
+<div class="flex flex-col gap-6">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center text-primary shrink-0 shadow-lg shadow-primary/10">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<div>
+<h3 class="font-headline-md text-xl text-on-surface">Curadoria Técnica</h3>
+<p class="text-on-surface-variant/70 text-sm">Protocolos desenhados para a preservação de materiais nobres.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center text-primary shrink-0 shadow-lg shadow-primary/10">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<div>
+<h3 class="font-headline-md text-xl text-on-surface">Gestão Inteligente</h3>
+<p class="text-on-surface-variant/70 text-sm">Reserva de slots e histórico de atendimento em um só clique.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Form Card -->
+<div class="flex justify-center md:justify-end">
+<div class="silk-card w-full max-w-lg p-8 md:p-12 rounded-2xl">
+<div class="mb-8 text-center md:text-left">
+<h2 class="font-headline-lg text-primary mb-2">Solicitar Admissão</h2>
+<p class="text-on-surface-variant text-sm">Preencha os campos abaixo para iniciar seu processo de admissão na agenda exclusiva.</p>
+</div>
+<form class="space-y-5">
+<div class="space-y-1.5">
+<label class="font-label-sm uppercase tracking-widest text-on-surface-variant/60 ml-2" for="name">Nome Completo</label>
+<input class="w-full silk-input border-none rounded-xl px-6 py-4 outline-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/30" id="name" placeholder="Ex: Arthur Montgomery" type="text"/>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<div class="space-y-1.5">
+<label class="font-label-sm uppercase tracking-widest text-on-surface-variant/60 ml-2" for="whatsapp">WhatsApp</label>
+<input class="w-full silk-input border-none rounded-xl px-6 py-4 outline-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/30" id="whatsapp" placeholder="(48) 99999-0000" type="tel"/>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-sm uppercase tracking-widest text-on-surface-variant/60 ml-2" for="email">E-mail</label>
+<input class="w-full silk-input border-none rounded-xl px-6 py-4 outline-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/30" id="email" placeholder="contato@luxo.com" type="email"/>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-sm uppercase tracking-widest text-on-surface-variant/60 ml-2" for="servico">Serviço Desejado</label>
+<div class="relative">
+<select class="w-full silk-input border-none rounded-xl px-6 py-4 outline-none focus:ring-0 text-on-surface appearance-none bg-transparent" id="servico">
+<option disabled="" selected="">Selecione a categoria de serviço</option>
+<option>Limpeza Técnica Pós-Obra</option>
+<option>Gestão de Manutenção Mensal</option>
+<option>Organização e Curadoria</option>
+<option>Consultoria de Protocolos</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-primary/40">keyboard_arrow_down</span>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-sm uppercase tracking-widest text-on-surface-variant/60 ml-2 flex justify-between items-center" for="vip">
+                                    Código VIP 
+                                    <span class="text-[10px] lowercase italic opacity-50">(opcional)</span>
+</label>
+<input class="w-full silk-input border-none rounded-xl px-6 py-4 outline-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/30" id="vip" placeholder="Se possuir, insira aqui" type="text"/>
+</div>
+<button class="w-full bg-primary text-on-primary py-5 rounded-xl font-label-sm uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 hover:opacity-95 transition-all flex justify-center items-center gap-3 group mt-4" type="submit">
+                                Enviar Solicitação
+                                <span class="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1">trending_flat</span>
+</button>
+</form>
+<div class="mt-8 pt-6 border-t border-white/20 flex items-center justify-center gap-3 text-on-surface-variant/40">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span class="font-label-sm uppercase text-[10px] tracking-[0.1em]">Protocolo de Segurança Criptografado</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Proof of Quality -->
+<section class="bg-surface py-24">
+<div class="max-w-max-width mx-auto px-container-padding">
+<div class="text-center mb-16 space-y-4">
+<h2 class="font-serif italic text-4xl md:text-5xl text-primary">A Experiência Pame</h2>
+<p class="text-on-surface-variant/60 font-body-md max-w-2xl mx-auto">Elevando o conceito de manutenção residencial a um padrão de hospitalidade cinco estrelas.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Feature 1 -->
+<div class="group relative overflow-hidden rounded-2xl h-80 silk-card flex flex-col justify-end p-8 border-none shadow-xl">
+<img alt="Living Room" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%] opacity-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7d2gtjLoWqqRKWQ9kEIjQz5AQTMg73guZimGFhPXZzNMVwr8HdBIK5JDLe9sjCfv8Ex8TreXMn1VeJArDMyaJvmg2KDCk_QeiAu_PQuEKI6I9EZEpq3tmvesjEitcgRG8HdBlL-G6yKyaepUMgujbxQ_hGCc2ofLYMZVv5jPCgTU5pcwoeTZB6kQQr4glD2v5R0miIZ75eqOBlACKp4-nK8RGpyssk5d0MdMynXeMild01tlQQZB-ZzBx3b2aN9V3sVjccKvNuMtl"/>
+<div class="relative z-10">
+<h4 class="font-headline-md text-primary mb-2">Ordem Absoluta</h4>
+<p class="text-sm text-on-surface-variant">Sistemas de organização invisíveis que mantêm a serenidade do lar.</p>
+</div>
+</div>
+<!-- Feature 2 -->
+<div class="group relative overflow-hidden rounded-2xl h-80 bg-primary flex flex-col justify-center items-center p-8 text-center text-on-primary shadow-2xl">
+<span class="material-symbols-outlined text-6xl mb-6 opacity-30" style="font-variation-settings: 'FILL' 1;">stars</span>
+<h4 class="font-headline-md text-2xl mb-4">Padrão 5 Estrelas</h4>
+<p class="text-sm text-on-primary/70 leading-relaxed">Cada visita é regida por um checklist de 120 pontos de inspeção de qualidade superior.</p>
+<div class="mt-8 px-6 py-2 border border-white/20 rounded-full font-label-sm uppercase tracking-widest text-[10px]">Exclusivo</div>
+</div>
+<!-- Feature 3 -->
+<div class="group relative overflow-hidden rounded-2xl h-80 silk-card flex flex-col justify-end p-8 border-none shadow-xl">
+<img alt="Silk Linens" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%] opacity-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3Rc5uVIp3uSIh_fHQN5-DDy1nRyqlvKzKtPH5ejCIUj6Zawde5l1XGinrO5FFAFst658DNCyz_iPqLKd6AbZ0nnGmD_3Hikon9Q_7I6I8ZuZSniMWaqXGdL0mSYRIJb_k_Ef2cdtjxi8wl7mw23p8fTGOY-sSGC7puSbQ9sYy1cXtqJ3BrvpS4JKlcoCIjTzEoLyn8B6EC_MDpYTdlLmt-zr-ggtmssbV1i6OfSAYBy0p-0HZiLCWz7QdTZg_98nj98wiVGA1hO6J"/>
+<div class="relative z-10">
+<h4 class="font-headline-md text-primary mb-2">Cuidado Tátil</h4>
+<p class="text-sm text-on-surface-variant">Produtos de PH neutro e técnicas de toque suave para superfícies de luxo.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low pt-24 pb-12 border-t border-surface-variant">
+<div class="max-w-max-width mx-auto px-container-padding">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-12 mb-20">
+<div class="space-y-4">
+<img alt="Método Pame" class="h-10 w-auto opacity-80 mix-blend-multiply" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIA_N5gBskAWImYfX1Lu-eaQYlyjrqmU_nUqevCNxBi5yEV_ktx2emcvYqRiOu1u0DLlWJYSgsKo9XYCVzU89FJkVzRxSWOgvMxAwtfZtgfrvDFcpd-gECZBKrlQHXqrgT4EygocjuLYzi9v527uMXIO_6oHEjFeyhX9WD277WScjGHctILD2vAGD_gIr0kZ-HoTskVCSY5y1mc4mARmvG8elHa4t14C0ZZgu1xc4Uyd5yNdtECAeYLtvEEw1mH47rDFskr2Gnl_Vk"/>
+<p class="text-on-surface-variant/60 font-body-md max-w-xs uppercase tracking-widest text-[10px]">Residências que respiram excelência e serenidade através do método exclusivo.</p>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-12 md:gap-24">
+<div class="space-y-4">
+<h5 class="font-label-sm uppercase tracking-widest text-primary">Navegação</h5>
+<ul class="space-y-2">
+<li><a class="text-sm text-on-surface-variant/70 hover:text-primary transition-colors" href="#">Início</a></li>
+<li><a class="text-sm text-on-surface-variant/70 hover:text-primary transition-colors" href="#">O Método</a></li>
+<li><a class="text-sm text-on-surface-variant/70 hover:text-primary transition-colors" href="#">Membros</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h5 class="font-label-sm uppercase tracking-widest text-primary">Legal</h5>
+<ul class="space-y-2">
+<li><a class="text-sm text-on-surface-variant/70 hover:text-primary transition-colors" href="#">Privacidade</a></li>
+<li><a class="text-sm text-on-surface-variant/70 hover:text-primary transition-colors" href="#">Termos</a></li>
+<li><a class="text-sm text-on-surface-variant/70 hover:text-primary transition-colors" href="#">Cookies</a></li>
+</ul>
+</div>
+<div class="space-y-4 col-span-2 md:col-span-1">
+<h5 class="font-label-sm uppercase tracking-widest text-primary">Contato</h5>
+<ul class="space-y-2">
+<li class="text-sm text-on-surface-variant/70">Tijucas e Região, SC</li>
+<li class="text-sm text-on-surface-variant/70">concierge@metodopame.com.br</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-surface-variant/50 gap-4">
+<p class="text-[10px] font-label-sm uppercase tracking-[0.2em] text-on-surface-variant/40">© 2024 MÉTODO PAME. SILENT LUXURY BY DESIGN.</p>
+<div class="flex gap-6">
+<a class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white transition-all" href="#">
+<svg class="w-4 h-4" fill="currentColor" viewbox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.245 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.332 2.633-1.308 3.608-.975.975-2.242 1.245-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.332-3.608-1.308-.975-.975-1.245-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.975 2.242-1.245 3.608-1.308 1.266-.058 1.646-.07 4.85-.07zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948s.014 3.667.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072s3.667-.014 4.947-.072c4.358-.2 6.78-2.618 6.98-6.98.058-1.281.072-1.689.072-4.948s-.014-3.667-.072-4.947c-.2-4.358-2.618-6.78-6.98-6.98-1.28-.058-1.689-.072-4.948-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+</a>
+</div>
+</div>
+</div>
+</footer>
+<script>
+        // Subtle scroll animations
+        const revealElements = document.querySelectorAll('.silk-card, h1, p');
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        revealElements.forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+            observer.observe(el);
+        });
+    </script>
+</body></html>

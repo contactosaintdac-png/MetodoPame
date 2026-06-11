@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy, where, setDoc } from 'firebase/firestore';
 import { notifyEmployeeRemoval, notifyEmployeeAssignment } from '../lib/NotificationService';
+import { scheduleCafeVirtualEvent } from '../lib/calendar';
 
 import type { Employee, Booking } from '../types';
 
@@ -88,6 +89,13 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
   const [editingBooking, setEditingBooking]             = useState<any>(null);
   const [editBookingData, setEditBookingData]           = useState<any>({});
+
+  // Cafe Virtual scheduling states
+  const [showCafeModal, setShowCafeModal]               = useState(false);
+  const [selectedCandidate, setSelectedCandidate]       = useState<Employee | null>(null);
+  const [cafeDate, setCafeDate]                         = useState('');
+  const [cafeTime, setCafeTime]                         = useState('17:30');
+  const [cafeLoading, setCafeLoading]                   = useState(false);
 
   const [activeChats, setActiveChats] = useState<any[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -363,6 +371,72 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     }
   };
 
+  const handleApprovePendingUpdate = async (empId: string, pendingUpdate: any) => {
+    try {
+      const empRef = doc(db, 'employees', empId);
+      await updateDoc(empRef, {
+        name: pendingUpdate.name,
+        whatsapp: pendingUpdate.whatsapp,
+        zones: pendingUpdate.zones,
+        pendingUpdate: null // clear pending update
+      });
+      alert('Alterações de perfil aprovadas com sucesso!');
+      fetchEmployees();
+    } catch (err) {
+      console.error('Erro ao aprovar alterações de perfil:', err);
+      alert('Erro ao aprovar alterações.');
+    }
+  };
+
+  const handleRejectPendingUpdate = async (empId: string) => {
+    if (confirm('Tem certeza que deseja recusar as alterações solicitadas pela especialista?')) {
+      try {
+        const empRef = doc(db, 'employees', empId);
+        await updateDoc(empRef, {
+          pendingUpdate: null // clear pending update
+        });
+        alert('Alterações de perfil recusadas.');
+        fetchEmployees();
+      } catch (err) {
+        console.error('Erro ao recusar alterações de perfil:', err);
+        alert('Erro ao recusar alterações.');
+      }
+    }
+  };
+
+  const handleScheduleCafeAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCandidate?.id || !cafeDate || !cafeTime) return;
+    setCafeLoading(true);
+    try {
+      // 1. Update candidate record in Firestore
+      const empRef = doc(db, 'employees', selectedCandidate.id);
+      await updateDoc(empRef, {
+        cafeVirtualDate: cafeDate,
+        cafeVirtualTime: cafeTime,
+      });
+
+      // 2. Synchronize with Google Calendar via Resend/Calendar API
+      await scheduleCafeVirtualEvent({
+        candidateName: selectedCandidate.name,
+        date: cafeDate,
+        time: cafeTime,
+        whatsapp: selectedCandidate.whatsapp || ''
+      });
+
+      alert(`Café Virtual agendado com sucesso para ${selectedCandidate.name}!`);
+      setShowCafeModal(false);
+      setSelectedCandidate(null);
+      setCafeDate('');
+      fetchEmployees();
+    } catch (err) {
+      console.error('Error scheduling Cafe Virtual:', err);
+      alert('Erro ao agendar o Café Virtual. Tente novamente.');
+    } finally {
+      setCafeLoading(false);
+    }
+  };
+
   // ─── Waitlist Handlers ────────────────────────────────────────────────────────
   const handlePreRegister = async (entry: any) => {
     try {
@@ -594,23 +668,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
           ))}
         </div>
 
-        {/* New Service Request */}
-        <button className="mt-4 mb-8 text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 silk-lift hover:opacity-90 transition-all text-sm" style={{ background: '#561668' }}>
-          <span className="material-symbols-outlined text-[20px]">add_circle</span>
-          Nova Solicitação
-        </button>
 
-        {/* Bottom links */}
-        <div className="flex flex-col gap-1 pt-5 border-t border-[#e9e0e8]">
-          <a className="flex items-center gap-3 px-4 py-2 text-[#d1c2d0] hover:text-[#561668] transition-all text-[11px] font-bold uppercase tracking-widest" href="#">
-            <span className="material-symbols-outlined text-[18px]">settings</span>
-            Configurações
-          </a>
-          <a className="flex items-center gap-3 px-4 py-2 text-[#d1c2d0] hover:text-[#561668] transition-all text-[11px] font-bold uppercase tracking-widest" href="#">
-            <span className="material-symbols-outlined text-[18px]">help</span>
-            Ajuda
-          </a>
-        </div>
       </nav>
 
       {/* ══════════════════════════════════════════
@@ -1262,6 +1320,47 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       </div>
                     </div>
 
+                    {/* Pending Update Comparison Block */}
+                    {(emp as any).pendingUpdate && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-xs text-left text-yellow-900 space-y-2">
+                        <p className="font-bold uppercase tracking-wider text-[10px] text-yellow-800 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px]">pending</span>
+                          Solicitação de Alteração de Dados
+                        </p>
+                        <div className="space-y-1 mt-2">
+                          {(emp as any).pendingUpdate.name && (emp as any).pendingUpdate.name !== emp.name && (
+                            <p>
+                              <strong>Nome:</strong> <span className="line-through text-gray-500">{emp.name}</span> ➔ <span className="font-bold text-yellow-950">{(emp as any).pendingUpdate.name}</span>
+                            </p>
+                          )}
+                          {(emp as any).pendingUpdate.whatsapp && (emp as any).pendingUpdate.whatsapp !== emp.whatsapp && (
+                            <p>
+                              <strong>WhatsApp:</strong> <span className="line-through text-gray-500">{emp.whatsapp}</span> ➔ <span className="font-bold text-yellow-950">{(emp as any).pendingUpdate.whatsapp}</span>
+                            </p>
+                          )}
+                          {(emp as any).pendingUpdate.zones && (emp as any).pendingUpdate.zones !== emp.zones && (
+                            <p>
+                              <strong>Zonas:</strong> <span className="line-through text-gray-500">{emp.zones || '(Nenhuma)'}</span> ➔ <span className="font-bold text-yellow-950">{(emp as any).pendingUpdate.zones}</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2 mt-2 border-t border-yellow-200">
+                          <button
+                            onClick={() => handleRejectPendingUpdate(emp.id!)}
+                            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded-lg transition-colors cursor-pointer text-[10px] uppercase tracking-wider"
+                          >
+                            Recusar
+                          </button>
+                          <button
+                            onClick={() => handleApprovePendingUpdate(emp.id!, (emp as any).pendingUpdate)}
+                            className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 font-bold rounded-lg transition-colors cursor-pointer text-[10px] uppercase tracking-wider"
+                          >
+                            Aprovar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Availability */}
                     <div>
                       <h4 className="text-sm font-bold text-[#561668] mb-3">Disponibilidade Semanal</h4>
@@ -1420,7 +1519,13 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       <span className="material-symbols-outlined text-[#561668] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>coffee</span>
                       <p className="text-xs font-bold text-[#561668] mt-1">Café Virtual com a Pame</p>
                       <p className="text-[10px] text-[#80737f] mt-1">Agendar conversa de seleção</p>
-                      <button className="mt-3 w-full py-2 text-[11px] font-bold text-[#561668] border border-[#d1c2d0] rounded-xl hover:bg-[#f4ebf4] transition-colors uppercase tracking-widest">
+                      <button
+                        onClick={() => {
+                          setSelectedCandidate(emp);
+                          setShowCafeModal(true);
+                        }}
+                        className="mt-3 w-full py-2 text-[11px] font-bold text-[#561668] border border-[#d1c2d0] rounded-xl hover:bg-[#f4ebf4] transition-colors uppercase tracking-widest"
+                      >
                         Agendar Café ☕
                       </button>
                     </div>
@@ -2198,6 +2303,64 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                   className="w-full py-2.5 mt-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-200"
                 >
                   Excluir Agendamento
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Cafe Virtual Modal */}
+      {showCafeModal && selectedCandidate && (
+        <div className="fixed inset-0 bg-[#1e1a20]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="silk-lift rounded-3xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="p-6 text-white text-center" style={{ background: '#561668' }}>
+              <h3 className="font-extrabold text-xl">Agendar Conversa de Seleção</h3>
+              <p className="text-[11px] opacity-70 mt-1">Café Virtual com {selectedCandidate.name}</p>
+            </div>
+            <form onSubmit={handleScheduleCafeAdmin} className="p-6 flex flex-col gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Data do Café Virtual</label>
+                <input
+                  type="date"
+                  required
+                  value={cafeDate}
+                  onChange={e => setCafeDate(e.target.value)}
+                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#561668] uppercase tracking-widest mb-1.5">Horário Disponível</label>
+                <select
+                  required
+                  value={cafeTime}
+                  onChange={e => setCafeTime(e.target.value)}
+                  className="w-full bg-[#f8f9fa] border border-[#efe5ee] rounded-xl p-3 text-sm outline-none focus:border-[#561668] transition-all"
+                >
+                  {['17:30', '18:00', '18:30', '19:00', '19:30', '20:00'].map(time => (
+                    <option key={time} value={time}>{time}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 mt-4 pt-4 border-t border-[#efe5ee]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCafeModal(false);
+                    setSelectedCandidate(null);
+                  }}
+                  className="flex-1 py-3 text-[#80737f] font-bold text-[11px] uppercase tracking-widest hover:bg-[#f8f9fa] rounded-xl"
+                  disabled={cafeLoading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl hover:opacity-90 disabled:opacity-50"
+                  style={{ background: '#561668' }}
+                  disabled={cafeLoading}
+                >
+                  {cafeLoading ? 'Agendando...' : 'Confirmar Agenda'}
                 </button>
               </div>
             </form>

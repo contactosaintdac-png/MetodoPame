@@ -5,12 +5,13 @@
 
 import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../lib/firebase';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, firebaseConfig } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { ApplicationScreen } from '../types';
+import { ApplicationScreen, Employee } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import EspecialistaDashboard from './EspecialistaDashboard';
-import type { Employee } from './AdminPanel';
 import { scheduleCafeVirtualEvent } from '../lib/calendar';
 
 interface RecruitmentFormProps {
@@ -28,6 +29,21 @@ type EquipeView = 'loading' | 'login' | 'dashboard' | 'candidatura' | 'success';
 export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps) {
   const { user, loading: authLoading, signInWithEmail, signOut } = useAuth();
 
+  const formatCPF = (value: string) => {
+    const numbers = value.replace(/\D/g, '').slice(0, 11);
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
+    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9)}`;
+  };
+
+  const formatWhatsApp = (value: string) => {
+    const numbers = value.replace(/\D/g, '').slice(0, 11);
+    if (numbers.length <= 2) return numbers.length > 0 ? `(${numbers}` : '';
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+  };
+
   const [view, setView]                     = useState<EquipeView>('loading');
   const [employeeData, setEmployeeData]     = useState<Employee | null>(null);
 
@@ -42,6 +58,8 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
   const [dob, setDob]                       = useState('');
   const [cpf, setCpf]                       = useState('');
   const [whatsapp, setWhatsapp]             = useState('');
+  const [candidacyEmail, setCandidacyEmail]       = useState('');
+  const [candidacyPassword, setCandidacyPassword] = useState('');
   const [experience, setExperience]         = useState('');
   const [skills, setSkills]                 = useState('');
   const [references, setReferences]         = useState('');
@@ -136,9 +154,74 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
   const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const cleanCPF = cpf.replace(/\D/g, '');
+    if (cleanCPF.length !== 11) {
+      alert('Por favor, insira um CPF válido com 11 dígitos.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const cleanPhone = whatsapp.replace(/\D/g, '');
+    if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+      alert('Por favor, insira um número de WhatsApp válido com DDD e 9 dígitos (ex: (48) 99999-9999).');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!uploadedPhoto) {
+      alert('Por favor, faça o upload de sua Foto Profissional. Ela é obrigatória.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!uploadedFile) {
+      alert('Por favor, faça o upload do comprovante de Antecedentes Criminais. Ele é obrigatório.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const emailToRegister = candidacyEmail.trim().toLowerCase();
+    if (candidacyPassword.length < 6) {
+      alert('A senha deve ter no mínimo 6 caracteres.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    let tempApp;
+    try {
+      // Create account in Firebase Auth using a secondary app instance
+      const appName = `temp-reg-${Date.now()}`;
+      tempApp = initializeApp(firebaseConfig, appName);
+      const tempAuth = getAuth(tempApp);
+      await createUserWithEmailAndPassword(tempAuth, emailToRegister, candidacyPassword);
+    } catch (authError: any) {
+      console.error('Error creating auth account:', authError);
+      let errorMsg = 'Ocorreu um erro ao criar sua credencial de acesso. Tente novamente.';
+      if (authError?.code === 'auth/email-already-in-use') {
+        errorMsg = 'Este e-mail já está cadastrado. Por favor, utilize outro e-mail.';
+      } else if (authError?.code === 'auth/invalid-email') {
+        errorMsg = 'E-mail inválido. Por favor, verifique o formato do e-mail.';
+      } else if (authError?.code === 'auth/weak-password') {
+        errorMsg = 'A senha fornecida é muito fraca. Escolha uma senha mais forte.';
+      }
+      alert(errorMsg);
+      setIsSubmitting(false);
+      return;
+    } finally {
+      if (tempApp) {
+        try {
+          await deleteApp(tempApp);
+        } catch (delErr) {
+          console.error('Error deleting temp app:', delErr);
+        }
+      }
+    }
+
     try {
       const docRef = await addDoc(collection(db, 'employees'), {
         name: fullName,
+        email: emailToRegister,
         cpf,
         whatsapp,
         experience,
@@ -159,7 +242,7 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
       setView('success');
     } catch (error) {
       console.error('Erro ao registrar:', error);
-      alert('Ocorreu um erro ao enviar. Tente nuevamente.');
+      alert('Ocorreu um erro ao enviar. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -425,7 +508,7 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#703081] ml-1">Escolha o Horário</label>
                   <div className="grid grid-cols-3 gap-2">
-                    {['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'].map(t => {
+                    {['17:30', '18:00', '18:30', '19:00', '19:30', '20:00'].map(t => {
                       const selected = cafeVirtualTime === t;
                       return (
                         <button
@@ -561,6 +644,8 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
 
             {[
               { id: 'fullName', label: 'Nome Completo', type: 'text', placeholder: 'Seu nome completo', value: fullName, set: setFullName, required: true },
+              { id: 'candidacyEmail', label: 'E-mail para Acesso', type: 'email', placeholder: 'seu@email.com', value: candidacyEmail, set: setCandidacyEmail, required: true },
+              { id: 'candidacyPassword', label: 'Senha de Acesso', type: 'password', placeholder: 'Mínimo 6 caracteres', value: candidacyPassword, set: setCandidacyPassword, required: true },
               { id: 'dob', label: 'Data de Nascimento', type: 'date', placeholder: '', value: dob, set: setDob, required: true },
               { id: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-00', value: cpf, set: setCpf, required: true },
               { id: 'whatsapp', label: 'WhatsApp', type: 'tel', placeholder: '(48) 99999-9999', value: whatsapp, set: setWhatsapp, required: true },
@@ -580,7 +665,15 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
                   value={f.value}
                   onFocus={() => setIsFocused(f.id)}
                   onBlur={() => setIsFocused(null)}
-                  onChange={e => f.set(e.target.value)}
+                  onChange={e => {
+                    let val = e.target.value;
+                    if (f.id === 'cpf') {
+                      val = formatCPF(val);
+                    } else if (f.id === 'whatsapp') {
+                      val = formatWhatsApp(val);
+                    }
+                    f.set(val);
+                  }}
                   className="w-full h-12 px-4 bg-[#faf1fa] border border-[#d1c2d0]/65 rounded-xl text-sm text-[#1e1a20] placeholder-[#80737f] focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
                 />
               </div>

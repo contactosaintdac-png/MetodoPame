@@ -123,6 +123,8 @@ interface Props {
   employee: Employee | null;  // Passed from App.tsx after role detection
 }
 
+const DAYS_OF_WEEK_FULL = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
 export default function EspecialistaDashboard({ employee }: Props) {
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab]           = useState<EspecialistaTab>('dashboard');
@@ -130,9 +132,37 @@ export default function EspecialistaDashboard({ employee }: Props) {
   const [localAvailability, setLocalAvailability] = useState(employee?.weeklyAvailability || {});
   const [savingAvailability, setSavingAvailability] = useState(false);
 
+  // Calendar States for Agenda Tab
+  const [agendaMode, setAgendaMode]         = useState<'list' | 'calendar'>('list');
+  const [currentDate, setCurrentDate]       = useState(new Date());
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  // Profile Edit States
+  const [editName, setEditName]             = useState('');
+  const [editWhatsapp, setEditWhatsapp]     = useState('');
+  const [editZones, setEditZones]           = useState('');
+  const [savingProfile, setSavingProfile]   = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
+
+  const formatWhatsApp = (value: string) => {
+    const numbers = value.replace(/\D/g, '').slice(0, 11);
+    if (numbers.length <= 2) return numbers.length > 0 ? `(${numbers}` : '';
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+  };
+
+  const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditWhatsapp(formatWhatsApp(e.target.value));
+  };
+
   useEffect(() => {
     if (employee?.weeklyAvailability) {
       setLocalAvailability(employee.weeklyAvailability);
+    }
+    if (employee) {
+      setEditName(employee.name || '');
+      setEditWhatsapp(employee.whatsapp || '');
+      setEditZones(employee.zones || '');
     }
   }, [employee]);
 
@@ -162,8 +192,53 @@ export default function EspecialistaDashboard({ employee }: Props) {
       setSavingAvailability(false);
     }
   };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!employee?.id) return;
+    setSavingProfile(true);
+    setProfileSuccessMsg('');
+    try {
+      const empRef = doc(db, 'employees', employee.id);
+      await updateDoc(empRef, {
+        pendingUpdate: {
+          name: editName,
+          whatsapp: editWhatsapp,
+          zones: editZones,
+          requestedAt: new Date().toISOString()
+        }
+      });
+      setProfileSuccessMsg('Solicitação enviada. Aguardando aprovação da coordenação.');
+    } catch (err) {
+      console.error('Erro ao solicitar alteração de dados:', err);
+      alert('Erro ao enviar solicitação.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [expandedProtocol, setExpandedProtocol] = useState<number | null>(null);
+
+  // Dynamic Calendar Math
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth(); // 0-indexed
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0, Sun=6
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevDaysInMonth = new Date(year, month, 0).getDate();
+
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(year, month - 1, 1));
+    setSelectedBooking(null);
+  };
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(year, month + 1, 1));
+    setSelectedBooking(null);
+  };
 
   // ─── Load real bookings assigned to this specialist ──────────────────────────
   useEffect(() => {
@@ -294,7 +369,12 @@ export default function EspecialistaDashboard({ employee }: Props) {
 
         {/* Bottom */}
         <div className="flex flex-col gap-1 pt-5 border-t border-[#e9e0e8]">
-          <a className="flex items-center gap-3 px-4 py-2 text-[#d1c2d0] hover:text-[#561668] transition-all text-[11px] font-bold uppercase tracking-widest" href="#">
+          <a 
+            className="flex items-center gap-3 px-4 py-2 text-[#d1c2d0] hover:text-[#561668] transition-all text-[11px] font-bold uppercase tracking-widest cursor-pointer" 
+            href="https://wa.me/554899999999" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
             <span className="material-symbols-outlined text-[18px]">help</span> Ajuda
           </a>
           <button
@@ -490,93 +570,264 @@ export default function EspecialistaDashboard({ employee }: Props) {
             ║   AGENDA & DETALLES   ║
             ╚═══════════════════════╝ */}
         {activeTab === 'agenda' && (
-          <div>
-            {/* Week selector */}
-            <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-              {weekDays.map(d => (
-                <div
-                  key={d.iso}
-                  className={`flex flex-col items-center justify-center min-w-[60px] h-20 rounded-2xl font-bold flex-shrink-0 relative ${
-                    d.isToday ? 'text-white' : 'silk-lift text-[#561668]'
+          <div className="flex flex-col gap-6">
+            {/* Mode Selector */}
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#efe5ee]/40">
+              <div>
+                <h3 className="text-sm font-bold text-[#561668] uppercase tracking-widest">Visualização da Agenda</h3>
+                <p className="text-[10px] text-[#80737f] font-semibold mt-0.5">Alterne entre o modo de lista semanal e a grade mensal.</p>
+              </div>
+              <div className="flex bg-[#e9e0e8]/50 p-1 rounded-xl">
+                <button
+                  onClick={() => setAgendaMode('list')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    agendaMode === 'list' ? 'bg-[#561668] text-white shadow-sm' : 'text-[#561668] hover:bg-[#e9e0e8]/50'
                   }`}
-                  style={d.isToday ? { background: '#561668' } : {}}
                 >
-                  <span className="text-[10px] uppercase tracking-widest">{d.dayName}</span>
-                  <span className="text-2xl leading-none">{d.dayNum}</span>
-                  {d.bookings.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center text-white" style={{ background: d.isToday ? 'rgba(255,255,255,0.3)' : '#561668' }}>
-                      {d.bookings.length}
-                    </span>
-                  )}
-                </div>
-              ))}
+                  Modo Lista
+                </button>
+                <button
+                  onClick={() => setAgendaMode('calendar')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    agendaMode === 'calendar' ? 'bg-[#561668] text-white shadow-sm' : 'text-[#561668] hover:bg-[#e9e0e8]/50'
+                  }`}
+                >
+                  Modo Calendário
+                </button>
+              </div>
             </div>
 
-            {/* Booking cards */}
-            {loadingBookings ? (
-              <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f]">Carregando agenda...</div>
-            ) : myBookings.length === 0 ? (
-              <div className="silk-lift rounded-3xl p-16 text-center flex flex-col items-center">
-                <span className="material-symbols-outlined text-6xl text-[#d1c2d0] mb-4">event_busy</span>
-                <h3 className="text-lg font-bold text-[#561668] mb-2">Agenda vazia</h3>
-                <p className="text-[#80737f] text-sm max-w-xs">Quando a coordenação atribuir serviços a você, eles aparecerão aqui automaticamente.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6">
-                {myBookings.filter(b => b.status !== 'Cancelado').map((b, i) => {
-                  const isToday = b.date === todayISO;
-                  const statusColor = b.status === 'Concluído' ? 'bg-green-50 text-green-700' : 'bg-[#e9e0e8] text-[#561668]';
-                  const statusDot = b.status === 'Concluído' ? 'bg-green-500' : 'bg-[#561668] animate-pulse';
-                  return (
-                    <div key={b.docId || i} className="silk-lift rounded-[2rem] overflow-hidden">
-                      {/* Color header */}
-                      <div className="px-8 py-5 flex justify-between items-center" style={{ background: isToday ? '#561668' : '#f4ebf4' }}>
-                        <div>
-                          <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isToday ? 'text-white/70' : 'text-[#80737f]'}`}>
-                            {isToday ? 'HOJE' : b.date || '—'} · {b.time || 'Horário a confirmar'}
-                          </p>
-                          <h3 className={`text-xl font-extrabold ${isToday ? 'text-white' : 'text-[#1e1a20]'}`}>{b.name || 'Cliente'}</h3>
-                        </div>
-                        <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 ${isToday ? 'bg-white/20 text-white' : statusColor}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isToday ? 'bg-white' : statusDot}`} />
-                          {b.status || 'Confirmado'}
+            {/* ── MODO LISTA ── */}
+            {agendaMode === 'list' && (
+              <div>
+                {/* Week selector */}
+                <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+                  {weekDays.map(d => (
+                    <div
+                      key={d.iso}
+                      className={`flex flex-col items-center justify-center min-w-[60px] h-20 rounded-2xl font-bold flex-shrink-0 relative ${
+                        d.isToday ? 'text-white' : 'silk-lift text-[#561668]'
+                      }`}
+                      style={d.isToday ? { background: '#561668' } : {}}
+                    >
+                      <span className="text-[10px] uppercase tracking-widest">{d.dayName}</span>
+                      <span className="text-2xl leading-none">{d.dayNum}</span>
+                      {d.bookings.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center text-white" style={{ background: d.isToday ? 'rgba(255,255,255,0.3)' : '#561668' }}>
+                          {d.bookings.length}
                         </span>
-                      </div>
-                      {/* Details */}
-                      <div className="p-7">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                          {[
-                            { icon: 'schedule',  label: 'Turno',     value: b.format === 'meio' ? 'Meio Turno' : 'Turno Completo' },
-                            { icon: 'payments',  label: 'Valor',     value: b.totalPrice > 0 ? `R$ ${b.totalPrice}` : 'A confirmar' },
-                            { icon: 'info',      label: 'Status',    value: b.status || 'Confirmado' },
-                          ].map(d => (
-                            <div key={d.label} className="silk-inset p-4 rounded-2xl">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="material-symbols-outlined text-[#561668] text-[16px]">{d.icon}</span>
-                                <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest">{d.label}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Booking cards */}
+                {loadingBookings ? (
+                  <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f]">Carregando agenda...</div>
+                ) : myBookings.length === 0 ? (
+                  <div className="silk-lift rounded-3xl p-16 text-center flex flex-col items-center">
+                    <span className="material-symbols-outlined text-6xl text-[#d1c2d0] mb-4">event_busy</span>
+                    <h3 className="text-lg font-bold text-[#561668] mb-2">Agenda vazia</h3>
+                    <p className="text-[#80737f] text-sm max-w-xs">Quando a coordenação atribuir serviços a você, eles aparecerão aqui automaticamente.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-6">
+                    {myBookings.filter(b => b.status !== 'Cancelado').map((b, i) => {
+                      const isToday = b.date === todayISO;
+                      const statusColor = b.status === 'Concluído' ? 'bg-green-50 text-green-700' : 'bg-[#e9e0e8] text-[#561668]';
+                      const statusDot = b.status === 'Concluído' ? 'bg-green-500' : 'bg-[#561668] animate-pulse';
+                      return (
+                        <div key={b.docId || i} className="silk-lift rounded-[2rem] overflow-hidden">
+                          {/* Color header */}
+                          <div className="px-8 py-5 flex justify-between items-center" style={{ background: isToday ? '#561668' : '#f4ebf4' }}>
+                            <div>
+                              <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isToday ? 'text-white/70' : 'text-[#80737f]'}`}>
+                                {isToday ? 'HOJE' : b.date || '—'} · {b.time || 'Horário a confirmar'}
+                              </p>
+                              <h3 className={`text-xl font-extrabold ${isToday ? 'text-white' : 'text-[#1e1a20]'}`}>{b.name || 'Cliente'}</h3>
+                            </div>
+                            <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 ${isToday ? 'bg-white/20 text-white' : statusColor}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isToday ? 'bg-white' : statusDot}`} />
+                              {b.status || 'Confirmado'}
+                            </span>
+                          </div>
+                          {/* Details */}
+                          <div className="p-7">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                              {[
+                                { icon: 'schedule',  label: 'Turno',     value: b.format === 'meio' ? 'Meio Turno' : 'Turno Completo' },
+                                { icon: 'payments',  label: 'Valor',     value: b.totalPrice > 0 ? `R$ ${b.totalPrice}` : 'A confirmar' },
+                                { icon: 'info',      label: 'Status',    value: b.status || 'Confirmado' },
+                              ].map(d => (
+                                <div key={d.label} className="silk-inset p-4 rounded-2xl">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="material-symbols-outlined text-[#561668] text-[16px]">{d.icon}</span>
+                                    <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest">{d.label}</p>
+                                  </div>
+                                  <p className="text-sm font-semibold text-[#1e1a20]">{d.value}</p>
+                                </div>
+                              ))}
+                            </div>
+                            {/* Checklist */}
+                            <div>
+                              <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Checklist do Serviço</h4>
+                              <div className="flex flex-col gap-2">
+                                {['Verificar materiais e insumos', 'Foto inicial de cada cômodo', 'Aplicar protocolo de higienização', 'Foto final e checklist de saída', 'Assinar conclusão'].map((item, j) => (
+                                  <div key={j} className="flex items-center gap-3 p-3 silk-inset rounded-xl">
+                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${b.status === 'Concluído' ? 'bg-green-500 border-green-500' : 'border-[#d1c2d0]'}`}>
+                                      {b.status === 'Concluído' && <span className="material-symbols-outlined text-white text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>}
+                                    </div>
+                                    <span className={`text-sm ${b.status === 'Concluído' ? 'line-through text-[#d1c2d0]' : 'text-[#1e1a20]'}`}>{item}</span>
+                                  </div>
+                                ))}
                               </div>
-                              <p className="text-sm font-semibold text-[#1e1a20]">{d.value}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── MODO CALENDÁRIO ── */}
+            {agendaMode === 'calendar' && (
+              <div className="flex flex-col gap-6">
+                <div className="silk-lift p-6 rounded-3xl">
+                  {/* Calendar Header */}
+                  <div className="flex justify-between items-center mb-6">
+                    <button
+                      onClick={handlePrevMonth}
+                      className="w-10 h-10 rounded-xl hover:bg-[#faf1fa] text-[#561668] flex items-center justify-center cursor-pointer border border-[#efe5ee]"
+                    >
+                      <span className="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <h3 className="font-sans text-base font-extrabold text-[#561668]">
+                      {monthNames[month]} {year}
+                    </h3>
+                    <button
+                      onClick={handleNextMonth}
+                      className="w-10 h-10 rounded-xl hover:bg-[#faf1fa] text-[#561668] flex items-center justify-center cursor-pointer border border-[#efe5ee]"
+                    >
+                      <span className="material-symbols-outlined">chevron_right</span>
+                    </button>
+                  </div>
+
+                  {/* Week Headers */}
+                  <div className="grid grid-cols-7 border-b border-[#efe5ee]/40 pb-3 mb-3 text-center text-[10px] font-bold text-[#80737f] tracking-wider">
+                    <div>SEG</div>
+                    <div>TER</div>
+                    <div>QUA</div>
+                    <div>QUI</div>
+                    <div>SEX</div>
+                    <div className="text-[#703081]">SÁB</div>
+                    <div className="text-[#703081]">DOM</div>
+                  </div>
+
+                  {/* Day Cells */}
+                  <div className="grid grid-cols-7 gap-2">
+                    {/* Prev Month Placeholders */}
+                    {Array.from({ length: firstDayIndex }).map((_, i) => {
+                      const dayNum = prevDaysInMonth - firstDayIndex + 1 + i;
+                      return (
+                        <div key={`prev-${i}`} className="h-16 rounded-xl flex items-start p-1.5 opacity-20 text-[11px] font-semibold">
+                          {dayNum}
+                        </div>
+                      );
+                    })}
+
+                    {/* Current Month Days */}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      const dayBookings = myBookings.filter(b => b.date === dayStr && b.status !== 'Cancelado');
+                      const isSelected = selectedBooking?.date === dayStr;
+
+                      return (
+                        <button
+                          key={`day-${day}`}
+                          onClick={() => {
+                            if (dayBookings.length > 0) {
+                              setSelectedBooking(dayBookings[0]);
+                            } else {
+                              setSelectedBooking(null);
+                            }
+                          }}
+                          className={`h-16 rounded-xl flex flex-col justify-between p-1.5 text-left text-[11px] font-bold transition-all relative ${
+                            isSelected
+                              ? 'bg-[#561668] text-white shadow-md'
+                              : dayBookings.length > 0
+                              ? 'bg-[#f4ebf4] text-[#561668] border border-[#561668]/15 hover:bg-[#efe5ee]'
+                              : 'bg-[#faf1fa]/40 hover:bg-[#faf1fa] border border-transparent'
+                          }`}
+                        >
+                          <span>{day}</span>
+                          {dayBookings.length > 0 && (
+                            <div className="w-full flex items-center justify-between mt-auto">
+                              <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-[#561668]'}`}></span>
+                              <span className={`text-[8px] uppercase tracking-wider truncate font-extrabold max-w-[80%] ${isSelected ? 'text-white/80' : 'text-[#561668]/80'}`}>
+                                {dayBookings[0].format === 'meio' ? 'Meio' : 'Integral'}
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Selected Day Details */}
+                {selectedBooking ? (
+                  <div className="silk-lift rounded-[2rem] overflow-hidden border border-[#efe5ee]/40">
+                    <div className="px-8 py-5 flex justify-between items-center bg-[#561668] text-white">
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1 text-white/70">
+                          {selectedBooking.date} · {selectedBooking.time || 'Horário a confirmar'}
+                        </p>
+                        <h3 className="text-xl font-extrabold text-white">{selectedBooking.name || 'Cliente'}</h3>
+                      </div>
+                      <span className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-white/20 text-white flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                        {selectedBooking.status || 'Confirmado'}
+                      </span>
+                    </div>
+                    <div className="p-7 bg-white">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        {[
+                          { icon: 'schedule',  label: 'Turno',     value: selectedBooking.format === 'meio' ? 'Meio Turno' : 'Turno Completo' },
+                          { icon: 'payments',  label: 'Valor',     value: selectedBooking.totalPrice > 0 ? `R$ ${selectedBooking.totalPrice}` : 'A confirmar' },
+                          { icon: 'info',      label: 'Status',    value: selectedBooking.status || 'Confirmado' },
+                        ].map(d => (
+                          <div key={d.label} className="silk-inset p-4 rounded-2xl">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="material-symbols-outlined text-[#561668] text-[16px]">{d.icon}</span>
+                              <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest">{d.label}</p>
+                            </div>
+                            <p className="text-sm font-semibold text-[#1e1a20]">{d.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Checklist do Serviço</h4>
+                        <div className="flex flex-col gap-2">
+                          {['Verificar materiais e insumos', 'Foto inicial de cada cômodo', 'Aplicar protocolo de higienização', 'Foto final e checklist de saída', 'Assinar conclusão'].map((item, j) => (
+                            <div key={j} className="flex items-center gap-3 p-3 silk-inset rounded-xl">
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${selectedBooking.status === 'Concluído' ? 'bg-green-500 border-green-500' : 'border-[#d1c2d0]'}`}>
+                                {selectedBooking.status === 'Concluído' && <span className="material-symbols-outlined text-white text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>}
+                              </div>
+                              <span className={`text-sm ${selectedBooking.status === 'Concluído' ? 'line-through text-[#d1c2d0]' : 'text-[#1e1a20]'}`}>{item}</span>
                             </div>
                           ))}
                         </div>
-                        {/* Checklist */}
-                        <div>
-                          <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Checklist do Serviço</h4>
-                          <div className="flex flex-col gap-2">
-                            {['Verificar materiais e insumos', 'Foto inicial de cada cômodo', 'Aplicar protocolo de higienização', 'Foto final e checklist de saída', 'Assinar conclusão'].map((item, j) => (
-                              <div key={j} className="flex items-center gap-3 p-3 silk-inset rounded-xl">
-                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${b.status === 'Concluído' ? 'bg-green-500 border-green-500' : 'border-[#d1c2d0]'}`}>
-                                  {b.status === 'Concluído' && <span className="material-symbols-outlined text-white text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>}
-                                </div>
-                                <span className={`text-sm ${b.status === 'Concluído' ? 'line-through text-[#d1c2d0]' : 'text-[#1e1a20]'}`}>{item}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ) : (
+                  <div className="silk-lift rounded-3xl p-8 text-center text-[#80737f] italic font-semibold">
+                    Selecione um dia com atendimento no calendário para visualizar os detalhes.
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -623,79 +874,139 @@ export default function EspecialistaDashboard({ employee }: Props) {
 
                 {/* Availability Grid */}
                 <div>
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex justify-between items-center mb-5">
                     <h3 className="text-sm font-bold text-[#561668] uppercase tracking-widest">Disponibilidade Semanal</h3>
                     <button 
                       onClick={saveAvailability}
                       disabled={savingAvailability}
-                      className="text-[10px] uppercase tracking-widest font-bold bg-[#561668] text-white px-3 py-1 rounded-full flex items-center gap-1 hover:bg-[#703081] transition-colors disabled:opacity-50"
+                      className="text-[10px] uppercase tracking-widest font-bold bg-[#561668] text-white px-4 py-2 rounded-full flex items-center gap-1.5 hover:bg-[#703081] transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
                     >
                       <span className="material-symbols-outlined text-[14px]">save</span>
                       {savingAvailability ? 'Salvando...' : 'Salvar'}
                     </button>
                   </div>
-                  <div className="silk-inset rounded-2xl overflow-x-auto">
-                    <table className="w-full text-[10px] text-center font-bold">
-                      <thead className="text-[#80737f] uppercase tracking-widest border-b border-[#e9e0e8]">
-                        <tr>
-                          <th className="p-2 border-r border-[#e9e0e8] text-left">Dia</th>
-                          {SHIFTS.map(s => <th key={s.id} className="p-2">{s.label}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {DAYS_OF_WEEK_SHORT.map((dayName, idx) => (
-                          <tr key={dayName} className="border-b border-[#e9e0e8] last:border-0">
-                            <td className="p-2 border-r border-[#e9e0e8] text-left text-[#561668] uppercase tracking-widest bg-[#faf1fa]/50 w-16">{dayName}</td>
-                            {SHIFTS.map(shift => {
-                              const isAvail = localAvailability[idx]?.includes(shift.id as any);
-                              return (
-                                <td key={shift.id} className="p-1">
-                                  <button 
-                                    onClick={() => toggleAvailability(idx, shift.id)}
-                                    className={`w-6 h-6 rounded mx-auto flex items-center justify-center transition-all ${isAvail ? 'text-white' : 'border border-[#d1c2d0] hover:border-[#561668]'}`} 
-                                    style={isAvail ? { background: '#561668' } : {}}
-                                  >
-                                    {isAvail && <span className="material-symbols-outlined text-[12px]">check</span>}
-                                  </button>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {DAYS_OF_WEEK_FULL.map((dayName, idx) => (
+                      <div key={dayName} className="silk-inset rounded-2xl p-4 flex flex-col gap-3">
+                        <p className="text-xs font-bold text-[#561668] uppercase tracking-wider">{dayName}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {SHIFTS.map(shift => {
+                            const isAvail = localAvailability[idx]?.includes(shift.id as any);
+                            return (
+                              <button
+                                key={shift.id}
+                                onClick={() => toggleAvailability(idx, shift.id)}
+                                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                  isAvail
+                                    ? 'bg-[#561668] text-white shadow-sm'
+                                    : 'border border-[#efe5ee] bg-white text-[#4e434e] hover:bg-[#faf1fa]'
+                                }`}
+                              >
+                                {shift.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-[10px] text-[#80737f] mt-2 text-center">Modifique e salve sua disponibilidade.</p>
+                  <p className="text-[10px] text-[#80737f] mt-4 text-center">Modifique e salve sua disponibilidade para os turnos da semana.</p>
                 </div>
               </div>
             </div>
 
-            {/* Contact info */}
-            {(employee?.whatsapp || employee?.email || employee?.cpf) && (
-              <div className="silk-lift rounded-3xl p-7 mb-8">
-                <h3 className="text-sm font-bold text-[#561668] uppercase tracking-widest mb-5">Meus Dados</h3>
-                <div className="flex flex-col gap-3">
-                  {employee.whatsapp && (
-                    <div className="flex items-center gap-3 silk-inset p-4 rounded-2xl">
-                      <span className="material-symbols-outlined text-[#561668] text-[20px]">phone</span>
-                      <div>
-                        <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest">WhatsApp</p>
-                        <p className="text-sm font-semibold text-[#1e1a20]">{employee.whatsapp}</p>
-                      </div>
+            {/* Contact info / Edit profile */}
+            <div className="silk-lift rounded-3xl p-7 mt-8">
+              <h3 className="text-sm font-bold text-[#561668] uppercase tracking-widest mb-5">Meus Dados</h3>
+              
+              {employee?.pendingUpdate && (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">pending</span>
+                  <span>Solicitação de alteração enviada. Aguardando aprovação da coordenação.</span>
+                </div>
+              )}
+
+              {profileSuccessMsg && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  <span>{profileSuccessMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateProfile} className="space-y-4 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-bold text-[#561668] uppercase tracking-wider ml-1">Nome Completo</label>
+                    <div className="silk-inset p-3 rounded-xl">
+                      <input
+                        type="text"
+                        required
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-[#4e434e]"
+                      />
                     </div>
-                  )}
-                  {employee.email && (
-                    <div className="flex items-center gap-3 silk-inset p-4 rounded-2xl">
-                      <span className="material-symbols-outlined text-[#561668] text-[20px]">email</span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-bold text-[#561668] uppercase tracking-wider ml-1">WhatsApp</label>
+                    <div className="silk-inset p-3 rounded-xl">
+                      <input
+                        type="text"
+                        required
+                        value={editWhatsapp}
+                        onChange={handleWhatsappChange}
+                        placeholder="(48) 99999-9999"
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-[#4e434e]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-[#561668] uppercase tracking-wider ml-1">Zonas de Atendimento</label>
+                  <div className="silk-inset p-3 rounded-xl">
+                    <input
+                      type="text"
+                      required
+                      value={editZones}
+                      onChange={(e) => setEditZones(e.target.value)}
+                      placeholder="Ex: Norte da Ilha, Centro, Trindade"
+                      className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-[#4e434e]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-[#efe5ee]/40">
+                  <div className="flex items-center gap-3 silk-inset p-3.5 rounded-xl opacity-75">
+                    <span className="material-symbols-outlined text-[#80737f] text-[20px]">email</span>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest">Email (Não editável)</p>
+                      <p className="text-xs font-semibold text-[#80737f]">{employee?.email}</p>
+                    </div>
+                  </div>
+                  {employee?.cpf && (
+                    <div className="flex items-center gap-3 silk-inset p-3.5 rounded-xl opacity-75">
+                      <span className="material-symbols-outlined text-[#80737f] text-[20px]">fingerprint</span>
                       <div>
-                        <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest">Email</p>
-                        <p className="text-sm font-semibold text-[#1e1a20]">{employee.email}</p>
+                        <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest">CPF (Não editável)</p>
+                        <p className="text-xs font-semibold text-[#80737f]">{employee.cpf}</p>
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={savingProfile}
+                    className="px-6 py-2.5 bg-[#561668] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#703081] transition-all disabled:opacity-50 shadow-sm cursor-pointer"
+                  >
+                    {savingProfile ? 'Salvando...' : 'Solicitar Alteração'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
