@@ -23,7 +23,7 @@ export interface AddonService {
   description: string;
 }
 
-export type ApplicationScreen = 'welcome' | 'triage' | 'pricing' | 'recruitment' | 'minha-area' | 'admin';
+export type ApplicationScreen = 'welcome' | 'triage' | 'pricing' | 'recruitment' | 'minha-area' | 'admin' | 'waitlist';
 
 export interface Employee {
   id?: string;

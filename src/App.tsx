@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ApplicationScreen, TriageData } from './types';
 import { INITIAL_TRIAGE_DATA } from './data';
 import WelcomeScreen from './components/WelcomeScreen';
+import WaitlistForm from './components/WaitlistForm';
 import ClientTriage from './components/ClientTriage';
 import PricingMatrix from './components/PricingMatrix';
 import RecruitmentForm from './components/RecruitmentForm';
@@ -25,6 +26,7 @@ const getInitialScreen = (): ApplicationScreen => {
   if (path === '/minha-area') return 'minha-area';
   if (path === '/pricing') return 'pricing';
   if (path === '/triage')  return 'triage';
+  if (path === '/lista' || path === '/waitlist') return 'waitlist';
   return 'welcome';
 };
 
@@ -178,6 +180,7 @@ export default function App() {
       recruitment:  '/equipe',
       'minha-area': '/minha-area',
       admin:        '/admin',
+      waitlist:     '/lista',
     };
     window.history.pushState({}, '', paths[screen] || '/');
   };
@@ -218,6 +221,11 @@ export default function App() {
 
       ) : currentScreen === 'welcome' ? (
         <WelcomeScreen onScreenChange={handleScreenChange} />
+
+      ) : currentScreen === 'waitlist' ? (
+        <div className="w-full h-screen overflow-y-auto bg-[#fff7fd]">
+          <WaitlistForm onScreenChange={handleScreenChange} />
+        </div>
 
       ) : currentScreen === 'triage' ? (
         <ClientTriage

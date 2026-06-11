@@ -103,11 +103,11 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
-        onClick={() => onScreenChange('triage')}
+        onClick={() => onScreenChange('waitlist')}
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            onScreenChange('triage');
+            onScreenChange('waitlist');
           }
         }}
         className="flex-1 h-1/2 md:h-full relative overflow-hidden group cursor-pointer border-b md:border-b-0 md:border-r border-[#efe5ee]/40 focus:outline-none focus:ring-2 focus:ring-[#561668] focus:z-30"
@@ -141,17 +141,17 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
               Para Residências
             </h2>
             <p className="font-sans text-[14px] md:text-[17px] text-[#4e434e] mb-5 md:mb-6 leading-relaxed">
-              Quero contratar o Método Pame para a minha residência e garantir excelência e cuidado contínuo.
+              Garanta sua vaga na lista de espera para o lançamento oficial do agendamento online do Método Pame.
             </p>
             
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                onScreenChange('triage');
+                onScreenChange('waitlist');
               }}
               className="w-full py-3.5 md:py-4 px-6 bg-[#fff7fd] hover:bg-[#efe5ee] text-[#561668] border border-[#d1c2d0]/30 rounded-2xl font-bold text-[10px] md:text-xs tracking-widest uppercase transition-all duration-300 shadow-[4px_4px_8px_#d9cbd9,-4px_-4px_8px_#ffffff] hover:shadow-[inset_2px_2px_5px_#d9cbd9,inset_-2px_-2px_5px_#ffffff] active-scale flex items-center justify-center gap-2"
             >
-              Iniciar Avaliação
+              Entrar na Lista de Espera
               <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold">arrow_forward</span>
             </button>
           </motion.div>

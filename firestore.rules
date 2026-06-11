@@ -77,5 +77,13 @@ service cloud.firestore {
       // Only admins can read or modify index entries from the client
       allow read, update, delete: if isAdmin();
     }
+
+    // Rules for Waitlist
+    match /waitlist/{entryId} {
+      // Anyone can register on the waitlist
+      allow create: if true;
+      // Only admins can read, update or delete waitlist entries
+      allow read, update, delete: if isAdmin();
+    }
   }
 }
