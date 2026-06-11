@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy, where, setDoc } from 'firebase/firestore';
 import { notifyEmployeeRemoval, notifyEmployeeAssignment } from '../lib/NotificationService';
 
 import type { Employee, Booking } from '../types';
@@ -52,11 +52,12 @@ const SHIFTS = [
   { id: 'completo', label: 'Integral' },
 ];
 
-type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes' | 'concierge';
+type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes' | 'concierge' | 'espera';
 
 const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard'    },
   { id: 'agenda',       icon: 'calendar_today', label: 'Agenda'     },
+  { id: 'espera',       icon: 'hourglass_empty', label: 'Lista de Espera' },
   { id: 'equipe',       icon: 'group',        label: 'Equipe'       },
   { id: 'recrutamento', icon: 'badge',         label: 'Recrutamento' },
   { id: 'indicacoes',   icon: 'stars',         label: 'Indicações'   },
@@ -70,6 +71,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [bookings, setBookings]             = useState<any[]>([]);
   const [referrals, setReferrals]           = useState<any[]>([]);
   const [users, setUsers]                   = useState<any[]>([]);
+  const [waitlistEntries, setWaitlistEntries] = useState<any[]>([]);
   const [loading, setLoading]               = useState(true);
   const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
   const [agendaView, setAgendaView]         = useState<'lista' | 'calendario' | 'google'>('calendario');
@@ -190,6 +192,18 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
         setUsers(uSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       } catch (e) {
         console.warn('collection users fetch falhou.', e);
+      }
+      try {
+        const wSnap = await getDocs(collection(db, 'waitlist'));
+        const entries = wSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        entries.sort((a: any, b: any) => {
+          const tA = a.createdAt?.seconds || 0;
+          const tB = b.createdAt?.seconds || 0;
+          return tB - tA;
+        });
+        setWaitlistEntries(entries);
+      } catch (e) {
+        console.warn('collection waitlist fetch falhou.', e);
       }
     } catch (err) {
       console.error(err);
@@ -346,6 +360,77 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     if (confirm('🚨 ATENÇÃO: Deletar DEFINITIVAMENTE esta especialista? Esta ação não pode ser desfeita.')) {
       try { await deleteDoc(doc(db, 'employees', empId)); fetchEmployees(); }
       catch (err) { console.error(err); }
+    }
+  };
+
+  // ─── Waitlist Handlers ────────────────────────────────────────────────────────
+  const handlePreRegister = async (entry: any) => {
+    try {
+      setLoading(true);
+      const userEmail = entry.email.toLowerCase().trim();
+      const q = query(collection(db, 'users'), where('email', '==', userEmail));
+      const userQuerySnap = await getDocs(q);
+      
+      let clientUid = '';
+      if (!userQuerySnap.empty) {
+        clientUid = userQuerySnap.docs[0].id;
+        await updateDoc(doc(db, 'users', clientUid), {
+          name: entry.name,
+          whatsapp: entry.whatsapp,
+          neighborhood: entry.neighborhood,
+          role: 'client'
+        });
+      } else {
+        const newUserRef = doc(collection(db, 'users'));
+        clientUid = newUserRef.id;
+        await setDoc(newUserRef, {
+          email: userEmail,
+          name: entry.name,
+          whatsapp: entry.whatsapp,
+          neighborhood: entry.neighborhood,
+          role: 'client',
+          createdAt: serverTimestamp(),
+          isPreRegistered: true
+        });
+      }
+      
+      await updateDoc(doc(db, 'waitlist', entry.id), {
+        status: 'registered',
+        registeredUid: clientUid
+      });
+      
+      alert(`Pré-registro concluído para ${entry.name}! O perfil de cliente foi criado.`);
+      fetchEmployees();
+    } catch (err) {
+      console.error('Erro ao pré-registrar cliente:', err);
+      alert('Erro ao realizar o pré-registro. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteWaitlistEntry = async (id: string) => {
+    if (!confirm('Deseja realmente excluir este cadastro da lista de espera?')) return;
+    try {
+      setLoading(true);
+      await deleteDoc(doc(db, 'waitlist', id));
+      alert('Cadastro removido da lista de espera.');
+      fetchEmployees();
+    } catch (err) {
+      console.error('Erro ao deletar da lista de espera:', err);
+      alert('Erro ao excluir. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleWaitlistContacted = async (entry: any) => {
+    try {
+      const newStatus = entry.status === 'pending' ? 'contacted' : 'pending';
+      await updateDoc(doc(db, 'waitlist', entry.id), { status: newStatus });
+      fetchEmployees();
+    } catch (err) {
+      console.error('Erro ao atualizar status da lista de espera:', err);
     }
   };
 
@@ -1742,6 +1827,169 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ╔══════════════════════════════╗
+            ║   TAB: LISTA DE ESPERA       ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'espera' && (
+          <div className="animate-fade-in">
+            <div className="mb-6 flex justify-between items-center">
+              <div>
+                <h1 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">Lista de Espera</h1>
+                <p className="text-sm text-[#4e434e] mt-1 font-medium">Cadastros realizados antes do lançamento oficial. Gerencie e realize pré-registros de clientes.</p>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-[#80737f] uppercase tracking-wider">Total de Inscritos</p>
+                  <p className="text-3xl font-extrabold text-[#561668] mt-1">{waitlistEntries.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#fff7fd] flex items-center justify-center text-[#561668]">
+                  <span className="material-symbols-outlined text-2xl">hourglass_empty</span>
+                </div>
+              </div>
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-[#80737f] uppercase tracking-wider">Aguardando Contato</p>
+                  <p className="text-3xl font-extrabold text-amber-600 mt-1">
+                    {waitlistEntries.filter(e => e.status === 'pending').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
+                  <span className="material-symbols-outlined text-2xl">pending</span>
+                </div>
+              </div>
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-[#80737f] uppercase tracking-wider">Já Pré-registrados</p>
+                  <p className="text-3xl font-extrabold text-emerald-600 mt-1">
+                    {waitlistEntries.filter(e => e.status === 'registered').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <span className="material-symbols-outlined text-2xl">how_to_reg</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Entries Table */}
+            {loading ? (
+              <div className="silk-lift rounded-3xl p-12 text-center text-[#80737f]">Carregando lista de espera...</div>
+            ) : waitlistEntries.length === 0 ? (
+              <div className="silk-lift rounded-3xl p-16 text-center flex flex-col items-center">
+                <span className="material-symbols-outlined text-6xl text-[#d1c2d0] mb-4">hourglass_disabled</span>
+                <h3 className="text-lg font-bold text-[#561668] mb-2">Nenhum cadastro na lista</h3>
+                <p className="text-[#80737f] text-sm">Os cadastros aparecerão aqui assim que as pessoas se inscreverem no site.</p>
+              </div>
+            ) : (
+              <div className="silk-lift rounded-3xl overflow-hidden border border-[#efe5ee]">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#fff7fd] border-b border-[#efe5ee] text-[10px] font-bold text-[#703081] uppercase tracking-wider">
+                        <th className="py-4 px-6">Data</th>
+                        <th className="py-4 px-6">Cliente</th>
+                        <th className="py-4 px-6">Contato</th>
+                        <th className="py-4 px-6">Bairro</th>
+                        <th className="py-4 px-6">Interesse / Origem</th>
+                        <th className="py-4 px-6 text-center">Status</th>
+                        <th className="py-4 px-6 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#efe5ee] text-sm text-[#4e434e]">
+                      {waitlistEntries.map(entry => {
+                        const date = entry.createdAt
+                          ? new Date(entry.createdAt.seconds * 1000).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                          : 'Pendente';
+                        const cleanWhatsapp = entry.whatsapp.replace(/\D/g, '');
+                        const waLink = `https://api.whatsapp.com/send?phone=55${cleanWhatsapp}&text=${encodeURIComponent(
+                          `Olá, ${entry.name}! Aqui é a Pame do Método Pame. Vi que você entrou na nossa lista de espera do agendamento online...`
+                        )}`;
+
+                        return (
+                          <tr key={entry.id} className="hover:bg-[#faf1fa]/40 transition-colors">
+                            <td className="py-4 px-6 text-[11px] font-bold text-[#80737f] whitespace-nowrap">{date}</td>
+                            <td className="py-4 px-6">
+                              <p className="font-extrabold text-[#1e1a20]">{entry.name}</p>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-bold flex items-center gap-1"><span className="material-symbols-outlined text-xs">phone</span>{entry.whatsapp}</span>
+                                <span className="text-[11px] text-[#80737f] truncate max-w-[180px]">{entry.email}</span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 font-semibold">{entry.neighborhood}</td>
+                            <td className="py-4 px-6">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-extrabold text-xs text-[#561668]">{entry.serviceType}</span>
+                                <span className="text-[11px] text-[#80737f]">
+                                  {entry.referredByName ? `Indicação de: ${entry.referredByName}` : `Origem: ${entry.source || 'Site'}`}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              {entry.status === 'registered' ? (
+                                <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                  Pré-registrado
+                                </span>
+                              ) : entry.status === 'contacted' ? (
+                                <span className="text-[10px] text-blue-700 font-bold uppercase tracking-widest bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                  Contatado
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-amber-700 font-bold uppercase tracking-widest bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                  Pendente
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <div className="flex gap-2 justify-center">
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    if (entry.status === 'pending') {
+                                      handleToggleWaitlistContacted(entry);
+                                    }
+                                  }}
+                                  className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors flex items-center justify-center"
+                                  title="Enviar WhatsApp"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">chat</span>
+                                </a>
+                                {entry.status !== 'registered' && (
+                                  <button
+                                    onClick={() => handlePreRegister(entry)}
+                                    className="px-3 py-1.5 bg-[#561668] hover:bg-[#703081] text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1 shadow-sm"
+                                    title="Pré-registrar cliente no banco"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">how_to_reg</span>
+                                    <span>Pré-registrar</span>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteWaitlistEntry(entry.id)}
+                                  className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl border border-red-200 transition-colors flex items-center justify-center"
+                                  title="Excluir cadastro"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
