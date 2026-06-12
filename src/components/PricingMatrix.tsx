@@ -1054,11 +1054,12 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#fff7fd] max-w-lg w-full rounded-2xl p-6 md:p-8 shadow-2xl relative border border-[#efe5ee]/40 font-sans"
+              className="bg-[#fff7fd] max-w-lg w-full rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xl relative border border-[#efe5ee]/40 font-sans"
             >
               <button
                 onClick={() => { setShowBookingModal(false); setModalStep('form'); }}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#f4ebf4] text-[#4e434e] flex items-center justify-center hover:bg-[#efe5ee] transition-colors cursor-pointer z-10"
+                className="absolute top-3 right-3 w-11 h-11 rounded-full bg-[#f4ebf4] text-[#4e434e] flex items-center justify-center hover:bg-[#efe5ee] transition-colors cursor-pointer z-10 active-scale"
+                style={{ minWidth: '44px', minHeight: '44px' }}
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
