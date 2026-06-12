@@ -15,19 +15,21 @@ import RecruitmentForm from './components/RecruitmentForm';
 import Sidebar from './components/Sidebar';
 import MinhaArea from './components/MinhaArea';
 import AdminPanel from './components/AdminPanel';
+import NotFound from './components/NotFound';
 import { useAuth } from './contexts/AuthContext';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 const getInitialScreen = (): ApplicationScreen => {
   const path = window.location.pathname;
+  if (path === '/' || path === '') return 'welcome';
   if (path === '/equipe') return 'recruitment';
   if (path === '/admin')  return 'admin';
   if (path === '/minha-area') return 'minha-area';
   if (path === '/pricing') return 'pricing';
   if (path === '/avaliacao')  return 'triage';
   if (path === '/lista' || path === '/waitlist') return 'waitlist';
-  return 'welcome';
+  return 'not-found';
 };
 
 const FOUNDER_EMAILS = ['metodopame.homedetail@gmail.com', 'contactosaintdac@gmail.com'];
@@ -268,6 +270,9 @@ export default function App() {
         <div className="w-full h-screen overflow-y-auto bg-[#fff7fd]">
           <MinhaArea onScreenChange={handleScreenChange} />
         </div>
+
+      ) : currentScreen === 'not-found' ? (
+        <NotFound onScreenChange={handleScreenChange} />
 
       ) : (
         /* Standard Layout — client flow */

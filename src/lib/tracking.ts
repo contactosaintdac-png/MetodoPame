@@ -65,4 +65,23 @@ export function initializeTracking() {
     window.fbq('init', pixelId);
     window.fbq('track', 'PageView');
   }
+
+  // 3. Microsoft Clarity
+  const clarityId = import.meta.env.VITE_CLARITY_ID;
+  if (clarityId) {
+    console.log('[Tracking] Initializing Microsoft Clarity:', clarityId);
+    
+    (function(c: any, l: Document, a: string, r: string, i: string, t?: any, y?: any) {
+      c[a] = c[a] || function() {
+        (c[a].q = c[a].q || []).push(arguments);
+      };
+      t = l.createElement(r);
+      t.async = true;
+      t.src = "https://www.clarity.ms/tag/" + i;
+      y = l.getElementsByTagName(r)[0];
+      if (y && y.parentNode) {
+        y.parentNode.insertBefore(t, y);
+      }
+    })(window, document, "clarity", "script", clarityId);
+  }
 }

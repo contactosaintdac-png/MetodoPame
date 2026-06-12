@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /avaliacao
+Disallow: /admin
+Disallow: /minha-area
+Disallow: /equipe
+
+Sitemap: https://metodopame.com/sitemap.xml
