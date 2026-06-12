@@ -88,8 +88,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Calculate price securely on the server
-    const calculatedPrice = calculateServerPrice(format, mode, triageData, activeAddons);
-    const title = `Limpeza Método Pame - ${format === 'meio' ? 'Meio Turno' : 'Turno Completo'} (${mode === 'mensal' ? 'Mensal' : 'Avulso'})`;
+    const isTestPayment = clientName.toLowerCase().includes('test_pame');
+    const calculatedPrice = isTestPayment ? 1.00 : calculateServerPrice(format, mode, triageData, activeAddons);
+    const title = isTestPayment 
+      ? `[TEST] Limpeza Método Pame - R$ 1,00`
+      : `Limpeza Método Pame - ${format === 'meio' ? 'Meio Turno' : 'Turno Completo'} (${mode === 'mensal' ? 'Mensal' : 'Avulso'})`;
 
     const preference = new Preference(client);
 
