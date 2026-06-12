@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy, where, setDoc } from 'firebase/firestore';
-import { notifyEmployeeRemoval, notifyEmployeeAssignment } from '../lib/NotificationService';
+import { notifyEmployeeRemoval, notifyEmployeeAssignment, notifyClientAssignment } from '../lib/NotificationService';
 import { scheduleCafeVirtualEvent } from '../lib/calendar';
 
 import type { Employee, Booking } from '../types';
@@ -560,11 +560,76 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     if (!editingBooking) return;
     try {
       let finalData = { ...editBookingData };
+      let newEmpName = '';
       if (editBookingData.assignedEmployeeId) {
         const sel = employees.find(emp => emp.id === editBookingData.assignedEmployeeId);
-        if (sel) finalData.assignedEmployeeName = sel.name;
+        if (sel) {
+          finalData.assignedEmployeeName = sel.name;
+          newEmpName = sel.name;
+        }
+      } else {
+        finalData.assignedEmployeeName = null;
       }
+
+      const oldEmpId = editingBooking.assignedEmployeeId || null;
+      const newEmpId = editBookingData.assignedEmployeeId || null;
+
       await updateDoc(editingBooking.ref, finalData);
+
+      // Trigger notifications if employee assignment changed
+      if (oldEmpId !== newEmpId) {
+        const date = editBookingData.date || editingBooking.date;
+        const shiftStr = editBookingData.format === 'meio' ? 'Meio Turno (4h)' : 'Turno Completo (9h)';
+        const addonsList = editingBooking.addons || [];
+
+        // 1. Notify old specialist if removed
+        if (oldEmpId) {
+          const oldEmp = employees.find(emp => emp.id === oldEmpId);
+          const oldEmpName = oldEmp?.name || editingBooking.assignedEmployeeName || 'Especialista';
+          await notifyEmployeeRemoval(
+            oldEmpName,
+            undefined,
+            undefined,
+            date,
+            oldEmpId
+          );
+        }
+
+        // 2. Notify new specialist if assigned
+        if (newEmpId) {
+          await notifyEmployeeAssignment(
+            newEmpName || 'Especialista',
+            undefined,
+            undefined,
+            date,
+            shiftStr,
+            "Endereço no App",
+            addonsList,
+            newEmpId
+          );
+        }
+
+        // 3. Notify client about the confirmation / new specialist
+        const clientUid = editingBooking.ref.parent?.parent?.id;
+        const clientUser = users.find((u: any) => u.id === clientUid);
+        const clientEmail = clientUser?.email;
+        const clientPhone = editingBooking.phone || '';
+        const clientName = editingBooking.name || '';
+        const totalPrice = editBookingData.totalPrice || editingBooking.totalPrice || 0;
+
+        await notifyClientAssignment(
+          clientName,
+          clientEmail,
+          clientPhone,
+          date,
+          shiftStr,
+          totalPrice,
+          newEmpName || 'A definir',
+          undefined,
+          newEmpId || undefined
+        );
+      }
+
       setShowEditBookingModal(false);
       setEditingBooking(null);
       fetchEmployees();

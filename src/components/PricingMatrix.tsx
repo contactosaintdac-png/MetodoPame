@@ -433,11 +433,13 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           await notifyClientAssignment(
             bookingName,
             user.email,
+            bookingPhone,
             bookingDateState,
             shiftStr,
             totalPrice,
             assignedEmployee.name,
-            assignedEmployee.photo
+            undefined,
+            assignedEmployee.id
           );
         }
         
@@ -452,11 +454,13 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
 
         await notifyEmployeeAssignment(
           assignedEmployee.name,
-          assignedEmployee.email, // using email instead of whatsapp
+          undefined,
+          undefined,
           bookingDateState,
           shiftStr,
-          "Endereço no App", // We could fetch from triage data
-          addonsList
+          "Endereço no App",
+          addonsList,
+          assignedEmployee.id
         );
         
       } catch(e) {

@@ -1,6 +1,18 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
+import admin from 'firebase-admin';
 
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+
+const db = admin.firestore();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -8,7 +20,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { employeeEmail, employeeName, clientAddress, date, shift, addons } = req.body;
+  const { employeeId, clientAddress, date, shift, addons } = req.body;
+  let { employeeEmail, employeeName } = req.body;
+
+  if (employeeId) {
+    try {
+      const empDoc = await db.collection('employees').doc(employeeId).get();
+      if (empDoc.exists) {
+        const empData = empDoc.data();
+        if (empData) {
+          employeeEmail = employeeEmail || empData.email || '';
+          employeeName = employeeName || empData.name || '';
+        }
+      }
+    } catch (err) {
+      console.error('[send-specialist-assignment] Error fetching employee details:', err);
+    }
+  }
 
   if (!employeeEmail) {
     return res.status(400).json({ error: 'Employee email is required' });
