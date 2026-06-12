@@ -341,7 +341,7 @@ OPENAI_API_KEY=           ← API Key de OpenAI (opcional / legacy)
 ## 18. Rastreamento e Analytics
 
 Se encuentra implementado el rastreo de eventos y visitas de usuarios en producción:
-- **Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`)**: Rastreo básico de visitas a páginas y conversiones de checkout.
+- **Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`)**: Rastreo básico de visitas a páginas y conversiones de checkout. **(Configurado y trackeando activamente en producción)**.
 - **Meta Pixel (`VITE_META_PIXEL_ID`)**: Rastreo de eventos clave (registro en lista de espera, inicio de triage, inicio de pago).
 - **Lógica Resiliente (`tracking.ts`)**: Se cargan dinámicamente según variables de entorno de Vercel en `src/main.tsx`. Si no están declaradas, la inicialización no causa errores en consola (graceful exclusion).
 
