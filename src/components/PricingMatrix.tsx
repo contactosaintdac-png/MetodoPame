@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TriageData, AddonService, ApplicationScreen } from '../types';
 import { PAME_ADDONS } from '../data';
@@ -41,12 +41,167 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   const [modalStep, setModalStep] = useState<'form' | 'availability' | 'payment' | 'pending'>('form');
   
   // Real-time Availability States
-  const [shiftTime, setShiftTime] = useState<'manha'|'tarde'|''>('');
+  const [shiftTime, setShiftTime] = useState<'manha'|'tarde'|''>('manha');
   const [availabilityStatus, setAvailabilityStatus] = useState<'checking' | 'available' | 'unavailable' | 'idle'>('idle');
   const [alternativeDates, setAlternativeDates] = useState<string[]>([]);
   const [monthlyDates, setMonthlyDates] = useState<string[]>([]);
   const [unavailableMonthlyDate, setUnavailableMonthlyDate] = useState<string | null>(null);
   const [assignedEmployeeName, setAssignedEmployeeName] = useState<string>('');
+
+  // Calendar Availability States
+  const [currentCalendarMonth, setCurrentCalendarMonth] = useState(new Date().getMonth());
+  const [currentCalendarYear, setCurrentCalendarYear] = useState(new Date().getFullYear());
+  const [availabilityCache, setAvailabilityCache] = useState<Record<string, boolean>>({});
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+
+  const MONTH_NAMES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const fetchMonthAvailability = async (year: number, month: number, sId: string) => {
+    if (!sId || sId === 'meio_') return;
+    try {
+      setLoadingAvailability(true);
+      
+      const q = query(collection(db, 'employees'));
+      const empSnap = await getDocs(q);
+      const employeesList = empSnap.docs.map(d => ({id: d.id, ...d.data()})) as any[];
+      
+      // Fetch blocks for all employees
+      const blocksMap: Record<string, Record<string, string[]>> = {};
+      for (const emp of employeesList) {
+        blocksMap[emp.id] = {};
+        const blocksSnap = await getDocs(collection(db, 'employee_schedules', emp.id, 'blocks'));
+        blocksSnap.docs.forEach(doc => {
+          blocksMap[emp.id][doc.id] = doc.data().shifts || [];
+        });
+      }
+      
+      const startDate = new Date(year, month, 1);
+      const cache: Record<string, boolean> = {};
+      
+      // Calculate availability for the next 60 days to cover monthly packages
+      for (let i = 0; i < 60; i++) {
+        const currentDate = new Date(startDate.getTime());
+        currentDate.setDate(startDate.getDate() + i);
+        
+        const yearStr = currentDate.getFullYear();
+        const monthStr = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(currentDate.getDate()).padStart(2, '0');
+        const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
+        
+        const dayOfWeek = currentDate.getDay();
+        
+        // Filter employees by schedule
+        const availableEmps = employeesList.filter(emp => {
+          if (!emp.weeklyAvailability || !emp.weeklyAvailability[dayOfWeek]) return false;
+          const sched = emp.weeklyAvailability[dayOfWeek];
+          if (sId === 'completo') {
+            return sched.includes('completo');
+          } else if (sId === 'meio_manha') {
+            return sched.includes('meio_manha') || sched.includes('completo');
+          } else if (sId === 'meio_tarde') {
+            return sched.includes('meio_tarde') || sched.includes('completo');
+          }
+          return false;
+        });
+        
+        // Check blocks
+        let hasAvailableSpecialist = false;
+        for (const emp of availableEmps) {
+          const blockedShifts = blocksMap[emp.id]?.[dateStr] || [];
+          let isBlocked = false;
+          if (sId === 'completo') {
+            isBlocked = blockedShifts.includes('completo') || blockedShifts.includes('meio_manha') || blockedShifts.includes('meio_tarde');
+          } else if (sId === 'meio_manha') {
+            isBlocked = blockedShifts.includes('meio_manha') || blockedShifts.includes('completo');
+          } else if (sId === 'meio_tarde') {
+            isBlocked = blockedShifts.includes('meio_tarde') || blockedShifts.includes('completo');
+          }
+          if (!isBlocked) {
+            hasAvailableSpecialist = true;
+            break;
+          }
+        }
+        
+        cache[dateStr] = hasAvailableSpecialist;
+      }
+      
+      setAvailabilityCache(cache);
+    } catch (err) {
+      console.error("Erro ao carregar disponibilidade do mês:", err);
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+
+  const isDateAvailable = (dateStr: string) => {
+    if (loadingAvailability) return false;
+    
+    // Past dates are not available
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr < todayStr) return false;
+    
+    if (selectedPlanMode === 'mensal') {
+      let d = new Date(dateStr + "T12:00:00");
+      for (let i = 0; i < 4; i++) {
+        const yearStr = d.getFullYear();
+        const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        const currentCheckStr = `${yearStr}-${monthStr}-${dayStr}`;
+        
+        if (!availabilityCache[currentCheckStr]) return false;
+        d.setDate(d.getDate() + 7);
+      }
+      return true;
+    } else {
+      return !!availabilityCache[dateStr];
+    }
+  };
+
+  const handlePrevMonth = () => {
+    if (currentCalendarMonth === 0) {
+      setCurrentCalendarMonth(11);
+      setCurrentCalendarYear(prev => prev - 1);
+    } else {
+      setCurrentCalendarMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentCalendarMonth === 11) {
+      setCurrentCalendarMonth(0);
+      setCurrentCalendarYear(prev => prev + 1);
+    } else {
+      setCurrentCalendarMonth(prev => prev + 1);
+    }
+  };
+
+  const generateCalendarDays = () => {
+    const firstDayIndex = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay();
+    const numDays = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+    
+    const days = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push(null);
+    }
+    for (let day = 1; day <= numDays; day++) {
+      const dateStr = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      days.push({
+        dateStr,
+        dayNum: day,
+        isAvailable: isDateAvailable(dateStr)
+      });
+    }
+    return days;
+  };
+
+  // Trigger availability pre-fetching
+  const currentShiftId = selectedFormat === 'completo' ? 'completo' : `meio_${shiftTime}`;
+  useEffect(() => {
+    fetchMonthAvailability(currentCalendarYear, currentCalendarMonth, currentShiftId);
+  }, [currentCalendarYear, currentCalendarMonth, currentShiftId, selectedFormat]);
 
   // Surface treatment overhead estimation (luxury Order care)
   const surfaceCount = [
@@ -116,18 +271,33 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
       const empSnap = await getDocs(q);
       const employees = empSnap.docs.map(d => ({id: d.id, ...d.data()})) as any[];
       
-      let availableEmps = employees.filter(emp => 
-        emp.weeklyAvailability && 
-        emp.weeklyAvailability[dayOfWeek] && 
-        emp.weeklyAvailability[dayOfWeek].includes(shiftId)
-      );
+      let availableEmps = employees.filter(emp => {
+        if (!emp.weeklyAvailability || !emp.weeklyAvailability[dayOfWeek]) return false;
+        const sched = emp.weeklyAvailability[dayOfWeek];
+        if (shiftId === 'completo') {
+          return sched.includes('completo');
+        } else if (shiftId === 'meio_manha') {
+          return sched.includes('meio_manha') || sched.includes('completo');
+        } else if (shiftId === 'meio_tarde') {
+          return sched.includes('meio_tarde') || sched.includes('completo');
+        }
+        return false;
+      });
       
       const trulyAvailable = [];
       for(let emp of availableEmps) {
         const blockDoc = await getDoc(doc(db, 'employee_schedules', emp.id, 'blocks', dateStr));
         if (blockDoc.exists()) {
           const blockedShifts = blockDoc.data().shifts || [];
-          if (!blockedShifts.includes(shiftId)) trulyAvailable.push(emp);
+          let isBlocked = false;
+          if (shiftId === 'completo') {
+            isBlocked = blockedShifts.includes('completo') || blockedShifts.includes('meio_manha') || blockedShifts.includes('meio_tarde');
+          } else if (shiftId === 'meio_manha') {
+            isBlocked = blockedShifts.includes('meio_manha') || blockedShifts.includes('completo');
+          } else if (shiftId === 'meio_tarde') {
+            isBlocked = blockedShifts.includes('meio_tarde') || blockedShifts.includes('completo');
+          }
+          if (!isBlocked) trulyAvailable.push(emp);
         } else {
           trulyAvailable.push(emp);
         }
@@ -141,6 +311,10 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
 
   const handleBookingSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!bookingDateState) {
+      alert("Por favor, selecione uma data disponível no calendário.");
+      return;
+    }
     if (selectedFormat === 'meio' && !shiftTime) {
       alert("Por favor, selecione se prefere Manhã ou Tarde.");
       return;
@@ -893,18 +1067,104 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                     />
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-extrabold text-[#561668] uppercase tracking-widest" htmlFor="bookingDate">
-                      Data Desejada
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[11px] font-extrabold text-[#561668] uppercase tracking-widest">
+                      Data Desejada {selectedPlanMode === 'mensal' && <span className="text-xs text-[#80737f] lowercase font-normal">(Início do pacote)</span>}
                     </label>
-                    <input
-                      id="bookingDate"
-                      type="date"
-                      required
-                      value={bookingDateState}
-                      onChange={(e) => setBookingDateState(e.target.value)}
-                      className="w-full h-11 px-4 bg-[#f4ebf4] border border-[#d1c2d0] focus:border-[#561668] focus:ring-1 focus:ring-[#561668] rounded-lg text-sm text-[#1e1a20]"
-                    />
+                    
+                    <div className="bg-[#fcf7fc] border border-[#efe5ee] rounded-xl p-4 flex flex-col gap-3">
+                      {/* Month Switcher Header */}
+                      <div className="flex justify-between items-center px-1">
+                        <button
+                          type="button"
+                          onClick={handlePrevMonth}
+                          className="w-8 h-8 rounded-full bg-[#f4ebf4] text-[#561668] flex items-center justify-center hover:bg-[#efe5ee] transition-all cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                        </button>
+                        <span className="text-xs font-extrabold text-[#561668] uppercase tracking-wider">
+                          {MONTH_NAMES[currentCalendarMonth]} {currentCalendarYear}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleNextMonth}
+                          className="w-8 h-8 rounded-full bg-[#f4ebf4] text-[#561668] flex items-center justify-center hover:bg-[#efe5ee] transition-all cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                        </button>
+                      </div>
+
+                      {/* Weekdays Header */}
+                      <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-extrabold text-[#80737f] uppercase tracking-widest">
+                        <span>Dom</span>
+                        <span>Seg</span>
+                        <span>Ter</span>
+                        <span>Qua</span>
+                        <span>Qui</span>
+                        <span>Sex</span>
+                        <span>Sáb</span>
+                      </div>
+
+                      {/* Days Grid */}
+                      {loadingAvailability ? (
+                        <div className="h-[180px] flex flex-col items-center justify-center gap-2 text-xs text-[#80737f]">
+                          <div className="w-6 h-6 border-2 border-[#efe5ee] border-t-[#561668] rounded-full animate-spin"></div>
+                          <span>Carregando disponibilidade...</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-7 gap-1">
+                          {generateCalendarDays().map((day, idx) => {
+                            if (!day) {
+                              return <div key={`empty-${idx}`} className="h-9" />;
+                            }
+
+                            const isSelected = bookingDateState === day.dateStr;
+                            
+                            return (
+                              <button
+                                key={day.dateStr}
+                                type="button"
+                                disabled={!day.isAvailable}
+                                onClick={() => setBookingDateState(day.dateStr)}
+                                className={`h-9 text-xs rounded-lg flex flex-col items-center justify-center transition-all ${
+                                  isSelected
+                                    ? 'bg-[#561668] text-white font-extrabold shadow-md'
+                                    : day.isAvailable
+                                    ? 'bg-[#fcf0fc] text-[#561668] font-bold border border-[#f4ebf4] hover:bg-[#561668] hover:text-white cursor-pointer'
+                                    : 'bg-[#f5f0f5]/40 text-[#c2b2c2] cursor-not-allowed line-through'
+                                }`}
+                              >
+                                <span>{day.dayNum}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* Hidden validation input so the form HTML5 validator still works */}
+                      <input
+                        type="hidden"
+                        required
+                        value={bookingDateState}
+                        onChange={() => {}}
+                      />
+                      
+                      {/* Selected Date Indicator */}
+                      <div className="text-center mt-1 border-t border-[#efe5ee] pt-2">
+                        {bookingDateState ? (
+                          <p className="text-xs font-bold text-[#561668]">
+                            Data selecionada: <span className="bg-[#561668]/10 px-2 py-0.5 rounded-full">{bookingDateState.split('-').reverse().join('/')}</span>
+                            {selectedPlanMode === 'mensal' && (
+                              <span className="block text-[10px] text-[#80737f] mt-1 font-normal leading-relaxed">
+                                (Seu pacote cobrirá as próximas 4 semanas consecutivas neste mesmo dia da semana)
+                              </span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-[#80737f] italic">Nenhuma data selecionada. Escolha uma das datas disponíveis acima.</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {selectedFormat === 'meio' && (
