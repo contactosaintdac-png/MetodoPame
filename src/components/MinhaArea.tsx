@@ -517,59 +517,42 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       </aside>
 
       {/* ── Main Canvas ── */}
-      <main className="flex-1 lg:ml-72 min-h-screen relative flex flex-col pb-12">
+      <main className="flex-1 lg:ml-72 min-h-screen relative flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-12">
         
         {/* Mobile Header / Navigation */}
-        <header className="lg:hidden w-full bg-[#fff7fd]/90 backdrop-blur-md border-b border-[#efe5ee] flex justify-between items-center px-6 py-4 h-[72px] sticky top-0 z-40">
-          <h2 className="font-sans text-xl font-extrabold text-[#561668] tracking-tight flex items-center gap-2">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn" alt="" className="w-6 h-6 rounded-full object-cover" />
-            Portal Pame
+        <header className="lg:hidden w-full bg-[#fff7fd]/95 backdrop-blur-md border-b border-[#efe5ee] flex justify-between items-center px-6 pb-4 pt-safe top-header-safe sticky top-0 z-40 shadow-sm">
+          <h2 className="font-sans text-xl font-extrabold text-[#561668] tracking-tight flex items-center gap-2 cursor-pointer" onClick={() => onScreenChange('welcome')}>
+            <span className="material-symbols-outlined text-[#561668] text-[20px] font-bold">arrow_back</span>
+            <span className="font-display italic text-lg font-semibold text-[#561668]">Método Pame</span>
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => onScreenChange(triageData ? 'pricing' : 'triage')}
-              className="w-10 h-10 rounded-full bg-[#561668] text-white flex items-center justify-center shadow-sm cursor-pointer"
+              className="w-11 h-11 rounded-full bg-[#561668] text-white flex items-center justify-center shadow-md cursor-pointer transition-all active-scale"
               title="Nova Reserva"
+              style={{ minWidth: '44px', minHeight: '44px' }}
             >
-              <span className="material-symbols-outlined text-[20px]">add</span>
+              <span className="material-symbols-outlined text-[22px]">add</span>
             </button>
-            <button
+            <div 
               onClick={async () => {
-                await signOut();
-                onScreenChange('welcome');
+                if (window.confirm("Deseja realmente sair da sua conta?")) {
+                  await signOut();
+                  onScreenChange('welcome');
+                }
               }}
-              className="w-10 h-10 rounded-full bg-[#faf1fa] text-[#561668] border border-[#efe5ee] flex items-center justify-center cursor-pointer"
-              title="Sair"
+              className="w-11 h-11 rounded-full overflow-hidden border border-[#efe5ee] shadow-md object-cover cursor-pointer hover:opacity-85 transition-opacity flex items-center justify-center bg-[#561668] text-white font-bold active-scale shrink-0"
+              title="Sair da conta"
+              style={{ minWidth: '44px', minHeight: '44px' }}
             >
-              <span className="material-symbols-outlined text-[18px]">logout</span>
-            </button>
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm">{user.email?.charAt(0).toUpperCase()}</span>
+              )}
+            </div>
           </div>
         </header>
-
-        {/* Mobile Sub-Tab Navigation Bar */}
-        <div className="lg:hidden flex bg-[#faf1fa] border-b border-[#efe5ee] p-1.5 overflow-x-auto gap-1 sticky top-[72px] z-30">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === item.id
-                  ? 'bg-[#561668] text-white shadow-sm'
-                  : 'text-[#4e434e] hover:bg-[#efe5ee]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">{item.icon}</span>
-              <span>{item.label.split(' ')[0]}</span>
-            </button>
-          ))}
-          <button
-            onClick={() => onScreenChange('welcome')}
-            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#561668] bg-[#f4ebf4]"
-          >
-            <span className="material-symbols-outlined text-[16px]">home</span>
-            <span>Site</span>
-          </button>
-        </div>
 
         {/* ── Content Area ── */}
         <div className="p-6 md:p-8 max-w-5xl w-full mx-auto flex-1 flex flex-col">
