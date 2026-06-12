@@ -13,9 +13,24 @@ export function generateInvoiceHTML(booking: Booking, clientName?: string, clien
     year: 'numeric',
   });
   
-  const formattedIssueDate = booking.createdAt
-    ? new Date(booking.createdAt).toLocaleDateString('pt-BR')
-    : new Date().toLocaleDateString('pt-BR');
+  let formattedIssueDate = new Date().toLocaleDateString('pt-BR');
+  if (booking.createdAt) {
+    if (typeof booking.createdAt === 'string') {
+      const parsedDate = new Date(booking.createdAt);
+      if (!isNaN(parsedDate.getTime())) {
+        formattedIssueDate = parsedDate.toLocaleDateString('pt-BR');
+      }
+    } else if (booking.createdAt.seconds !== undefined) {
+      formattedIssueDate = new Date(booking.createdAt.seconds * 1000).toLocaleDateString('pt-BR');
+    } else if (typeof booking.createdAt.toDate === 'function') {
+      formattedIssueDate = booking.createdAt.toDate().toLocaleDateString('pt-BR');
+    } else {
+      const parsedDate = new Date(booking.createdAt);
+      if (!isNaN(parsedDate.getTime())) {
+        formattedIssueDate = parsedDate.toLocaleDateString('pt-BR');
+      }
+    }
+  }
 
   const addonsList = booking.addons && booking.addons.length > 0
     ? booking.addons.map(addon => `<li style="margin-bottom: 4px; color: #4e434e;">• ${addon}</li>`).join('')
@@ -223,20 +238,6 @@ export function generateInvoiceHTML(booking: Booking, clientName?: string, clien
           margin-top: 8px;
         }
         
-        @media print {
-          body {
-            padding: 0;
-            background: #fff;
-          }
-          .invoice-card {
-            border: none;
-            box-shadow: none;
-            padding: 20px;
-          }
-          .no-print {
-            display: none;
-          }
-        }
         .print-btn-bar {
           max-width: 800px;
           margin: 0 auto 20px auto;
@@ -261,6 +262,21 @@ export function generateInvoiceHTML(booking: Booking, clientName?: string, clien
         }
         .print-button:hover {
           background: #41104e;
+        }
+
+        @media print {
+          body {
+            padding: 0;
+            background: #fff;
+          }
+          .invoice-card {
+            border: none;
+            box-shadow: none;
+            padding: 20px;
+          }
+          .no-print {
+            display: none !important;
+          }
         }
       </style>
     </head>
