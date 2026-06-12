@@ -207,3 +207,18 @@ body::after {
   outline: 1px solid #561668;
 }
 
+/* Safe Area Support */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.bottom-nav-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+.top-header-safe {
+  padding-top: calc(1rem + env(safe-area-inset-top));
+}
+
+
