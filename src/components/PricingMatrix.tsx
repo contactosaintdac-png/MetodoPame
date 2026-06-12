@@ -668,7 +668,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
 
   return (
     <div className="flex-1 w-full bg-[#fff7fd]">
-      <div className="max-w-7xl mx-auto px-4 md:px-12 py-10 flex flex-col gap-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-12 pt-10 pb-28 md:py-10 flex flex-col gap-10">
         
         {/* Custom Header with Luxury Copy */}
         <section className="flex flex-col gap-3 max-w-2xl">
@@ -944,7 +944,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         {/* Dynamic Estimated Total Summary Card */}
         <motion.section 
           layout
-          className="bg-[#faf1fa] rounded-2xl p-6 md:p-8 shadow-[inset_4px_4px_10px_#d9cbd9,inset_-4px_-4px_10px_#ffffff] border border-white/60 flex flex-col md:flex-row justify-between items-center gap-6 mt-2"
+          className="hidden md:flex bg-[#faf1fa] rounded-2xl p-6 md:p-8 shadow-[inset_4px_4px_10px_#d9cbd9,inset_-4px_-4px_10px_#ffffff] border border-white/60 flex-col md:flex-row justify-between items-center gap-6 mt-2"
         >
           <div className="flex flex-col gap-1.5 text-center md:text-left">
             <span className="font-sans text-xs font-extrabold text-[#703081] uppercase tracking-[0.2em]">
@@ -1001,6 +1001,31 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
             </button>
           </div>
         </motion.section>
+
+        {/* Mobile Fixed Bottom Sheet */}
+        <div className="md:hidden fixed bottom-0 left-0 w-full z-40 bg-[#fff7fd]/95 backdrop-blur-md border-t border-[#efe5ee]/60 px-5 py-3.5 bottom-nav-safe shadow-[0_-6px_20px_rgba(112,48,129,0.08)] flex justify-between items-center gap-3">
+          <div className="flex flex-col gap-0.5 text-left">
+            <span className="font-sans text-[9px] font-extrabold text-[#703081] uppercase tracking-[0.1em]">Investimento Estimado</span>
+            <span className="font-sans text-xl font-extrabold text-[#561668]">R$ {totalPrice} {selectedPlanMode === 'mensal' ? '/mês' : ''}</span>
+            {savings > 0 && (
+              <span className="text-[9px] text-green-700 font-bold">Economia ativa</span>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setShowBookingModal(true);
+              trackEvent('InitiateCheckout', {
+                value: totalPrice,
+                planName: `${selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso'} - ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`
+              });
+            }}
+            className="px-6 py-3 bg-[#561668] hover:bg-[#703081] text-white font-sans text-xs font-bold tracking-widest uppercase rounded-xl transition-all duration-300 shadow-md active-scale cursor-pointer flex items-center justify-center gap-1.5"
+            style={{ minHeight: '44px' }}
+          >
+            Reservar
+            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </button>
+        </div>
 
         {/* Brand Integrity Footer */}
         <footer className="w-full mt-10 border-t border-[#d1c2d0]/30 pt-12 pb-6 flex flex-col md:flex-row justify-between items-center gap-6">
