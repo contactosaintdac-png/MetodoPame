@@ -136,7 +136,7 @@ export default function App() {
     if (loading || roleLoading) return;
 
     // 0. Admin: Redirect to admin panel if on welcome/home
-    if (userRole === 'admin') {
+    if (userRole === 'admin' && user) {
       if (currentScreen === 'welcome') {
         handleScreenChange('admin');
       }
@@ -144,7 +144,7 @@ export default function App() {
     }
 
     // 1. Specialist: Force to /equipe (recruitment screen) and block client views
-    if (userRole === 'specialist') {
+    if (userRole === 'specialist' && user) {
       if (currentScreen !== 'recruitment') {
         handleScreenChange('recruitment');
       }
@@ -195,9 +195,9 @@ export default function App() {
   }, [user, loading, roleLoading, userRole, currentScreen]);
 
   const handleScreenChange = (screen: ApplicationScreen) => {
-    // Isolated routes: once in recruitment or admin you stay there
-    if (currentScreen === 'recruitment' && screen !== 'recruitment') return;
-    if (currentScreen === 'admin' && screen !== 'admin') return;
+    // Isolated routes: once in recruitment or admin you stay there, unless logging out/going back to welcome
+    if (currentScreen === 'recruitment' && screen !== 'recruitment' && screen !== 'welcome') return;
+    if (currentScreen === 'admin' && screen !== 'admin' && screen !== 'welcome') return;
 
     setCurrentScreen(screen);
     setMobileMenuOpen(false);
@@ -246,7 +246,7 @@ export default function App() {
 
       ) : currentScreen === 'admin' ? (
         <div className="w-full h-screen overflow-y-auto bg-[#f8f9fa]">
-          <AdminPanel onScreenChange={() => {}} />
+          <AdminPanel onScreenChange={handleScreenChange} />
         </div>
 
       ) : currentScreen === 'welcome' ? (

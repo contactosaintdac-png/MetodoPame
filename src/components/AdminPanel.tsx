@@ -66,7 +66,7 @@ const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
 ];
 
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, signOut } = useAuth();
 
   const [employees, setEmployees]           = useState<Employee[]>([]);
   const [bookings, setBookings]             = useState<any[]>([]);
@@ -77,6 +77,15 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
   const [agendaView, setAgendaView]         = useState<'lista' | 'calendario' | 'google'>('calendario');
   const [agendaDate, setAgendaDate]         = useState<Date>(new Date());
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      onScreenChange('welcome');
+    } catch (err) {
+      console.error('Erro ao sair:', err);
+    }
+  };
 
   const [showAddModal, setShowAddModal]     = useState(false);
   const [showEditModal, setShowEditModal]   = useState(false);
@@ -668,6 +677,16 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
           ))}
         </div>
 
+        {/* Botão Sair do Painel */}
+        <div className="mt-auto pt-4 border-t border-[#efe5ee]">
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 w-full text-red-600 font-bold hover:bg-[#ffebee]/50 hover:text-red-700 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[22px] flex-shrink-0">logout</span>
+            <span className="text-[14px]">Sair do Painel</span>
+          </button>
+        </div>
 
       </nav>
 
