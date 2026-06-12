@@ -218,14 +218,26 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
         </div>
       </motion.section>
 
-      {/* Footer Branding overlay - Hidden on mobile to prevent overlapping */}
-      <footer className="absolute bottom-0 w-full py-5 px-10 flex justify-between items-center z-30 pointer-events-none hidden md:flex">
-        <span className="text-[10px] font-extrabold text-[#4e434e] tracking-[0.3em] uppercase opacity-70">
-          MÉTODO PAME
+      {/* Footer Branding & Legal links */}
+      <footer className="absolute bottom-0 w-full py-5 px-6 md:px-10 flex flex-col md:flex-row justify-between items-center gap-3 z-30 text-[10px] font-extrabold text-[#4e434e] tracking-wider uppercase">
+        <span className="opacity-70 pointer-events-none">
+          MÉTODO PAME · HIGH-END HOME DETAIL
         </span>
-        <span className="text-[10px] font-extrabold text-[#4e434e] tracking-[0.3em] uppercase hidden md:block opacity-70">
-          HIGH-END HOME DETAIL
-        </span>
+        <div className="flex gap-4 text-[#80737f] tracking-widest font-bold">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-privacy-modal'))}
+            className="hover:text-[#561668] transition-colors cursor-pointer"
+          >
+            Privacidade
+          </button>
+          <span>·</span>
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-terms-modal'))}
+            className="hover:text-[#561668] transition-colors cursor-pointer"
+          >
+            Termos
+          </button>
+        </div>
       </footer>
     </div>
   );

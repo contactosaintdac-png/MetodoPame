@@ -816,9 +816,9 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJul2j80hhyNHenR0y3YscP1-t9rYnu_EqX3FaOMN3WGZIujzQSchb9q9SRkyDZsh7T-P1GG0HfJY1y19iFn_ln-YDdAqpet7kpfxVcv6IVKrVoOBTsBr2DSQIqSoUDlGhiPr3omFSRbnLEWNEOZ1o2UmITxVTHvq3zcW8U1eneJdIp0SgtVowyJnIUQ5Km8txrCteRNy7jChVdxmB35COFzqOOztOq7ey-7AoD0e1xrobOF07muHkD1VkP2WGRyqPgmHc6O_dC4Tw"
           />
           <div className="flex flex-wrap justify-center gap-6 font-sans text-[11px] font-bold uppercase tracking-widest">
-            <a className="text-[#80737f] hover:text-[#561668] transition-colors" href="#">Privacy Policy</a>
+            <button onClick={() => window.dispatchEvent(new CustomEvent('open-privacy-modal'))} className="text-[#80737f] hover:text-[#561668] transition-colors cursor-pointer font-bold">Privacy Policy</button>
             <a className="text-[#80737f] hover:text-[#561668] transition-colors" href="#">Google Credibility</a>
-            <a className="text-[#80737f] hover:text-[#561668] transition-colors" href="#">Terms of Service</a>
+            <button onClick={() => window.dispatchEvent(new CustomEvent('open-terms-modal'))} className="text-[#80737f] hover:text-[#561668] transition-colors cursor-pointer font-bold">Terms of Service</button>
           </div>
           <div className="font-sans text-[10px] font-bold text-[#80737f] tracking-wide text-center md:text-right leading-relaxed">
             © 2026 MÉTODO PAME.<br />Excellence in Home Care. Tijucas, SC.

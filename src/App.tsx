@@ -39,6 +39,23 @@ export default function App() {
   const { user, loading } = useAuth();
   const [userRole, setUserRole] = useState<'client' | 'specialist' | 'admin' | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
+
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // Global event listeners to open legal modals from any sub-component without prop-drilling
+  useEffect(() => {
+    const handleOpenPrivacy = () => setShowPrivacyModal(true);
+    const handleOpenTerms = () => setShowTermsModal(true);
+
+    window.addEventListener('open-privacy-modal', handleOpenPrivacy);
+    window.addEventListener('open-terms-modal', handleOpenTerms);
+
+    return () => {
+      window.removeEventListener('open-privacy-modal', handleOpenPrivacy);
+      window.removeEventListener('open-terms-modal', handleOpenTerms);
+    };
+  }, []);
  
   // Capture referral code if present in URL
   useEffect(() => {
@@ -324,6 +341,117 @@ export default function App() {
           </main>
         </>
       )}
+
+      {/* Global Privacy Policy Modal */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 bg-[#1e1a20]/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in animate-duration-200">
+          <div className="silk-lift rounded-3xl w-full max-w-2xl bg-white overflow-hidden max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="p-6 border-b border-[#efe5ee] flex justify-between items-center bg-[#561668] text-white">
+              <h3 className="font-display italic text-xl font-semibold">Política de Privacidade</h3>
+              <button onClick={() => setShowPrivacyModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto text-xs md:text-sm text-[#4e434e] leading-relaxed space-y-4 font-sans select-text custom-scroll">
+              <p className="font-bold text-[#561668] text-sm md:text-base font-display">POLÍTICA DE PRIVACIDADE — MÉTODO PAME</p>
+              <p>Esta Política de Privacidade descreve como o <strong>Método Pame</strong> coleta, usa e protege seus dados pessoais de acordo com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018) no Brasil.</p>
+              
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">1. Controladora de Dados</p>
+                <p className="mt-1">Pamela Mota, fundadora do Método Pame, inscrita em Tijucas/SC, é a controladora de dados responsável pelo tratamento de suas informações pessoais. Contato oficial: <a href="mailto:metodopame.homedetail@gmail.com" className="text-[#561668] underline font-bold">metodopame.homedetail@gmail.com</a>.</p>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">2. Quais Dados Coletamos</p>
+                <p className="mt-1">Coletamos as seguintes informações essenciais de acordo com o seu perfil de uso:</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Clientes:</strong> Nome, e-mail, telefone/WhatsApp, endereço completo de atendimento, características físicas do espaço (cômodos, quantidade de andares, superfícies nobres) obtidas na Avaliação da Residência, e dados de transação financeira (processados de forma 100% segura e encriptada através do Mercado Pago).</li>
+                  <li><strong>Especialistas (Candidatas):</strong> Nome completo, data de nascimento, CPF, telefone/WhatsApp, foto de identificação profissional, histórico e referências verificáveis de experiência e comprovante de antecedentes criminais.</li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">3. Finalidade do Tratamento</p>
+                <p className="mt-1">Utilizamos seus dados estritamente para as seguintes finalidades legítimas:</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Viabilizar o agendamento de serviços de limpeza e curadoria residencial de alto padrão.</li>
+                  <li>Processar pagamentos e gerar faturas válidas.</li>
+                  <li>Atribuir a especialista adequada com base no load balancing automático e na área geográfica.</li>
+                  <li>Enviar notificações importantes sobre o status da reserva, lembretes de visitas ou alteração de escala.</li>
+                  <li>Garantir a segurança patrimonial e física do ecossistema Método Pame por meio de checagem documental.</li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">4. Compartilhamento de Dados</p>
+                <p className="mt-1">Seus dados de pagamento são criptografados e gerenciados pelo Mercado Pago. A especialista atribuída recebe apenas o nome e endereço para a prestação do serviço. O Método Pame não vende, aluga ou compartilha seus dados pessoais com terceiros para fins de marketing.</p>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">5. Seus Direitos (LGPD)</p>
+                <p className="mt-1">Como titular de dados sob a legislação brasileira, você possui direito a: confirmação de tratamento, acesso aos dados coletados, correção de dados incompletos ou errados, e eliminação de dados pessoais desnecessários. Para exercer qualquer um desses direitos, entre em contato via e-mail.</p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-[#efe5ee] flex justify-end bg-[#faf1fa]/50">
+              <button onClick={() => setShowPrivacyModal(false)} className="px-6 py-2.5 bg-[#561668] text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-sm">
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Terms of Use Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-[#1e1a20]/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in animate-duration-200">
+          <div className="silk-lift rounded-3xl w-full max-w-2xl bg-white overflow-hidden max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="p-6 border-b border-[#efe5ee] flex justify-between items-center bg-[#561668] text-white">
+              <h3 className="font-display italic text-xl font-semibold">Termos de Uso</h3>
+              <button onClick={() => setShowTermsModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto text-xs md:text-sm text-[#4e434e] leading-relaxed space-y-4 font-sans select-text custom-scroll">
+              <p className="font-bold text-[#561668] text-sm md:text-base font-display">TERMOS E CONDIÇÕES DE USO — MÉTODO PAME</p>
+              <p>Bem-vinda ao <strong>Método Pame</strong>. Ao utilizar nosso site, preencher a Avaliação da Residência ou contratar nossos serviços, você concorda integralmente com os termos descritos abaixo.</p>
+              
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">1. Objeto e Natureza dos Serviços</p>
+                <p className="mt-1">O Método Pame atua na curadoria e limpeza residencial de alto padrão ("Home Detail") em Tijucas, SC. Todos os serviços são prestados por profissionais especialistas qualificadas, treinadas e verificadas sob os rigorosos critérios operacionais da nossa marca.</p>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">2. Condições de Reserva e Pagamento</p>
+                <p className="mt-1">Os serviços (Avulsos ou Pacotes Mensais) são agendados e bloqueados no calendário somente após o preenchimento da Avaliação da Residência e confirmação integral do pagamento correspondente via Mercado Pago. Não são aceitos pagamentos diretos em espécie ou via Pix às funcionárias no local.</p>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">3. Política de Reagendamento e Cancelamento</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><strong>Reagendamento Livre:</strong> Pode ser solicitado sem custos com até 24 horas de antecedência em relação ao horário de início programado.</li>
+                  <li><strong>Cancelamentos Tarde/Ausência:</strong> Cancelamentos feitos com menos de 24 horas de antecedência ou impossibilidade de entrada da especialista no imóvel na data combinada (por ausência do cliente ou falta de chaves) acarretarão a cobrança integral da sessão. Isso garante a compensação da especialista pelo tempo reservado e deslocamento.</li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">4. Obrigações do Contratante</p>
+                <p className="mt-1">O cliente compromete-se a prover acesso livre e seguro para a especialista nas datas agendadas, indicar superfícies ou objetos que necessitem de instruções especiais, e manter um ambiente de trabalho profissional e respeitoso para com as parceiras.</p>
+              </div>
+
+              <div>
+                <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">5. Reclamações e Conciliação</p>
+                <p className="mt-1">Quaisquer desconformidades no serviço prestado devem ser registradas com fotos e enviadas ao suporte oficial em até 24 horas da conclusão do serviço para análise e eventual correção gratuita. Contato de suporte: <a href="mailto:metodopame.homedetail@gmail.com" className="text-[#561668] underline font-bold">metodopame.homedetail@gmail.com</a>.</p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-[#efe5ee] flex justify-end bg-[#faf1fa]/50">
+              <button onClick={() => setShowTermsModal(false)} className="px-6 py-2.5 bg-[#561668] text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-sm">
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

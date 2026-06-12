@@ -489,8 +489,8 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
                 <div className="space-y-4">
                   <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-[#561668]">Legal</h5>
                   <ul className="space-y-2">
-                    <li><a className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors font-bold" href="#">Privacidade</a></li>
-                    <li><a className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors font-bold" href="#">Termos</a></li>
+                    <li><button onClick={() => window.dispatchEvent(new CustomEvent('open-privacy-modal'))} className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors font-bold cursor-pointer">Privacidade</button></li>
+                    <li><button onClick={() => window.dispatchEvent(new CustomEvent('open-terms-modal'))} className="text-xs text-[#4e434e]/70 hover:text-[#561668] transition-colors font-bold cursor-pointer">Termos</button></li>
                   </ul>
                 </div>
                 
@@ -798,8 +798,8 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
             </div>
             
             <div className="flex flex-col gap-2.5 text-xs font-bold text-[#80737f] uppercase tracking-widest">
-              <a href="#">Privacidade</a>
-              <a href="#">Termos de Uso</a>
+              <button onClick={() => window.dispatchEvent(new CustomEvent('open-privacy-modal'))} className="hover:text-[#561668] transition-colors cursor-pointer font-bold text-center">Privacidade</button>
+              <button onClick={() => window.dispatchEvent(new CustomEvent('open-terms-modal'))} className="hover:text-[#561668] transition-colors cursor-pointer font-bold text-center">Termos de Uso</button>
               <a href="#">FAQ VIP</a>
             </div>
             
