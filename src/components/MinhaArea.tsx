@@ -653,37 +653,64 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                               className="px-6 py-2.5 bg-[#561668] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#703081] active:scale-95 transition-all cursor-pointer shadow-md"
                             >
                               Solicitar Avaliação
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                                               {nextBooking && (
+                        <div className="mt-8 pt-4 border-t border-[#efe5ee]/60 relative z-10 flex flex-col gap-4">
+                          {/* Details row */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div className="bg-[#faf1fa]/80 p-3 rounded-xl border border-[#efe5ee]/40 text-center shadow-sm">
+                              <p className="text-[9px] text-[#80737f] uppercase font-bold tracking-wider mb-0.5">Data</p>
+                              <p className="font-bold text-sm text-[#561668]">
+                                {new Date(nextBooking.date + "T12:00:00").toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                              </p>
+                              <p className="text-[10px] text-[#4e434e] font-semibold">{nextBooking.time || '09:00'}</p>
+                            </div>
 
-                      {nextBooking && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-8 pt-4 border-t border-[#efe5ee]/60 relative z-10">
-                          <div className="bg-[#faf1fa]/80 p-3 rounded-xl border border-[#efe5ee]/40 text-center">
-                            <p className="text-[9px] text-[#80737f] uppercase font-bold tracking-wider mb-0.5">Data</p>
-                            <p className="font-bold text-sm text-[#561668]">
-                              {new Date(nextBooking.date + "T12:00:00").toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                            </p>
-                            <p className="text-[10px] text-[#4e434e] font-semibold">{nextBooking.time || '09:00'}</p>
+                            <div className="bg-[#faf1fa]/80 p-3 rounded-xl border border-[#efe5ee]/40 text-center shadow-sm">
+                              <p className="text-[9px] text-[#80737f] uppercase font-bold tracking-wider mb-0.5">Formato</p>
+                              <p className="font-bold text-sm text-[#561668] truncate">
+                                {nextBooking.format === 'meio' ? 'Meio Turno' : 'Integral'}
+                              </p>
+                              <p className="text-[10px] text-[#80737f] font-semibold">Técnica</p>
+                            </div>
+
+                            <div className="hidden sm:block bg-[#faf1fa]/80 p-3 rounded-xl border border-[#efe5ee]/40 text-center shadow-sm">
+                              <p className="text-[9px] text-[#80737f] uppercase font-bold tracking-wider mb-0.5">Status</p>
+                              <p className="font-bold text-sm text-[#561668] truncate">
+                                {nextBooking.status || 'Confirmado'}
+                              </p>
+                              <p className="text-[10px] text-green-700 font-semibold uppercase tracking-wider">Ativo</p>
+                            </div>
                           </div>
 
-                          <div className="bg-[#faf1fa]/80 p-3 rounded-xl border border-[#efe5ee]/40 text-center">
-                            <p className="text-[9px] text-[#80737f] uppercase font-bold tracking-wider mb-0.5">Especialista</p>
-                            <p className="font-bold text-sm text-[#561668] truncate">
-                              {nextBooking.assignedEmployeeName ? nextBooking.assignedEmployeeName.split(' ')[0] : 'Alocando...'}
-                            </p>
-                            <p className="text-[10px] text-[#80737f] font-semibold">Técnica</p>
+                          {/* Specialist row */}
+                          <div className="flex items-center gap-3.5 bg-white/60 p-3.5 rounded-2xl border border-[#efe5ee]/60 shadow-sm">
+                            <div className="w-11 h-11 rounded-full overflow-hidden bg-[#faf1fa] border border-[#efe5ee] flex items-center justify-center shrink-0 shadow-sm">
+                              {nextBooking.assignedEmployeePhoto ? (
+                                <img src={nextBooking.assignedEmployeePhoto} alt="Especialista" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-[#561668]/10 text-[#561668] flex items-center justify-center font-bold">
+                                  {nextBooking.assignedEmployeeName ? nextBooking.assignedEmployeeName.charAt(0).toUpperCase() : '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[9px] text-[#80737f] uppercase font-bold tracking-widest leading-none">Especialista Atribuída</p>
+                              <p className="font-bold text-[13px] text-[#561668] truncate mt-1">{nextBooking.assignedEmployeeName || 'Alocando Especialista...'}</p>
+                            </div>
+                            <span className="inline-flex px-2 py-0.5 bg-green-50 text-green-700 text-[9px] font-extrabold rounded-full uppercase tracking-wider">
+                              Confirmada
+                            </span>
                           </div>
 
-                          <div className="col-span-2 sm:col-span-1 flex items-center justify-center">
-                            <button
-                              onClick={() => setActiveTab('reservas')}
-                              className="w-full py-2.5 silk-lift hover:silk-active text-xs text-[#561668] font-bold rounded-xl active:scale-95 transition-all border border-[#efe5ee]/60 cursor-pointer"
-                            >
-                              Ver Detalhes
-                            </button>
-                          </div>
+                          {/* Action Button */}
+                          <button
+                            onClick={() => setActiveTab('reservas')}
+                            className="w-full py-3.5 bg-[#f4ebf4] hover:bg-[#efe5ee] text-xs text-[#561668] font-bold rounded-xl active-scale transition-all border border-[#efe5ee]/60 cursor-pointer text-center shadow-sm flex items-center justify-center gap-1.5"
+                            style={{ minHeight: '44px' }}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                            Ver no Calendário
+                          </button>
                         </div>
                       )}
                     </div>
@@ -720,7 +747,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
                       <button
                         onClick={() => onScreenChange('pricing')}
-                        className="w-full py-2.5 bg-[#f4ebf4] hover:bg-[#efe5ee] text-[#561668] font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        className="w-full py-3.5 bg-[#f4ebf4] hover:bg-[#efe5ee] text-[#561668] font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        style={{ minHeight: '44px' }}
                       >
                         Matriz de Investimento
                         <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -825,12 +853,12 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                       </div>
 
                       {/* Day cells */}
-                      <div className="grid grid-cols-7 gap-2">
+                      <div className="grid grid-cols-7 gap-1 md:gap-2">
                         {/* Prev Month Placeholders */}
                         {Array.from({ length: firstDayIndex }).map((_, i) => {
                           const dayNum = prevDaysInMonth - firstDayIndex + 1 + i;
                           return (
-                            <div key={`prev-${i}`} className="h-16 rounded-xl flex items-start p-1.5 opacity-20 text-[11px] font-semibold">
+                            <div key={`prev-${i}`} className="h-12 sm:h-16 rounded-xl flex items-start p-1 sm:p-1.5 opacity-20 text-[10px] sm:text-[11px] font-semibold">
                               {dayNum}
                             </div>
                           );
@@ -853,19 +881,20 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                                   setSelectedBooking(null);
                                 }
                               }}
-                              className={`h-16 rounded-xl flex flex-col justify-between p-1.5 text-left text-[11px] font-bold transition-all relative ${
+                              className={`h-12 sm:h-16 rounded-xl flex flex-col justify-between p-1 sm:p-1.5 text-left text-[10px] sm:text-[11px] font-bold transition-all relative ${
                                 isSelected
                                   ? 'bg-[#561668] text-white shadow-md'
                                   : dayBookings.length > 0
                                   ? 'bg-[#f4ebf4] text-[#561668] border border-[#561668]/15 hover:bg-[#efe5ee]'
                                   : 'bg-[#faf1fa]/40 hover:bg-[#faf1fa] border border-transparent'
                               }`}
+                              style={{ minHeight: '44px' }}
                             >
                               <span>{day}</span>
                               {dayBookings.length > 0 && (
                                 <div className="w-full flex items-center justify-between mt-auto">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-[#561668]'}`}></span>
-                                  <span className={`text-[8px] uppercase tracking-wider truncate font-extrabold max-w-[80%] ${isSelected ? 'text-white/80' : 'text-[#561668]/80'}`}>
+                                  <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-[#561668]'}`}></span>
+                                  <span className={`hidden min-[375px]:inline text-[7px] sm:text-[8px] uppercase tracking-wider truncate font-extrabold max-w-[80%] ${isSelected ? 'text-white/80' : 'text-[#561668]/80'}`}>
                                     {dayBookings[0].format === 'meio' ? 'Meio' : 'Integral'}
                                   </span>
                                 </div>
@@ -943,7 +972,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                                 setChatInput(`Olá, preciso reagendar meu atendimento agendado para o dia ${new Date(selectedBooking.date + "T12:00:00").toLocaleDateString('pt-BR')}.`);
                                 setActiveTab('suporte');
                               }}
-                              className="flex-1 py-2.5 bg-[#f4ebf4] hover:bg-[#efe5ee] text-[#561668] font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer border border-[#efe5ee]/30"
+                              className="flex-1 py-3.5 bg-[#f4ebf4] hover:bg-[#efe5ee] text-[#561668] font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer border border-[#efe5ee]/30 flex items-center justify-center"
+                              style={{ minHeight: '44px' }}
                             >
                               Reagendar
                             </button>
@@ -952,7 +982,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                                 setChatInput(`Olá, gostaria de solicitar o cancelamento do meu atendimento do dia ${new Date(selectedBooking.date + "T12:00:00").toLocaleDateString('pt-BR')}.`);
                                 setActiveTab('suporte');
                               }}
-                              className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                              className="flex-1 py-3.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center"
+                              style={{ minHeight: '44px' }}
                             >
                               Cancelar
                             </button>
@@ -1495,6 +1526,33 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
           </div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Fixed Bottom Navigation Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 w-full z-45 bg-[#fff7fd]/95 backdrop-blur-md border-t border-[#efe5ee]/60 bottom-nav-safe flex justify-around items-center h-16 shadow-[0_-4px_16px_rgba(112,48,129,0.06)] px-2">
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[9px] font-extrabold transition-all active-scale cursor-pointer ${
+                isActive ? 'text-[#561668]' : 'text-[#80737f]'
+              }`}
+              style={{ minHeight: '44px' }}
+            >
+              <span className="material-symbols-outlined text-[20px] mb-0.5" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                {item.id === 'reservas' ? 'calendar_month' : item.icon}
+              </span>
+              <span className="tracking-wider uppercase text-[8px]">
+                {item.id === 'dashboard' ? 'Início' :
+                 item.id === 'reservas' ? 'Reservas' :
+                 item.id === 'indique' ? 'VIP' :
+                 item.id === 'historico' ? 'Faturas' : 'Concierge'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
     </div>
   );
