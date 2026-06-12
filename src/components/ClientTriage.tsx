@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TriageData, ApplicationScreen } from '../types';
 import { INITIAL_TRIAGE_DATA } from '../data';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { trackEvent } from '../lib/tracking';
 
 interface ClientTriageProps {
   triageData: TriageData;
@@ -26,6 +27,11 @@ export default function ClientTriage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, signInWithGoogle } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Track the start of the house evaluation on mount
+  useEffect(() => {
+    trackEvent('StartTriage');
+  }, []);
 
   const updateField = <K extends keyof TriageData>(key: K, value: TriageData[K]) => {
     onTriageDataChange({
@@ -57,6 +63,14 @@ export default function ClientTriage({
         console.error("Failed to save triage data", err);
       }
     }
+
+    // Track completed triage
+    trackEvent('CompleteTriage', {
+      rooms: triageData.rooms,
+      baths: triageData.baths,
+      floors: triageData.floors,
+      frequency: triageData.frequency
+    });
 
     setTimeout(() => {
       setIsSubmitting(false);

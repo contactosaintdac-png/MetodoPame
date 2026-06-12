@@ -14,6 +14,7 @@ import { collection, addDoc, serverTimestamp, getDocs, doc, getDoc, updateDoc, s
 import PaymentPending from './PaymentPending';
 import { createPreference } from '../services/mercadopago';
 import { notifyClientAssignment, notifyAdminNewBooking, notifyEmployeeAssignment } from '../lib/NotificationService';
+import { trackEvent } from '../lib/tracking';
 
 interface PricingMatrixProps {
   triageData: TriageData;
@@ -492,6 +493,13 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           createdAt: serverTimestamp()
         });
 
+        // Track conversion Purchase event
+        trackEvent('Purchase', {
+          value: totalPrice,
+          planName: `${selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso'} - ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`,
+          bookingId: bookingRef.id
+        });
+
         // ── Índice global para Concierge IA ──────────────────────────────────
         // Permite que la IA busque reservas por nombre sin conocer el UID del cliente.
         try {
@@ -586,6 +594,13 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           status: 'Confirmado',
           referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
+        });
+
+        // Track conversion Purchase event
+        trackEvent('Purchase', {
+          value: totalPrice,
+          planName: `${selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso'} - ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`,
+          bookingId: bookingRef.id
         });
 
         // ── Índice global para Concierge IA ──────────────────────────────────
@@ -857,6 +872,10 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                       e.stopPropagation();
                       setSelectedFormat('completo');
                       setShowBookingModal(true);
+                      trackEvent('InitiateCheckout', {
+                        value: currentPrices.completoMensal,
+                        planName: 'Plano Mensal - Turno Completo'
+                      });
                     }}
                     className="w-full mt-2 py-4 rounded-xl bg-[#703081] text-white font-sans font-extrabold text-xs tracking-widest hover:opacity-95 transition-opacity uppercase shadow-lg active:scale-98 cursor-pointer"
                   >
@@ -965,7 +984,13 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
               </p>
             )}
             <button
-              onClick={() => setShowBookingModal(true)}
+              onClick={() => {
+                setShowBookingModal(true);
+                trackEvent('InitiateCheckout', {
+                  value: totalPrice,
+                  planName: `${selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso'} - ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`
+                });
+              }}
               className="mt-3 px-8 py-3 bg-[#561668] hover:bg-[#703081] text-white font-sans text-xs font-bold tracking-widest uppercase rounded-xl transition-all duration-300 shadow-md active:scale-95 cursor-pointer"
             >
               Reservar Cuidados Estritos

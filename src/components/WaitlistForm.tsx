@@ -8,6 +8,7 @@ import { motion } from 'motion/react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { ApplicationScreen } from '../types';
+import { trackEvent } from '../lib/tracking';
 
 interface WaitlistFormProps {
   onScreenChange: (screen: ApplicationScreen) => void;
@@ -85,9 +86,15 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
         createdAt: serverTimestamp()
       });
       setIsSubmitted(true);
+      // Meta Pixel & GA4 Lead tracking
+      trackEvent('Lead', {
+        content_name: 'Lista de Espera',
+        serviceType,
+        neighborhood
+      });
     } catch (error) {
       console.error('Erro ao salvar na lista de espera:', error);
-      alert('Ocorreu um erro ao enviar seu cadastro. Tente novamente.');
+      alert('Ocorreu um erro ao enviar seu cadastro. Tente nuevamente.');
     } finally {
       setIsSubmitting(false);
     }

@@ -341,9 +341,16 @@ OPENAI_API_KEY=           ← API Key de OpenAI (opcional / legacy)
 ## 18. Rastreamento e Analytics
 
 Se encuentra implementado el rastreo de eventos y visitas de usuarios en producción:
-- **Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`)**: Rastreo básico de visitas a páginas y conversiones de checkout. **(Configurado y trackeando activamente en producción)**.
-- **Meta Pixel (`VITE_META_PIXEL_ID`)**: Rastreo de eventos clave (registro en lista de espera, inicio de triage, inicio de pago).
-- **Lógica Resiliente (`tracking.ts`)**: Se cargan dinámicamente según variables de entorno de Vercel en `src/main.tsx`. Si no están declaradas, la inicialización no causa errores en consola (graceful exclusion).
+- **Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`)**: Rastreo básico de visitas a páginas y conversiones de checkout.
+- **Meta Pixel (`VITE_META_PIXEL_ID`)**: Rastreo de eventos clave y conversiones.
+- **Microsoft Clarity (`VITE_CLARITY_ID`)**: Grabación de sesiones e interacción de usuarios en producción.
+- **Eventos de Conversión Activos (`tracking.ts`)**:
+  - `Lead`: Detonado al completar con éxito el registro en la Lista de Espera (`WaitlistForm.tsx`).
+  - `StartTriage`: Detonado al iniciar la Avaliação de Residência (`ClientTriage.tsx`).
+  - `CompleteTriage`: Detonado al finalizar con éxito la Avaliação de Residência (`ClientTriage.tsx`).
+  - `InitiateCheckout`: Detonado al hacer clic en los botones de agendamiento y abrir el modal de checkout (`PricingMatrix.tsx`).
+  - `Purchase`: Detonado al confirmar una reserva con éxito y persistirla en la base de datos antes de la redirección de pago (`PricingMatrix.tsx`).
+- **Lógica Resiliente**: Se cargan y disparan dinámicamente según variables de entorno de Vercel. Si no están declaradas, la inicialización no causa errores en consola (graceful exclusion).
 
 ---
 
@@ -375,7 +382,7 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
   - **Painel Admin:** Interface de aprovação/recusa de atualizações de funcionárias com comparación lado a lado, modal administrativo para agendar Café Virtual, e barra lateral enxuta sem links inativos.
   - **Roteamento Inteligente (App.tsx):** Redirecionamento instantâneo de administradores para `/admin`, triagem obrigatória automática para nuevos clientes, y livre tráfego para la página de precios `/pricing` para usuarios registrados.
 - **Automatização de Registro de Especialistas (Funcionárias)** — Inclusão de campos de E-mail e Senha no formulario, creación de conta no Firebase Auth em segundo plano de forma isolada, e armazenamento em Firestore na coleção `/employees` em estado `pending` para conformidade con regras.
-- **Rastreamento e Prontidão de Lançamento (Analytics & Pixel)** — Criação del utilitário `src/lib/tracking.ts` integrado en `src/main.tsx` para inicialización dinámica de Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`) y Meta Pixel (`VITE_META_PIXEL_ID`) se configurados no ambiente.
+- **Rastreamento e Prontidão de Lançamento (Analytics, Pixel e Clarity)** — Criação do utilitário `src/lib/tracking.ts` integrado no projeto para inicialização dinâmica do Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`), Meta Pixel (`VITE_META_PIXEL_ID`) e Microsoft Clarity (`VITE_CLARITY_ID`). Adicionalmente, implementamos rastreamento de conversão em pontos críticos: `Lead` (Lista de espera), `StartTriage`/`CompleteTriage` (Avaliação de Residência), `InitiateCheckout` e `Purchase` (Checkout/Agendamento).
 - **Correções de Segurança e Búsqueda Global (Security Rules)** — Atualização e deploy del arquivo `firestore.rules` com suporte a consultas `collectionGroup` (agilizando o painel administrativo), regras de leitura para que as especialistas leiam apenas seus agendamentos, e de atualização restrita para que atualizem seus perfis de forma segura.
 - **Sistema de Lista de Espera (Acesso Prioritário) e Redirecionamento** — Criação del componente `WaitlistForm.tsx` (`/lista`), redirecionamento de novos clientes residenciais para la lista, captura de código de indicação (`ref`), aba de gerenciamento no Painel Admin com envio de templates de WhatsApp, exclusão de registros e pré-registro direto (creación automatizada de perfis de clientes no Firestore).
 - **Ajustes Legais (LGPD) e SEO Global** — Implantação de modais globais e responsivos de Política de Privacidade e Termos de Uso em `App.tsx` acionados por eventos globais de janela a partir do rodapé da Landing Page, Lista de Espera e Checkout. Atualización del `index.html` con metatags Open Graph e Twitter Cards globais apontando para o domínio canônico `https://metodopame.com/` e geração da imagem OG real de 1200x630px a partir do logo.

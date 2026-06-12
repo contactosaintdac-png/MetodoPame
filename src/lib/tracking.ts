@@ -85,3 +85,68 @@ export function initializeTracking() {
     })(window, document, "clarity", "script", clarityId);
   }
 }
+
+export function trackEvent(
+  eventName: 'Lead' | 'StartTriage' | 'CompleteTriage' | 'InitiateCheckout' | 'Purchase',
+  params?: Record<string, any>
+) {
+  if (typeof window === 'undefined') return;
+
+  // 1. Meta Pixel
+  if (window.fbq) {
+    try {
+      if (eventName === 'Lead') {
+        window.fbq('track', 'Lead', params || { content_name: 'Lista de Espera' });
+      } else if (eventName === 'StartTriage') {
+        window.fbq('track', 'StartTrial', params || { content_category: 'Avaliação da Residência' });
+      } else if (eventName === 'CompleteTriage') {
+        window.fbq('track', 'SubmitApplication', params || { content_category: 'Avaliação da Residência' });
+      } else if (eventName === 'InitiateCheckout') {
+        window.fbq('track', 'InitiateCheckout', {
+          value: params?.value || 0,
+          currency: 'BRL',
+          content_name: params?.planName || 'Serviço Limpeza'
+        });
+      } else if (eventName === 'Purchase') {
+        window.fbq('track', 'Purchase', {
+          value: params?.value || 0,
+          currency: 'BRL',
+          content_name: params?.planName || 'Serviço Limpeza'
+        });
+      }
+      console.log(`[Tracking] Meta Pixel event tracked: ${eventName}`, params);
+    } catch (err) {
+      console.error('[Tracking] Error tracking Meta Pixel event:', err);
+    }
+  }
+
+  // 2. Google Analytics
+  if (window.gtag) {
+    try {
+      if (eventName === 'Lead') {
+        window.gtag('event', 'generate_lead', { method: 'Waitlist', ...params });
+      } else if (eventName === 'StartTriage') {
+        window.gtag('event', 'begin_triage', { step: 1, ...params });
+      } else if (eventName === 'CompleteTriage') {
+        window.gtag('event', 'complete_triage', params);
+      } else if (eventName === 'InitiateCheckout') {
+        window.gtag('event', 'begin_checkout', {
+          value: params?.value || 0,
+          currency: 'BRL',
+          items: [{ item_name: params?.planName || 'Serviço Limpeza' }]
+        });
+      } else if (eventName === 'Purchase') {
+        window.gtag('event', 'purchase', {
+          transaction_id: params?.bookingId || Math.random().toString(36).substring(2, 9),
+          value: params?.value || 0,
+          currency: 'BRL',
+          items: [{ item_name: params?.planName || 'Serviço Limpeza' }]
+        });
+      }
+      console.log(`[Tracking] Google Analytics event tracked: ${eventName}`, params);
+    } catch (err) {
+      console.error('[Tracking] Error tracking Google Analytics event:', err);
+    }
+  }
+}
+
