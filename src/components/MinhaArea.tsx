@@ -1405,7 +1405,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
                         {/* Input bar */}
                         <div className="flex gap-3">
-                          <div className="flex-1 silk-inset bg-[#faf1fa] rounded-xl px-4 py-2.5 flex items-center border border-[#efe5ee]/40">
+                          <div className="flex-1 silk-inset bg-[#faf1fa] rounded-xl px-4 h-12 flex items-center border border-[#efe5ee]/40">
                             <input
                               type="text"
                               value={chatInput}
@@ -1417,6 +1417,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                             <button
                               onClick={() => alert('Anexo de imagens/documentos (Simulação).')}
                               className="text-[#80737f] hover:text-[#561668] cursor-pointer"
+                              style={{ minWidth: '44px', minHeight: '44px' }}
                             >
                               <span className="material-symbols-outlined text-[20px]">attach_file</span>
                             </button>
