@@ -64,19 +64,11 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
     try {
       setLoadingAvailability(true);
       
-      const q = query(collection(db, 'employees'));
-      const empSnap = await getDocs(q);
-      const employeesList = empSnap.docs.map(d => ({id: d.id, ...d.data()})) as any[];
-      
-      // Fetch blocks for all employees
-      const blocksMap: Record<string, Record<string, string[]>> = {};
-      for (const emp of employeesList) {
-        blocksMap[emp.id] = {};
-        const blocksSnap = await getDocs(collection(db, 'employee_schedules', emp.id, 'blocks'));
-        blocksSnap.docs.forEach(doc => {
-          blocksMap[emp.id][doc.id] = doc.data().shifts || [];
-        });
+      const response = await fetch('/api/get-availability');
+      if (!response.ok) {
+        throw new Error(`Error fetching availability: ${response.statusText}`);
       }
+      const { employees: employeesList, blocks: blocksMap } = await response.json();
       
       const startDate = new Date(year, month, 1);
       const cache: Record<string, boolean> = {};
@@ -94,7 +86,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         const dayOfWeek = currentDate.getDay();
         
         // Filter employees by schedule
-        const availableEmps = employeesList.filter(emp => {
+        const availableEmps = employeesList.filter((emp: any) => {
           if (!emp.weeklyAvailability || !emp.weeklyAvailability[dayOfWeek]) return false;
           const sched = emp.weeklyAvailability[dayOfWeek];
           if (sId === 'completo') {
@@ -267,11 +259,13 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
       const dateObj = new Date(dateStr + "T12:00:00");
       const dayOfWeek = dateObj.getDay();
       
-      const q = query(collection(db, 'employees'));
-      const empSnap = await getDocs(q);
-      const employees = empSnap.docs.map(d => ({id: d.id, ...d.data()})) as any[];
+      const response = await fetch('/api/get-availability');
+      if (!response.ok) {
+        throw new Error(`Error fetching availability: ${response.statusText}`);
+      }
+      const { employees, blocks } = await response.json();
       
-      let availableEmps = employees.filter(emp => {
+      let availableEmps = employees.filter((emp: any) => {
         if (!emp.weeklyAvailability || !emp.weeklyAvailability[dayOfWeek]) return false;
         const sched = emp.weeklyAvailability[dayOfWeek];
         if (shiftId === 'completo') {
@@ -286,21 +280,16 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
       
       const trulyAvailable = [];
       for(let emp of availableEmps) {
-        const blockDoc = await getDoc(doc(db, 'employee_schedules', emp.id, 'blocks', dateStr));
-        if (blockDoc.exists()) {
-          const blockedShifts = blockDoc.data().shifts || [];
-          let isBlocked = false;
-          if (shiftId === 'completo') {
-            isBlocked = blockedShifts.includes('completo') || blockedShifts.includes('meio_manha') || blockedShifts.includes('meio_tarde');
-          } else if (shiftId === 'meio_manha') {
-            isBlocked = blockedShifts.includes('meio_manha') || blockedShifts.includes('completo');
-          } else if (shiftId === 'meio_tarde') {
-            isBlocked = blockedShifts.includes('meio_tarde') || blockedShifts.includes('completo');
-          }
-          if (!isBlocked) trulyAvailable.push(emp);
-        } else {
-          trulyAvailable.push(emp);
+        const blockedShifts = blocks[emp.id]?.[dateStr] || [];
+        let isBlocked = false;
+        if (shiftId === 'completo') {
+          isBlocked = blockedShifts.includes('completo') || blockedShifts.includes('meio_manha') || blockedShifts.includes('meio_tarde');
+        } else if (shiftId === 'meio_manha') {
+          isBlocked = blockedShifts.includes('meio_manha') || blockedShifts.includes('completo');
+        } else if (shiftId === 'meio_tarde') {
+          isBlocked = blockedShifts.includes('meio_tarde') || blockedShifts.includes('completo');
         }
+        if (!isBlocked) trulyAvailable.push(emp);
       }
       return trulyAvailable;
     } catch (e) {
