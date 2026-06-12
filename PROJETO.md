@@ -21,7 +21,7 @@
 
 Plataforma web para el negocio de limpieza residencial de alto padrón de Pamela Mota en Tijucas, SC, Brasil. El objetivo es que el site funcione de forma completamente autónoma — sin que Pame tenga que responder llamadas ni mensajes para cerrar contratos.
 
-**URL en producción:** `https://www.metodopame.com`
+**URL en producción:** `https://metodopame.com`
 **Repositorio:** Local en Windows, conectado a Vercel via GitHub
 **Stack:** React + TypeScript + Vite + Tailwind CSS + Framer Motion
 
@@ -176,7 +176,7 @@ Visible solo para clientes logueados. Rediseñada por completo bajo el estilo *Q
 - **Minhas Reservas (Calendário)**: Calendario interactivo dinámico que cruza los datos de reservas del cliente en Firestore. Detalle del servicio seleccionado que muestra la especialista asignada (con avatar y nombre) y protocolos de lujo aplicados (Desinfección UV, Eco-Luxe, Silencioso).
 - **Histórico & Faturas**: Tabla interactiva con faturas en formato PDF descargables e integración de evaluaciones con estrellas (1 a 5) que actualizan el rating directamente en Firestore en tiempo real.
 - **Suporte & Concierge**: Sistema de Chat funcional con respuesta inteligente y automatizada de concierge (usando llamada directa a la API de Gemini para evitar conflictos de autenticación de Firebase en clientes logueados), formulario de solicitudes especiales (Catering, Transporte, etc.) que persiste requerimientos en Firestore con modal de confirmación, y sección de preguntas frecuentes colapsables. **Mecanismo de Limpieza de Chat:** Incluye un botón para limpiar el historial de chat del cliente de manera manual. Esto almacena un timestamp `clearChatAt` en el documento raíz del chat (`chats/{clientId}`). El cliente solo visualiza en su interfaz los mensajes posteriores a este timestamp (además del mensaje de bienvenida), pero todo el historial de consultas permanece intacto en Firestore para auditoría y visualización del Administrador en el panel.
-- **Círculo VIP (Indicações / Aba 'indique')**: Painel exclusivo de recomendação que permite copiar o link de indicação exclusivo (`https://www.metodopame.com/?ref=UID`), compartilhar via botão do WhatsApp com mensagem pré-formatada e visualizar a lista de amigos indicados com seus respectivos status (*Pendente*, *Cortesia Liberada!*, *Usufruído*), incluindo um mecanismo de mock fallback elegante caso as regras de segurança do Firestore limitem consultas cruzadas de banco.
+- **Círculo VIP (Indicações / Aba 'indique')**: Painel exclusivo de recomendação que permite copiar o link de indicação exclusivo (`https://metodopame.com/?ref=UID`), compartilhar via botão do WhatsApp com mensagem pré-formatada e visualizar a lista de amigos indicados com seus respectivos status (*Pendente*, *Cortesia Liberada!*, *Usufruído*), incluindo um mecanismo de mock fallback elegante caso as regras de segurança del Firestore limitem consultas cruzadas de banco.
 - **Navegación**: Totalmente aislada del flujo estándar, con barra lateral de alta fidelidad y botón para regresar al sitio principal.
 
 ---
@@ -235,7 +235,7 @@ Campos obligatorios:
 Acceso exclusivo para Pame y el desarrollador. Funcionalidades:
 - Dashboard: reservas del día, ingresos, servicios pendientes
 - Gestión de pedidos: ver, editar, cancelar reservas (Modo Dios)
-- Visualização da Agenda: alternância dinâmica entre Vista de Lista e Calendário Mensal com badges interativos coloridos (lilás para atribuídos, vermelho/salmão para não atribuídos).
+- Visualização da Agenda: alternância dinâmica entre Vista de Lista e Calendário Mensal with badges interativos coloridos (lilás para atribuídos, vermelho/salmão para não atribuídos).
 - Agenda general: Google Calendar integrado (iframe responsivo)
 - Gestión de clientes: perfiles, historial, paquetes activos
 - Gestión de funcionárias: fichas, disponibilidad, credenciales, historial, activar/desactivar/eliminar
@@ -284,7 +284,7 @@ OPENAI_API_KEY=           ← API Key de OpenAI (opcional / legacy)
 
 **Plan gratuito:** 3.000 emails/mes — suficiente para el volumen inicial de Pame.
 
-**Estado actual:** Totalmente activo y configurado. El dominio propio (`www.metodopame.com`) ha sido verificado en Resend. Los correos se envían de forma segura desde `reservas@metodopame.com` hacia los clientes, especialistas, Pame y auditoría del desarrollador.
+**Estado actual:** Totalmente activo y configurado. El dominio propio (`metodopame.com`) ha sido verificado en Resend. Los correos se envían de forma segura desde `reservas@metodopame.com` hacia los clientes, especialistas, Pame y auditoría del desarrollador.
 
 ---
 
@@ -352,7 +352,7 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 ### 🟢 Completado
 - ~~**Diagnosticar error de Resend** — modificar funciones en `/api/` para loguear error completo~~ (Resuelto, emails funcionando)
 - ~~**Implementar precios dinámicos** — buscar `// TODO: Implementar precio dinámico` en PricingMatrix.tsx~~ (Resuelto, lógica matemática en vivo)
-- ~~**Verificar el dominio `www.metodopame.com` en Resend**~~ (Resuelto)
+- ~~**Verificar el dominio `metodopame.com` en Resend**~~ (Resuelto)
 - ~~**Café Virtual com a Pame** — agregar pantalla de confirmación al final del formulario de funcionárias con agendamiento de videollamada y grabación en base de datos.~~ (Resuelto, selector visual de slots)
 - ~~**Activar Google Calendar con service account real**~~ (Resuelto, Vercel Serverless Function `/api/create-calendar-event` segura e integrada)
 - ~~**Isolamento de Ecosistemas (Gating)** — separación de flujos estricta cliente vs especialista en frontend y protección de admin para múltiples correos.~~ (Resuelto)
@@ -364,7 +364,7 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 - **Autogestão de Disponibilidade** — Especialistas agora podem gerenciar a própria disponibilidade via interface interativa no dashboard de equipe.
 - **Gating Dinâmico de Admins** — Bootstrapping automático via Firestore para validação de roles.
 - **Tipagem Estrita (TypeScript) e UX** — Interfaces (`Employee`, `Booking`) padronizadas, remoção de telas e tabs não funcionais.
-- **Campanha de Indicações Círculo de Excelência (Frontend & Lógica)** — Captura do parâmetro `?ref` na URL com salvamento e limpeza dinâmica de endereço (App.tsx), aplicação do desconto VIP de R$ 100 com banner explicativo no checkout (PricingMatrix.tsx), e aba de indicações activa no portal del cliente com botão do WhatsApp e lista de indicações con fallback de mock premium (MinhaArea.tsx).
+- **Campanha de Indicações Círculo de Excelência (Frontend & Lógica)** — Captura do parâmetro `?ref` na URL with salvamento e limpeza dinâmica de endereço (App.tsx), aplicação do desconto VIP de R$ 100 com banner explicativo no checkout (PricingMatrix.tsx), e aba de indicações activa no portal del cliente com botão do WhatsApp e lista de indicações con fallback de mock premium (MinhaArea.tsx).
 - **Redesenho Visual Premium (Diretrizes Taste Skill)** — Importação e aplicação da fonte display serifada *Cormorant Garamond* em itálico para títulos principais, injeção de textura física de papel via ruído estático em CSS, estabilização de viewports móveis (`dvh`), micro-interações táteis `active-scale` nos cliques e implementação de Skeleton Loaders animados na Área de Clientes.
 - **Painel de Gestão de Indicações no Admin** — Integração e redesenho da aba de controle da campanha de recomendação no painel da Pame com painel de estatísticas neumórficas, tabela de controle detalhada (Referente, Amigo, Status e Ações), filtros avanzados de busca/status, sincronización automática de perfis de clientes logados, criação manual híbrida de indicações e Modo Simulador interativo.
 - **Sprint de Estabilização e Validações Gerais** — Lançamento da suite de validação e roteamento seguro de sessões:
@@ -378,7 +378,7 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 - **Rastreamento e Prontidão de Lançamento (Analytics & Pixel)** — Criação del utilitário `src/lib/tracking.ts` integrado en `src/main.tsx` para inicialización dinámica de Google Analytics (`VITE_GOOGLE_ANALYTICS_ID`) y Meta Pixel (`VITE_META_PIXEL_ID`) se configurados no ambiente.
 - **Correções de Segurança e Búsqueda Global (Security Rules)** — Atualização e deploy del arquivo `firestore.rules` com suporte a consultas `collectionGroup` (agilizando o painel administrativo), regras de leitura para que as especialistas leiam apenas seus agendamentos, e de atualização restrita para que atualizem seus perfis de forma segura.
 - **Sistema de Lista de Espera (Acesso Prioritário) e Redirecionamento** — Criação del componente `WaitlistForm.tsx` (`/lista`), redirecionamento de novos clientes residenciais para la lista, captura de código de indicação (`ref`), aba de gerenciamento no Painel Admin com envio de templates de WhatsApp, exclusão de registros e pré-registro direto (creación automatizada de perfis de clientes no Firestore).
-- **Ajustes Legais (LGPD) e SEO Global** — Implantação de modais globais e responsivos de Política de Privacidade e Termos de Uso em `App.tsx` acionados por eventos globais de janela a partir do rodapé da Landing Page, Lista de Espera e Checkout. Atualização do `index.html` com metatags Open Graph e Twitter Cards globais apontando para o domínio canônico `https://www.metodopame.com/` e geração da imagem OG real de 1200x630px a partir do logo.
+- **Ajustes Legais (LGPD) e SEO Global** — Implantação de modais globais e responsivos de Política de Privacidade e Termos de Uso em `App.tsx` acionados por eventos globais de janela a partir do rodapé da Landing Page, Lista de Espera e Checkout. Atualización del `index.html` con metatags Open Graph e Twitter Cards globais apontando para o domínio canônico `https://metodopame.com/` e geração da imagem OG real de 1200x630px a partir do logo.
 
 ### 🟡 Importante
 *(Ninguno por el momento)*

@@ -94,7 +94,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
   };
 
   const handleShareClick = () => {
-    const text = `Estou na lista de espera do agendamento online do Método Pame. Corre para se cadastrar também: https://www.metodopame.com`;
+    const text = `Estou na lista de espera do agendamento online do Método Pame. Corre para se cadastrar também: https://metodopame.com`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
