@@ -394,12 +394,17 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 - **Seletor de Frequência na Matriz de Preços** — Implementação de um controle segmentado premium (Sessão Avulsa vs Pacote Mensal) no topo da `PricingMatrix.tsx` para permitir que o cliente alterne dinamicamente o plano selecionado. A alteração atualiza a memória e persiste a preferência do usuário no documento de triagem no Firestore se o usuário estiver autenticado.
 - **Coleta e Integração de Endereço Residencial** — Adição do campo de 'Endereço Completo' no formulário de avaliação (`ClientTriage.tsx`) e no modal de checkout (`PricingMatrix.tsx`) com preenchimento automático a partir do perfil. O endereço agora é persistido na reserva e atualizado no Firestore, substituindo o texto provisório 'Endereço no App' nas notificações de agendamento enviadas às especialistas pelo portal e pelo painel administrativo.
 - **Proteção de Endereço com Liberação 24h Antes (Full-Stack)** — Implementação completa em três camadas: (1) **UI** — o Dashboard da Especialista (`EspecialistaDashboard.tsx`) oculta o endereço do cliente com ícone de cadeado e contagem regressiva até 24h antes; (2) **Notificações** — as chamadas a `notifyEmployeeAssignment` em `PricingMatrix.tsx` e `AdminPanel.tsx` foram corrigidas para enviar "Endereço liberado 24h antes do atendimento" em vez do endereço real; (3) **Cron automático** — criação do endpoint `api/send-address-reveal.ts` como Vercel Cron Job (a cada 6h) que busca reservas de amanhã com especialista atribuída, envia o endereço completo por e-mail (Resend) e WhatsApp (Meta Cloud API), e marca a reserva com `addressRevealedAt` para evitar duplicatas. A Política de Privacidade foi atualizada para refletir esta medida.
+- **Suporte PWA e Service Worker Seguro** — Manifesto (`public/manifest.json`) com suporte standalone para iOS/Android. Service worker (`public/sw.js`) configurado de forma segura sem cachear dados confidenciais, autenticação ou disponibilidade (estratégia network-first com fallback offline).
+- **Dashboard de Métricas Admin com SVG Dinâmico** — Removido mockups e placeholders. O painel agora computa faturamento total e número de reservas em tempo real com gráficos em SVG spline interativos. Exibe também feedbacks reais dos clientes logados.
+- **Sistema de Avaliação Pós-Serviço & Nota de Especialistas** — Modais interativos em `MinhaArea.tsx` para os clientes avaliarem atendimentos passados (1 a 5 estrelas + comentário). No admin (`AdminPanel.tsx`), cada especialista exibe sua nota média real calculada sob demanda. Criada nova aba "Avaliações" no admin.
+- **Centro de Alertas In-App de Deslocamento** — Centro de notificações via Firestore na Área do Cliente ("A caminho" e "Concluído") com exclusão de estimativas falsas de tempo tipo Uber para preservar o conceito luxuoso e agendado.
 
 ### 🟡 Importante
 *(Ninguno por el momento)*
 
 ### 🔵 Para más adelante
-1. Conectar WhatsApp Business API para notificaciones de reservas y recordatorios.
+1. Conectar WhatsApp Business API (API Oficial) em produção para todas as notificações transacionais e lembretes detalhados (postergado para fase comercial posterior).
+2. Notificações Web Push nativas de navegador (postergado).
 
 ### 🌌 Visión a largo plazo (Objetivo a futuro)
 4. Modelo de expansión tipo Uber para limpieza (abarcar más zonas y escalar operaciones).
@@ -413,8 +418,10 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 - Programa de puntos o fidelidad
 - Matching automático complejo (por ahora: load balancing simple)
 - Precios variables por demanda
+- Rastreamento de motorista/ETA em tempo real (estilo Uber) nas notificações
 
 ---
 
 *Última actualización: Junio 2026*
 *Desarrollado con Google Antigravity 2.0*
+

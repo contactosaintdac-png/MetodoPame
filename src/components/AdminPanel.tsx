@@ -53,7 +53,7 @@ const SHIFTS = [
   { id: 'completo', label: 'Integral' },
 ];
 
-type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes' | 'concierge' | 'espera';
+type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes' | 'concierge' | 'espera' | 'avaliacoes';
 
 const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard'    },
@@ -62,6 +62,7 @@ const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'equipe',       icon: 'group',        label: 'Equipe'       },
   { id: 'recrutamento', icon: 'badge',         label: 'Recrutamento' },
   { id: 'indicacoes',   icon: 'stars',         label: 'Indicações'   },
+  { id: 'avaliacoes',   icon: 'star',          label: 'Avaliações'   },
   { id: 'concierge',    icon: 'chat',          label: 'Mensagens'    },
 ];
 
@@ -77,6 +78,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [activeTab, setActiveTab]           = useState<AdminTab>('dashboard');
   const [agendaView, setAgendaView]         = useState<'lista' | 'calendario' | 'google'>('calendario');
   const [agendaDate, setAgendaDate]         = useState<Date>(new Date());
+  const [trendMetric, setTrendMetric]       = useState<'revenue' | 'volume'>('revenue');
 
   const handleSignOut = async () => {
     try {
@@ -666,10 +668,55 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const tabTitle = (id: AdminTab) => ({
     dashboard:    'Admin Dashboard',
     agenda:       'Maestro de Agendas',
+    espera:       'Lista de Espera',
     equipe:       'Gestão de Equipe',
     recrutamento: 'Recrutamento',
     indicacoes:   'Gestão de Indicações VIP',
+    avaliacoes:   'Avaliações dos Clientes',
+    concierge:    'Mensagens Concierge',
   }[id]);
+
+  const allRatedBookings = bookings.filter(b => typeof b.rating === 'number');
+  const avgSatisfaction = allRatedBookings.length > 0 
+    ? (allRatedBookings.reduce((sum, b) => sum + (b.rating || 0), 0) / allRatedBookings.length).toFixed(2) 
+    : '5.00';
+
+  const getMonthlyStats = () => {
+    const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    const now = new Date();
+    const last6 = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mIdx = d.getMonth();
+      const yr = d.getFullYear();
+      
+      let revenue = 0;
+      let count = 0;
+      
+      bookings.forEach(b => {
+        if (!b.date) return;
+        const parts = b.date.split('-');
+        if (parts.length < 2) return;
+        const bYr = parseInt(parts[0], 10);
+        const bMon = parseInt(parts[1], 10);
+        if (bYr === yr && bMon === mIdx + 1) {
+          if (b.status === 'Concluído' || b.status === 'Confirmado') {
+            revenue += b.totalPrice || 0;
+          }
+          count += 1;
+        }
+      });
+      
+      last6.push({
+        label: months[mIdx],
+        revenue,
+        count,
+        year: yr
+      });
+    }
+    return last6;
+  };
 
   // ─── Login screen ─────────────────────────────────────────────────────────────
   if (!user) {
@@ -854,14 +901,14 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                     <span className="material-symbols-outlined text-[#561668] text-[28px]">stars</span>
                   </div>
                   <div className="flex gap-0.5">
-                    {[1,2,3].map(i => (
-                      <span key={i} className="material-symbols-outlined text-[#561668] text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <span key={i} className="material-symbols-outlined text-[#561668] text-[12px]" style={{ fontVariationSettings: parseFloat(avgSatisfaction) >= i ? "'FILL' 1" : "'FILL' 0" }}>star</span>
                     ))}
                   </div>
                 </div>
                 <div className="mt-5">
                   <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest mb-1">Satisfação do Cliente</p>
-                  <h3 className="text-[36px] font-extrabold text-[#561668] leading-none">4.92</h3>
+                  <h3 className="text-[36px] font-extrabold text-[#561668] leading-none">{avgSatisfaction}</h3>
                 </div>
               </div>
 
@@ -893,29 +940,113 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                     <p className="text-sm text-[#80737f]">Análise de rendimento semestral</p>
                   </div>
                   <div className="flex gap-2">
-                    <button className="px-4 py-2 rounded-xl silk-inset text-[11px] text-[#561668] font-bold tracking-widest">SEMANAL</button>
-                    <button className="px-4 py-2 rounded-xl text-[11px] text-[#80737f] font-bold hover:text-[#561668] transition-colors tracking-widest">MENSAL</button>
+                    <button 
+                      onClick={() => setTrendMetric('revenue')} 
+                      className={`px-4 py-2 rounded-xl text-[11px] font-bold tracking-widest transition-all ${trendMetric === 'revenue' ? 'silk-inset text-[#561668]' : 'text-[#80737f] hover:text-[#561668]'}`}
+                    >
+                      FATURAMENTO
+                    </button>
+                    <button 
+                      onClick={() => setTrendMetric('volume')} 
+                      className={`px-4 py-2 rounded-xl text-[11px] font-bold tracking-widest transition-all ${trendMetric === 'volume' ? 'silk-inset text-[#561668]' : 'text-[#80737f] hover:text-[#561668]'}`}
+                    >
+                      RESERVAS
+                    </button>
                   </div>
                 </div>
-                <div className="flex-grow flex items-end justify-between gap-4 px-4 pb-4">
-                  {[
-                    { label: 'JAN', fill: '60%', outer: '65%', alt: false },
-                    { label: 'FEV', fill: '75%', outer: '78%', alt: true  },
-                    { label: 'MAR', fill: '65%', outer: '70%', alt: false },
-                    { label: 'ABR', fill: '87%', outer: '90%', alt: true  },
-                    { label: 'MAI', fill: '78%', outer: '82%', alt: false },
-                    { label: 'JUN', fill: '92%', outer: '96%', alt: true  },
-                  ].map(bar => (
-                    <div key={bar.label} className="flex flex-col items-center gap-3 w-full">
-                      <div className="w-full rounded-t-full relative silk-inset" style={{ height: bar.outer }}>
-                        <div
-                          className="absolute bottom-0 w-full rounded-t-full progress-glow transition-all duration-700"
-                          style={{ height: bar.fill, background: bar.alt ? '#703081' : '#561668' }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-[#80737f] tracking-widest">{bar.label}</span>
-                    </div>
-                  ))}
+                <div className="flex-grow flex items-center justify-center min-h-[200px]">
+                  {(() => {
+                    const monthlyData = getMonthlyStats();
+                    const maxRevenue = Math.max(...monthlyData.map(d => d.revenue), 100);
+                    const maxVolume = Math.max(...monthlyData.map(d => d.count), 5);
+                    const maxVal = trendMetric === 'revenue' ? maxRevenue : maxVolume;
+
+                    const chartPoints = monthlyData.map((d, idx) => {
+                      const val = trendMetric === 'revenue' ? d.revenue : d.count;
+                      const x = 50 + (idx * 370) / 5; // Chart width is 370 (50 to 420)
+                      const y = 160 - (val / maxVal) * 110; // Chart height is 110 (50 to 160)
+                      return { x, y, val, label: d.label };
+                    });
+
+                    const linePath = chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                    const areaPath = chartPoints.length > 0 
+                      ? `${linePath} L ${chartPoints[chartPoints.length - 1].x} 160 L ${chartPoints[0].x} 160 Z` 
+                      : '';
+
+                    return (
+                      <svg viewBox="0 0 450 200" className="w-full h-full">
+                        <defs>
+                          <linearGradient id="chartAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#561668" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#561668" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Horizontal Grid lines */}
+                        {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                          const y = 160 - ratio * 110;
+                          const val = Math.round(ratio * maxVal);
+                          const label = trendMetric === 'revenue' 
+                            ? `R$ ${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val}` 
+                            : `${val}`;
+                          return (
+                            <g key={idx}>
+                              <line x1="50" y1={y} x2="420" y2={y} stroke="#efe5ee" strokeDasharray="3 3" />
+                              <text x="42" y={y + 4} fill="#80737f" fontSize="9" fontWeight="bold" textAnchor="end">{label}</text>
+                            </g>
+                          );
+                        })}
+                        
+                        {/* Area Fill */}
+                        {areaPath && <path d={areaPath} fill="url(#chartAreaGradient)" className="transition-all duration-500" />}
+                        
+                        {/* Line Stroke */}
+                        {linePath && (
+                          <path 
+                            d={linePath} 
+                            fill="none" 
+                            stroke="#561668" 
+                            strokeWidth="3" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            className="transition-all duration-500" 
+                          />
+                        )}
+                        
+                        {/* Data Points */}
+                        {chartPoints.map((p, idx) => (
+                          <g key={idx} className="group cursor-pointer">
+                            <circle 
+                              cx={p.x} 
+                              cy={p.y} 
+                              r="5" 
+                              fill="#561668" 
+                              stroke="#ffffff" 
+                              strokeWidth="2" 
+                              className="transition-all duration-500 hover:r-7" 
+                            />
+                            {/* Always visible label above point */}
+                            <text 
+                              x={p.x} 
+                              y={p.y - 10} 
+                              fill="#561668" 
+                              fontSize="9" 
+                              fontWeight="extrabold" 
+                              textAnchor="middle"
+                              className="pointer-events-none"
+                            >
+                              {trendMetric === 'revenue' 
+                                ? (p.val > 0 ? `R$${p.val.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '') 
+                                : (p.val > 0 ? p.val : '')
+                              }
+                            </text>
+                            {/* Month Label */}
+                            <text x={p.x} y="182" fill="#80737f" fontSize="10" fontWeight="bold" textAnchor="middle">{p.label}</text>
+                          </g>
+                        ))}
+                      </svg>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -988,25 +1119,40 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl" style={{ background: 'rgba(86,22,104,0.05)' }} />
                 <h3 className="text-lg font-bold text-[#561668] mb-8">Feedback Recente</h3>
                 <div className="flex flex-col gap-5">
-                  {[
-                    { text: '"O Método Pame realmente se nota em cada detalhe. Totalmente recomendado."', who: 'Residência Alarcón', stars: 5 },
-                    { text: '"Excelente pontualidade e profissionalismo. O sistema de gestão é muito eficiente."', who: 'Grupo Imobiliário V&M', stars: 5 },
-                  ].map((rev, i) => (
-                    <div key={i} className="silk-inset p-5 rounded-2xl relative">
-                      <div className="absolute -top-3 -left-2 text-[#561668]/10">
-                        <span className="material-symbols-outlined text-[48px]">format_quote</span>
-                      </div>
-                      <p className="text-sm italic text-[#4e434e] mb-3 relative z-10">{rev.text}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-bold text-[#561668]">{rev.who}</span>
-                        <div className="flex gap-0.5">
-                          {Array.from({ length: rev.stars }).map((_, j) => (
-                            <span key={j} className="material-symbols-outlined text-[#561668] text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                          ))}
+                  {(() => {
+                    const recentReviews = bookings
+                      .filter(b => typeof b.rating === 'number')
+                      .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+                      .slice(0, 2);
+
+                    if (recentReviews.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <span className="material-symbols-outlined text-4xl text-[#d1c2d0] mb-2">star_rate</span>
+                          <p className="text-sm text-[#80737f] font-semibold">Nenhuma avaliação recebida ainda.</p>
+                        </div>
+                      );
+                    }
+
+                    return recentReviews.map((rev, i) => (
+                      <div key={i} className="silk-inset p-5 rounded-2xl relative">
+                        <div className="absolute -top-3 -left-2 text-[#561668]/10">
+                          <span className="material-symbols-outlined text-[48px]">format_quote</span>
+                        </div>
+                        <p className="text-sm italic text-[#4e434e] mb-3 relative z-10">{rev.ratingComment || 'Sem comentários adicionais.'}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] font-bold text-[#561668] truncate max-w-[70%]">
+                            {rev.name || rev.clientName || 'Cliente'} {rev.employeeName ? `· com ${rev.employeeName}` : ''}
+                          </span>
+                          <div className="flex gap-0.5 flex-shrink-0">
+                            {Array.from({ length: 5 }).map((_, j) => (
+                              <span key={j} className="material-symbols-outlined text-[#561668] text-[14px]" style={{ fontVariationSettings: (rev.rating || 0) > j ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               </div>
             </div>
@@ -1398,9 +1544,26 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                           {emp.zones && <p className="text-[11px] text-[#4e434e]">📍 {emp.zones}</p>}
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-[9px] text-[#80737f] uppercase tracking-widest font-bold">Carga (Mês)</p>
-                        <p className="font-black text-2xl text-[#561668]">{emp.assignedServices}</p>
+                      <div className="text-right flex-shrink-0 flex flex-col items-end">
+                        <div>
+                          <p className="text-[9px] text-[#80737f] uppercase tracking-widest font-bold">Carga (Mês)</p>
+                          <p className="font-black text-2xl text-[#561668]">{emp.assignedServices || 0}</p>
+                        </div>
+                        {(() => {
+                          const empBookings = bookings.filter(b => b.assignedEmployeeId === emp.id && typeof b.rating === 'number');
+                          if (empBookings.length === 0) return null;
+                          const avg = empBookings.reduce((sum, b) => sum + (b.rating || 0), 0) / empBookings.length;
+                          return (
+                            <div className="mt-2 text-right">
+                              <p className="text-[9px] text-[#80737f] uppercase tracking-widest font-bold">Avaliação</p>
+                              <div className="flex items-center gap-1 justify-end mt-0.5">
+                                <span className="font-extrabold text-sm text-[#561668]">{avg.toFixed(1)}</span>
+                                <span className="material-symbols-outlined text-yellow-500 text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                <span className="text-[9px] text-[#80737f]">({empBookings.length})</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -2182,6 +2345,109 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ╔══════════════════════════════╗
+            ║   TAB: AVALIAÇÕES             ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'avaliacoes' && (
+          <div className="animate-fade-in">
+            <div className="mb-6">
+              <h1 className="font-sans text-3xl font-extrabold text-[#561668] tracking-tight">Avaliações dos Clientes</h1>
+              <p className="text-sm text-[#4e434e] mt-1 font-medium">Histórico e detalhamento das avaliações pós-serviço.</p>
+            </div>
+
+            {/* Metrics cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-[#80737f] uppercase tracking-wider">Nota Média Geral</p>
+                  <p className="text-3xl font-extrabold text-[#561668] mt-1">
+                    {allRatedBookings.length > 0 
+                      ? (allRatedBookings.reduce((sum, b) => sum + (b.rating || 0), 0) / allRatedBookings.length).toFixed(2)
+                      : '5.00'
+                    }
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#fff7fd] flex items-center justify-center text-[#561668]">
+                  <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                </div>
+              </div>
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-[#80737f] uppercase tracking-wider">Total de Avaliações</p>
+                  <p className="text-3xl font-extrabold text-[#561668] mt-1">{allRatedBookings.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#fff7fd] flex items-center justify-center text-[#561668]">
+                  <span className="material-symbols-outlined text-2xl">rate_review</span>
+                </div>
+              </div>
+              <div className="silk-lift rounded-3xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-[#80737f] uppercase tracking-wider">Avaliações Excelentes (4★+)</p>
+                  <p className="text-3xl font-extrabold text-[#561668] mt-1">
+                    {allRatedBookings.length > 0 
+                      ? `${Math.round((allRatedBookings.filter(b => (b.rating || 0) >= 4).length / allRatedBookings.length) * 100)}%`
+                      : '100%'
+                    }
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#fff7fd] flex items-center justify-center text-[#561668]">
+                  <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>recommend</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Reviews list table */}
+            <div className="silk-lift rounded-[2rem] p-7 overflow-hidden">
+              <h3 className="text-lg font-bold text-[#561668] mb-6">Detalhamento dos Feedbacks</h3>
+              {allRatedBookings.length === 0 ? (
+                <div className="text-center py-12 text-sm text-[#80737f] font-semibold">Nenhuma avaliação encontrada ainda.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="text-[#80737f] uppercase tracking-widest text-[10px] font-bold border-b border-[#e9e0e8]">
+                        <th className="p-4 pl-6">Cliente</th>
+                        <th className="p-4">Data do Serviço</th>
+                        <th className="p-4">Especialista</th>
+                        <th className="p-4">Nota</th>
+                        <th className="p-4 pr-6">Comentário</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allRatedBookings
+                        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+                        .map((b, idx) => (
+                          <tr key={idx} className="hover:bg-[#fffcfd] transition-all">
+                            <td className="p-4 pl-6 border-b border-[#e9e0e8] text-sm text-[#1e1a20] font-bold">
+                              {b.name || b.clientName || 'Cliente Método Pame'}
+                            </td>
+                            <td className="p-4 border-b border-[#e9e0e8] text-sm text-[#4e434e]">
+                              {b.date}
+                            </td>
+                            <td className="p-4 border-b border-[#e9e0e8] text-sm text-[#4e434e] font-semibold">
+                              {b.employeeName || 'Não designada'}
+                            </td>
+                            <td className="p-4 border-b border-[#e9e0e8]">
+                              <div className="flex gap-0.5 items-center">
+                                {Array.from({ length: 5 }).map((_, starIdx) => (
+                                  <span key={starIdx} className="material-symbols-outlined text-[#561668] text-[16px]" style={{ fontVariationSettings: (b.rating || 0) > starIdx ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+                                ))}
+                                <span className="ml-1.5 text-xs font-extrabold text-[#561668]">({b.rating})</span>
+                              </div>
+                            </td>
+                            <td className="p-4 pr-6 border-b border-[#e9e0e8] text-sm text-[#80737f] italic max-w-xs truncate" title={b.ratingComment}>
+                              {b.ratingComment || 'Sem comentários adicionais.'}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

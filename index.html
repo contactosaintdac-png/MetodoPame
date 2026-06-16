@@ -6,6 +6,10 @@
     <title>MÉTODO PAME | Home Detail</title>
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#561668" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Curadoria e cuidado de alto padrão para residências em Tijucas, SC." />
     <link rel="canonical" href="https://metodopame.com/" />
     <meta name="google-site-verification" content="IyTvTwWnpX6sPxiFJqYeNWm9Gp3ho2Sh07T0ORzY4R0" />
@@ -39,6 +43,14 @@
   <body class="bg-[#fff7fd] text-[#1e1a20] antialiased selection:bg-[#561668] selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .catch(err => console.log('SW registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>
 

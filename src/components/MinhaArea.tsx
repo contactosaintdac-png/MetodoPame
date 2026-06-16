@@ -29,6 +29,14 @@ interface ChatMessage {
   createdAt?: any;
 }
 
+interface PameNotification {
+  id: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: any;
+}
+
 export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen: ApplicationScreen) => void }) {
   const { user, signOut } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -37,6 +45,14 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
   // Tabs Navigation
   const [activeTab, setActiveTab] = useState<'dashboard' | 'reservas' | 'indique' | 'historico' | 'suporte'>('dashboard');
+
+  // Notifications & Rating States
+  const [notifications, setNotifications] = useState<PameNotification[]>([]);
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedUnratedBooking, setSelectedUnratedBooking] = useState<any | null>(null);
+  const [ratingScore, setRatingScore] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
 
   // Calendar state (Minhas Reservas)
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -167,8 +183,25 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
       setChatMessages(msgs);
     });
 
+    // Initialize Real-time Notifications
+    let unsubscribeNotifications: (() => void) | undefined;
+    try {
+      const notifQuery = query(
+        collection(db, 'users', user.uid, 'notifications'),
+        orderBy('createdAt', 'desc')
+      );
+      unsubscribeNotifications = onSnapshot(notifQuery, (snapshot) => {
+        setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as PameNotification));
+      }, (error) => {
+        console.error("Erro ao escutar notificações:", error);
+      });
+    } catch (err) {
+      console.error("Erro ao configurar escuta de notificações:", err);
+    }
+
     return () => {
       if (unsubscribeBookings) unsubscribeBookings();
+      if (unsubscribeNotifications) unsubscribeNotifications();
       unsubscribeRoot();
       unsubscribeMessages();
     };
@@ -232,15 +265,33 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   const nextBooking = upcomingBookings.length > 0 ? upcomingBookings[0] : null;
 
   // Star Rating Handler (Histórico)
-  const handleRateBooking = async (bookingId: string, rating: number) => {
+  const handleRateBooking = async (bookingId: string, rating: number, comment?: string) => {
     try {
       const docRef = doc(db, 'users', user.uid, 'bookings', bookingId);
-      await updateDoc(docRef, { rating });
-      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, rating } : b));
+      await updateDoc(docRef, { rating, ratingComment: comment || '' });
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, rating, ratingComment: comment || '' } : b));
     } catch (e) {
       console.error("Erro ao atualizar avaliação:", e);
     }
   };
+
+  // Automatically open rating modal for completed unrated bookings
+  useEffect(() => {
+    if (bookings.length > 0 && !selectedUnratedBooking && !showRatingModal) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const unrated = bookings.find(b => {
+        const isPast = b.date < todayStr;
+        const isCompleted = b.status === 'Concluído' || isPast;
+        return isCompleted && !b.rating;
+      });
+      if (unrated) {
+        setSelectedUnratedBooking(unrated);
+        setRatingScore(5);
+        setRatingComment('');
+        setShowRatingModal(true);
+      }
+    }
+  }, [bookings, selectedUnratedBooking, showRatingModal]);
 
   // Chat message send handler
   const handleSendMessage = async () => {
@@ -526,6 +577,86 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
             <span className="font-display italic text-lg font-semibold text-[#561668]">Método Pame</span>
           </h2>
           <div className="flex items-center gap-3">
+            {/* Bell Icon Mobile */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotificationsPanel(!showNotificationsPanel)}
+                className="w-11 h-11 rounded-full bg-[#faf1fa] border border-[#efe5ee] text-[#561668] flex items-center justify-center cursor-pointer transition-all active-scale relative shadow-sm"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {notifications.some(n => !n.read) ? 'notifications_active' : 'notifications'}
+                </span>
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                )}
+              </button>
+
+              {/* Notifications Panel Mobile */}
+              <AnimatePresence>
+                {showNotificationsPanel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-72 bg-white border border-[#efe5ee] rounded-2xl shadow-xl z-50 p-4 font-sans"
+                  >
+                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#efe5ee]">
+                      <span className="text-[10px] font-extrabold text-[#561668] uppercase tracking-widest">Notificações</span>
+                      {notifications.some(n => !n.read) && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const batchPromises = notifications
+                                .filter(n => !n.read)
+                                .map(n => updateDoc(doc(db, 'users', user.uid, 'notifications', n.id), { read: true }));
+                              await Promise.all(batchPromises);
+                            } catch (err) {
+                              console.error("Erro ao marcar lidas:", err);
+                            }
+                          }}
+                          className="text-[9px] text-[#703081] font-bold uppercase tracking-widest hover:underline cursor-pointer"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2 max-h-48 overflow-y-auto no-scrollbar">
+                      {notifications.length === 0 ? (
+                        <p className="text-center text-[#80737f] text-xs italic py-4">Nenhuma notificação.</p>
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={async () => {
+                              if (!n.read) {
+                                await updateDoc(doc(db, 'users', user.uid, 'notifications', n.id), { read: true });
+                              }
+                            }}
+                            className={`p-2.5 rounded-xl border text-[11px] transition-all cursor-pointer ${
+                              n.read 
+                                ? 'bg-[#faf1fa]/10 border-[#efe5ee]/40' 
+                                : 'bg-[#faf1fa] border-[#efe5ee] hover:bg-[#efe5ee]'
+                            }`}
+                          >
+                            <p className="font-bold text-[#561668] mb-0.5 flex items-center gap-1">
+                              {!n.read && <span className="w-1 h-1 rounded-full bg-red-600 shrink-0" />}
+                              {n.title}
+                            </p>
+                            <p className="text-[#4e434e] leading-relaxed">{n.message}</p>
+                            <p className="text-[8px] text-[#80737f] mt-1">
+                              {n.createdAt?.toDate ? new Date(n.createdAt.toDate()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Agora'}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button
               onClick={() => onScreenChange(triageData ? 'pricing' : 'triage')}
               className="w-11 h-11 rounded-full bg-[#561668] text-white flex items-center justify-center shadow-md cursor-pointer transition-all active-scale"
@@ -611,14 +742,96 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                   transition={{ duration: 0.3 }}
                   className="flex flex-col gap-8 w-full"
                 >
-                  {/* Hero Greeting */}
-                  <div>
-                    <h2 className="font-display italic text-3xl md:text-4xl font-semibold text-[#561668] tracking-tight">
-                      Boas-vindas, {user.displayName?.split(' ')[0] || 'Cliente'}
-                    </h2>
-                    <p className="text-[#4e434e] mt-1 text-sm md:text-base">
-                      Confira o resumo de agendamentos e protocolos de luxo ativos em sua residência.
-                    </p>
+                  {/* Hero Greeting & Notification Bell */}
+                  <div className="flex justify-between items-start w-full">
+                    <div>
+                      <h2 className="font-display italic text-3xl md:text-4xl font-semibold text-[#561668] tracking-tight">
+                        Boas-vindas, {user.displayName?.split(' ')[0] || 'Cliente'}
+                      </h2>
+                      <p className="text-[#4e434e] mt-1 text-sm md:text-base">
+                        Confira o resumo de agendamentos e protocolos de luxo ativos em sua residência.
+                      </p>
+                    </div>
+
+                    {/* Bell Icon Desktop */}
+                    <div className="hidden lg:block relative">
+                      <button
+                        onClick={() => setShowNotificationsPanel(!showNotificationsPanel)}
+                        className="w-11 h-11 rounded-full bg-[#faf1fa] border border-[#efe5ee] hover:bg-[#efe5ee] text-[#561668] flex items-center justify-center cursor-pointer transition-all active-scale relative shadow-sm"
+                        style={{ minWidth: '44px', minHeight: '44px' }}
+                      >
+                        <span className="material-symbols-outlined text-[22px]">
+                          {notifications.some(n => !n.read) ? 'notifications_active' : 'notifications'}
+                        </span>
+                        {notifications.some(n => !n.read) && (
+                          <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                        )}
+                      </button>
+
+                      {/* Notifications Panel Desktop */}
+                      <AnimatePresence>
+                        {showNotificationsPanel && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute right-0 mt-3 w-80 bg-white border border-[#efe5ee] rounded-2xl shadow-xl z-30 p-4 font-sans"
+                          >
+                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#efe5ee]">
+                              <span className="text-[10px] font-extrabold text-[#561668] uppercase tracking-widest">Notificações</span>
+                              {notifications.some(n => !n.read) && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const batchPromises = notifications
+                                        .filter(n => !n.read)
+                                        .map(n => updateDoc(doc(db, 'users', user.uid, 'notifications', n.id), { read: true }));
+                                      await Promise.all(batchPromises);
+                                    } catch (err) {
+                                      console.error("Erro ao marcar lidas:", err);
+                                    }
+                                  }}
+                                  className="text-[9px] text-[#703081] font-bold uppercase tracking-widest hover:underline cursor-pointer"
+                                >
+                                  Marcar todas como lidas
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto no-scrollbar">
+                              {notifications.length === 0 ? (
+                                <p className="text-center text-[#80737f] text-xs italic py-4">Nenhuma notificação por enquanto.</p>
+                              ) : (
+                                notifications.map((n) => (
+                                  <div
+                                    key={n.id}
+                                    onClick={async () => {
+                                      if (!n.read) {
+                                        await updateDoc(doc(db, 'users', user.uid, 'notifications', n.id), { read: true });
+                                      }
+                                    }}
+                                    className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                                      n.read 
+                                        ? 'bg-[#faf1fa]/10 border-[#efe5ee]/40' 
+                                        : 'bg-[#faf1fa] border-[#efe5ee] hover:bg-[#efe5ee]'
+                                    }`}
+                                  >
+                                    <p className="font-bold text-xs text-[#561668] mb-0.5 flex items-center gap-1.5">
+                                      {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" />}
+                                      {n.title}
+                                    </p>
+                                    <p className="text-[11px] text-[#4e434e] leading-relaxed">{n.message}</p>
+                                    <p className="text-[9px] text-[#80737f] mt-1.5 font-medium">
+                                      {n.createdAt?.toDate ? new Date(n.createdAt.toDate()).toLocaleString('pt-BR') : 'Agora'}
+                                    </p>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
 
                   {/* Bento Grid */}
@@ -1559,6 +1772,85 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
           );
         })}
       </div>
+
+      {/* Post-Service Rating Modal */}
+      <AnimatePresence>
+        {showRatingModal && selectedUnratedBooking && (
+          <div className="fixed inset-0 bg-[#1e1a20]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#fff7fd] max-w-md w-full rounded-3xl p-6 shadow-2xl border border-[#efe5ee]/40 relative font-sans"
+            >
+              <button
+                onClick={() => {
+                  setShowRatingModal(false);
+                  setSelectedUnratedBooking(null);
+                }}
+                className="absolute top-3 right-3 w-11 h-11 rounded-full bg-[#f4ebf4] text-[#4e434e] flex items-center justify-center hover:bg-[#efe5ee] transition-colors cursor-pointer z-10 active-scale"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+
+              <div className="text-center mt-3">
+                <span className="material-symbols-outlined text-4xl text-[#561668] mb-2" style={{ fontVariationSettings: "'FILL' 1" }}>star_rate</span>
+                <h3 className="text-lg font-extrabold text-[#561668] mb-1">Como foi o seu serviço?</h3>
+                <p className="text-xs text-[#80737f] mb-4">
+                  Sua opinião é fundamental para mantermos o padrão de excelência Método Pame.
+                </p>
+                <p className="text-sm font-semibold text-[#1e1a20] mb-4">
+                  Atendimento de {new Date(selectedUnratedBooking.date + "T12:00:00").toLocaleDateString('pt-BR')} com {selectedUnratedBooking.assignedEmployeeName || 'nossa especialista'}
+                </p>
+
+                {/* Stars Selection */}
+                <div className="flex justify-center gap-2 mb-5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRatingScore(star)}
+                      className="focus:outline-none transition-transform hover:scale-125 active-scale cursor-pointer"
+                    >
+                      <span
+                        className="material-symbols-outlined text-[36px]"
+                        style={{
+                          fontVariationSettings: ratingScore >= star ? "'FILL' 1" : "'FILL' 0",
+                          color: ratingScore >= star ? '#FFD700' : '#d1c2d0'
+                        }}
+                      >
+                        star
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Comment Text Area */}
+                <div className="text-left mb-6">
+                  <label className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest block mb-2">Comentários Adicionais</label>
+                  <textarea
+                    value={ratingComment}
+                    onChange={(e) => setRatingComment(e.target.value)}
+                    placeholder="Conte-nos mais sobre sua experiência (opcional)..."
+                    className="w-full bg-white border border-[#efe5ee] rounded-xl p-3 text-xs outline-none focus:border-[#561668] transition-all resize-none h-20"
+                  />
+                </div>
+
+                <button
+                  onClick={async () => {
+                    await handleRateBooking(selectedUnratedBooking.id, ratingScore, ratingComment);
+                    setShowRatingModal(false);
+                    setSelectedUnratedBooking(null);
+                  }}
+                  className="w-full py-3.5 bg-[#561668] hover:bg-[#703081] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md active-scale cursor-pointer"
+                >
+                  Enviar Avaliação
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

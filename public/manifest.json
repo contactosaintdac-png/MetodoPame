@@ -1,0 +1,23 @@
+{
+  "name": "Método Pame",
+  "short_name": "Método Pame",
+  "description": "Curadoria e cuidado de alto padrão para residências",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff7fd",
+  "theme_color": "#561668",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

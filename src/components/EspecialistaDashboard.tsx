@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collectionGroup, query, where, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collectionGroup, query, where, orderBy, getDocs, doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type { Employee, Booking } from '../types';
 
 // ─────────────────────────────────────────────
@@ -240,6 +240,40 @@ export default function EspecialistaDashboard({ employee }: Props) {
     setSelectedBooking(null);
   };
 
+  const handleUpdateStatus = async (booking: any, newStatus: 'A caminho' | 'Concluído') => {
+    try {
+      const parentUid = booking.parentUserId || booking.ref?.parent?.parent?.id;
+      if (!parentUid) {
+        console.error("parentUserId not found on booking object:", booking);
+        return;
+      }
+      const bRef = doc(db, 'users', parentUid, 'bookings', booking.docId);
+      await updateDoc(bRef, { status: newStatus });
+
+      // Add in-app notification
+      const notifRef = collection(db, 'users', parentUid, 'notifications');
+      const title = newStatus === 'A caminho' ? 'Especialista a caminho' : 'Atendimento concluído';
+      const message = newStatus === 'A caminho' 
+        ? `Sua especialista ${employee?.name || 'designada'} iniciou o deslocamento para o seu atendimento.`
+        : `Seu atendimento de hoje com a especialista ${employee?.name || 'designada'} foi finalizado. Por favor, deixe sua avaliação!`;
+      
+      await addDoc(notifRef, {
+        title,
+        message,
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
+      // Update local state
+      setMyBookings(prev => prev.map(item => item.docId === booking.docId ? { ...item, status: newStatus } : item));
+      if (selectedBooking && selectedBooking.docId === booking.docId) {
+        setSelectedBooking(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (e) {
+      console.error(`Error updating status to ${newStatus}:`, e);
+    }
+  };
+
   // ─── Load real bookings assigned to this specialist ──────────────────────────
   useEffect(() => {
     if (!employee?.id) {
@@ -254,7 +288,7 @@ export default function EspecialistaDashboard({ employee }: Props) {
           orderBy('date', 'asc')
         );
         const snap = await getDocs(q);
-        setMyBookings(snap.docs.map(d => ({ docId: d.id, ...d.data() })));
+        setMyBookings(snap.docs.map(d => ({ docId: d.id, ref: d.ref, parentUserId: d.ref.parent.parent?.id, ...d.data() })));
       } catch (err) {
         console.warn('Bookings query needs Firestore composite index. Falling back to unfiltered.', err);
         // Fallback: try without orderBy (avoids index requirement)
@@ -264,7 +298,7 @@ export default function EspecialistaDashboard({ employee }: Props) {
             where('assignedEmployeeId', '==', employee.id)
           );
           const snap2 = await getDocs(q2);
-          setMyBookings(snap2.docs.map(d => ({ docId: d.id, ...d.data() })));
+          setMyBookings(snap2.docs.map(d => ({ docId: d.id, ref: d.ref, parentUserId: d.ref.parent.parent?.id, ...d.data() })));
         } catch (err2) {
           console.error('Could not load bookings:', err2);
         }
@@ -728,6 +762,41 @@ export default function EspecialistaDashboard({ employee }: Props) {
                               );
                             })()}
 
+                            {/* Ações do Atendimento */}
+                            {isToday && (
+                              <div className="mb-6 p-4 bg-[#faf1fa]/60 border border-[#efe5ee] rounded-2xl">
+                                <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Ações do Atendimento</h4>
+                                <div className="flex gap-2">
+                                  {b.status !== 'A caminho' && b.status !== 'Concluído' && (
+                                    <button
+                                      onClick={() => handleUpdateStatus(b, 'A caminho')}
+                                      className="flex-1 py-3.5 bg-[#561668] hover:bg-[#703081] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 active-scale"
+                                      style={{ minHeight: '44px' }}
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">hail</span>
+                                      Iniciar Deslocamento
+                                    </button>
+                                  )}
+                                  {b.status === 'A caminho' && (
+                                    <button
+                                      onClick={() => handleUpdateStatus(b, 'Concluído')}
+                                      className="flex-1 py-3.5 bg-green-700 hover:bg-green-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 active-scale"
+                                      style={{ minHeight: '44px' }}
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                      Finalizar Atendimento
+                                    </button>
+                                  )}
+                                  {b.status === 'Concluído' && (
+                                    <div className="flex-1 py-3 bg-green-50 text-green-700 rounded-xl text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
+                                      <span className="material-symbols-outlined text-[16px]">verified</span>
+                                      Serviço Finalizado
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Checklist */}
                             <div>
                               <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Checklist do Serviço</h4>
@@ -890,6 +959,42 @@ export default function EspecialistaDashboard({ employee }: Props) {
                           </div>
                         );
                       })()}
+                      
+                      {/* Ações do Atendimento */}
+                      {selectedBooking.date === todayISO && (
+                        <div className="mb-6 p-4 bg-[#faf1fa]/60 border border-[#efe5ee] rounded-2xl">
+                          <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Ações do Atendimento</h4>
+                          <div className="flex gap-2">
+                            {selectedBooking.status !== 'A caminho' && selectedBooking.status !== 'Concluído' && (
+                              <button
+                                onClick={() => handleUpdateStatus(selectedBooking, 'A caminho')}
+                                className="flex-1 py-3.5 bg-[#561668] hover:bg-[#703081] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 active-scale"
+                                style={{ minHeight: '44px' }}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">hail</span>
+                                Iniciar Deslocamento
+                              </button>
+                            )}
+                            {selectedBooking.status === 'A caminho' && (
+                              <button
+                                onClick={() => handleUpdateStatus(selectedBooking, 'Concluído')}
+                                className="flex-1 py-3.5 bg-green-700 hover:bg-green-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 active-scale"
+                                style={{ minHeight: '44px' }}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                Finalizar Atendimento
+                              </button>
+                            )}
+                            {selectedBooking.status === 'Concluído' && (
+                              <div className="flex-1 py-3 bg-green-50 text-green-700 rounded-xl text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
+                                <span className="material-symbols-outlined text-[16px]">verified</span>
+                                Serviço Finalizado
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div>
                         <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Checklist do Serviço</h4>
                         <div className="flex flex-col gap-2">
