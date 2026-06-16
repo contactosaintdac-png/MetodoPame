@@ -30,6 +30,20 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   );
   // Use fallback so if somehow it is empty it defaults safely
   const selectedPlanMode = triageData.frequency === 'monthly' ? 'mensal' : 'avulso';
+  
+  const handleFrequencyChange = async (newFrequency: 'monthly' | 'individual') => {
+    const updatedTriage = { ...triageData, frequency: newFrequency };
+    onTriageDataChange(updatedTriage);
+    
+    if (user) {
+      try {
+        await setDoc(doc(db, 'users', user.uid, 'profile', 'triage'), updatedTriage, { merge: true });
+      } catch (err) {
+        console.error("Failed to update triage frequency in Firestore", err);
+      }
+    }
+  };
+
   const [hasReferrerDiscount] = useState<boolean>(() => {
     return !!(typeof window !== 'undefined' && localStorage.getItem('pame_referrer_uid'));
   });
@@ -713,6 +727,32 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
             {surfaceCount === 0 && <span className="text-xs text-[#80737f] italic">Nenhuma superfície nobre selecionada</span>}
           </div>
         </motion.div>
+
+        {/* Plan Mode Selector: Sessão Avulsa vs Pacote Mensal */}
+        <div className="flex justify-center -mt-2 -mb-2">
+          <div className="bg-[#f4ebf4]/60 p-1.5 rounded-2xl flex gap-1 shadow-[inset_2px_2px_4px_rgba(112,48,129,0.06),inset_-2px_-2px_4px_#ffffff] border border-[#efe5ee]/40 relative z-20 max-w-xs sm:max-w-sm w-full">
+            <button
+              onClick={() => handleFrequencyChange('individual')}
+              className={`flex-1 py-3 px-3 sm:px-4 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest transition-all duration-300 cursor-pointer ${
+                selectedPlanMode === 'avulso'
+                  ? 'bg-[#561668] text-white shadow-md'
+                  : 'text-[#80737f] hover:text-[#561668] hover:bg-[#faf1fa]'
+              }`}
+            >
+              Sessão Avulsa
+            </button>
+            <button
+              onClick={() => handleFrequencyChange('monthly')}
+              className={`flex-1 py-3 px-3 sm:px-4 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest transition-all duration-300 cursor-pointer ${
+                selectedPlanMode === 'mensal'
+                  ? 'bg-[#561668] text-white shadow-md'
+                  : 'text-[#80737f] hover:text-[#561668] hover:bg-[#faf1fa]'
+              }`}
+            >
+              Pacote Mensal
+            </button>
+          </div>
+        </div>
 
         {/* Pricing Matrix Layout */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
