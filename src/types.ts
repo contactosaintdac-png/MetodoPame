@@ -13,6 +13,8 @@ export interface TriageData {
   doubleGlass: boolean;
   chandeliers: boolean;
   frequency: 'monthly' | 'individual' | '';
+  address?: string;
+  phone?: string;
 }
 
 export interface AddonService {
@@ -57,6 +59,7 @@ export interface Booking {
   clientPhone?: string;
   date: string;
   time?: string;
+  address?: string;
   shift?: string;
   format?: 'meio' | 'completo';
   modality?: string;

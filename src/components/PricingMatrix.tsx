@@ -53,7 +53,19 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   const [bookingName, setBookingName] = useState('');
   const [bookingPhone, setBookingPhone] = useState('');
   const [bookingDateState, setBookingDateState] = useState('');
+  const [bookingAddress, setBookingAddress] = useState('');
   const [modalStep, setModalStep] = useState<'form' | 'availability' | 'payment' | 'pending'>('form');
+
+  useEffect(() => {
+    if (showBookingModal) {
+      if (user && !bookingName) {
+        setBookingName(user.displayName || '');
+      }
+      if (!bookingAddress) {
+        setBookingAddress(triageData.address || '');
+      }
+    }
+  }, [showBookingModal, user, triageData.address]);
   
   // Real-time Availability States
   const [shiftTime, setShiftTime] = useState<'manha'|'tarde'|''>('manha');
@@ -472,7 +484,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           undefined,
           bookingDateState,
           shiftStr,
-          "Endereço no App",
+          bookingAddress || "Endereço no App",
           addonsList,
           assignedEmployee.id
         );
@@ -499,6 +511,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         const bookingRef = await addDoc(collection(db, 'users', user.uid, 'bookings'), {
           name: bookingName,
           phone: bookingPhone,
+          address: bookingAddress,
           date: bookingDateState,
           format: selectedFormat,
           frequency: triageData.frequency,
@@ -510,6 +523,15 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
         });
+
+        // Save the updated address to Firestore triage profile
+        const updatedTriage = { ...triageData, address: bookingAddress };
+        onTriageDataChange(updatedTriage);
+        try {
+          await setDoc(doc(db, 'users', user.uid, 'profile', 'triage'), updatedTriage, { merge: true });
+        } catch (err) {
+          console.error("Failed to update triage address in Firestore", err);
+        }
 
         // Track conversion Purchase event
         trackEvent('Purchase', {
@@ -604,6 +626,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         const bookingRef = await addDoc(collection(db, 'users', currentUser.uid, 'bookings'), {
           name: bookingName,
           phone: bookingPhone,
+          address: bookingAddress,
           date: bookingDateState,
           format: selectedFormat,
           frequency: triageData.frequency,
@@ -613,6 +636,15 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           referrerUid: localStorage.getItem('pame_referrer_uid') || null,
           createdAt: serverTimestamp()
         });
+
+        // Save the updated address to Firestore triage profile
+        const updatedTriage = { ...triageData, address: bookingAddress };
+        onTriageDataChange(updatedTriage);
+        try {
+          await setDoc(doc(db, 'users', currentUser.uid, 'profile', 'triage'), updatedTriage, { merge: true });
+        } catch (err) {
+          console.error("Failed to update triage address in Firestore", err);
+        }
 
         // Track conversion Purchase event
         trackEvent('Purchase', {
@@ -1147,6 +1179,21 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                       placeholder="Ex: (48) 99999-9999"
                       value={bookingPhone}
                       onChange={(e) => setBookingPhone(e.target.value)}
+                      className="w-full h-11 px-4 bg-[#f4ebf4] border border-[#d1c2d0] focus:border-[#561668] focus:ring-1 focus:ring-[#561668] rounded-lg text-sm text-[#1e1a20]"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-extrabold text-[#561668] uppercase tracking-widest" htmlFor="bookingAddress">
+                      Endereço Completo de Atendimento
+                    </label>
+                    <input
+                      id="bookingAddress"
+                      type="text"
+                      required
+                      placeholder="Ex: Rua das Flores, 123 - Centro, Tijucas/SC"
+                      value={bookingAddress}
+                      onChange={(e) => setBookingAddress(e.target.value)}
                       className="w-full h-11 px-4 bg-[#f4ebf4] border border-[#d1c2d0] focus:border-[#561668] focus:ring-1 focus:ring-[#561668] rounded-lg text-sm text-[#1e1a20]"
                     />
                   </div>

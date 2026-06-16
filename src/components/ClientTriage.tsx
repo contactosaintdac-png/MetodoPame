@@ -403,6 +403,22 @@ export default function ClientTriage({
                       </div>
                     </label>
                   </div>
+
+                  {/* Endereço de Atendimento */}
+                  <div className="flex flex-col gap-2 mt-6 text-left">
+                    <label className="text-[11px] font-extrabold text-[#561668] uppercase tracking-widest ml-1" htmlFor="triageAddress">
+                      Endereço Completo da Residência
+                    </label>
+                    <input
+                      id="triageAddress"
+                      type="text"
+                      required
+                      placeholder="Ex: Rua das Flores, 123 - Centro, Tijucas/SC"
+                      value={triageData.address || ''}
+                      onChange={(e) => updateField('address', e.target.value)}
+                      className="w-full h-12 px-4 bg-[#fff7fd] border border-[#efe5ee] focus:border-[#561668] focus:ring-1 focus:ring-[#561668] rounded-xl text-sm text-[#1e1a20] shadow-[inset_2px_2px_4px_#d9cbd9,inset_-2px_-2px_4px_#ffffff]"
+                    />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -436,7 +452,7 @@ export default function ClientTriage({
                   {!user && (
                     <button
                       type="button"
-                      disabled={isLoggingIn}
+                      disabled={isLoggingIn || triageData.frequency === '' || !triageData.address || triageData.address.trim() === ''}
                       onClick={async () => {
                         try {
                           setIsLoggingIn(true);
@@ -458,7 +474,7 @@ export default function ClientTriage({
                   )}
                   <button
                     type="submit"
-                    disabled={isSubmitting || triageData.frequency === ''}
+                    disabled={isSubmitting || triageData.frequency === '' || !triageData.address || triageData.address.trim() === ''}
                     className="px-6 py-3 rounded-xl bg-[#561668] hover:bg-[#703081] text-white font-sans text-xs font-bold tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 cursor-pointer"
                   >
                     {isSubmitting ? (
