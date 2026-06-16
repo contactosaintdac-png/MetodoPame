@@ -484,7 +484,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
           undefined,
           bookingDateState,
           shiftStr,
-          bookingAddress || "Endereço no App",
+          "Endereço liberado 24h antes do atendimento",
           addonsList,
           assignedEmployee.id
         );

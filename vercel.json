@@ -3,6 +3,10 @@
     {
       "path": "/api/send-reminder",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/send-address-reveal",
+      "schedule": "0 */6 * * *"
     }
   ],
   "rewrites": [

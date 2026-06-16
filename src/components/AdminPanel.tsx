@@ -603,7 +603,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             undefined,
             date,
             shiftStr,
-            editingBooking.address || "Endereço no App",
+            "Endereço liberado 24h antes do atendimento",
             addonsList,
             newEmpId
           );
