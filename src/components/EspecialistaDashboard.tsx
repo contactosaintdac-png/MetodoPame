@@ -281,6 +281,31 @@ export default function EspecialistaDashboard({ employee }: Props) {
   const todayStr      = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   const firstName     = user?.displayName?.split(' ')[0] || 'Especialista';
 
+  // ─── Address protection: only reveal 24h before the booking ───────────────────
+  const isAddressVisible = (bookingDate: string): boolean => {
+    const bookingStart = new Date(bookingDate + 'T00:00:00');
+    const now = new Date();
+    const diffMs = bookingStart.getTime() - now.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    return diffHours <= 24;
+  };
+
+  const getAddressDisplay = (booking: Booking): { text: string; revealed: boolean } => {
+    if (!booking.address) return { text: 'Endereço não informado', revealed: false };
+    if (isAddressVisible(booking.date)) return { text: booking.address, revealed: true };
+    // Calculate how much time until reveal
+    const bookingStart = new Date(booking.date + 'T00:00:00');
+    const now = new Date();
+    const diffMs = bookingStart.getTime() - now.getTime();
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    const remainHours = diffHours % 24;
+    const countdown = diffDays > 0
+      ? `Disponível em ${diffDays}d ${remainHours}h`
+      : `Disponível em ${diffHours}h`;
+    return { text: countdown, revealed: false };
+  };
+
   const upcomingBookings  = myBookings.filter(b => b.date >= todayISO && b.status !== 'Cancelado').slice(0, 5);
   const todayBookings     = myBookings.filter(b => b.date === todayISO);
   const completedBookings = myBookings.filter(b => b.status === 'Concluído');
@@ -515,6 +540,18 @@ export default function EspecialistaDashboard({ employee }: Props) {
                                 <span className="text-[10px] font-bold bg-[#fcd7ff] text-[#561668] px-2 py-1 rounded-full">R$ {b.totalPrice}</span>
                               )}
                             </div>
+                            {/* Address with 24h protection */}
+                            {(() => {
+                              const addr = getAddressDisplay(b);
+                              return (
+                                <div className={`flex items-center gap-1.5 mt-2 text-[11px] ${addr.revealed ? 'text-[#1e1a20]' : 'text-[#b0a3af]'}`}>
+                                  <span className="material-symbols-outlined text-[14px]" style={addr.revealed ? {} : { fontVariationSettings: "'FILL' 1" }}>
+                                    {addr.revealed ? 'location_on' : 'lock'}
+                                  </span>
+                                  <span className={`truncate ${addr.revealed ? 'font-medium' : 'italic'}`}>{addr.text}</span>
+                                </div>
+                              );
+                            })()}
                           </div>
                           {/* Status + actions */}
                           <div className="flex flex-col items-end gap-2 flex-shrink-0">
@@ -668,6 +705,29 @@ export default function EspecialistaDashboard({ employee }: Props) {
                                 </div>
                               ))}
                             </div>
+                            {/* Address with 24h protection */}
+                            {(() => {
+                              const addr = getAddressDisplay(b);
+                              return (
+                                <div className={`silk-inset p-4 rounded-2xl mb-6 flex items-center gap-3 ${addr.revealed ? '' : 'opacity-75'}`}>
+                                  <span
+                                    className="material-symbols-outlined text-[20px] flex-shrink-0"
+                                    style={{ color: addr.revealed ? '#561668' : '#b0a3af', ...(addr.revealed ? {} : { fontVariationSettings: "'FILL' 1" }) }}
+                                  >
+                                    {addr.revealed ? 'location_on' : 'lock'}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest mb-1">Endereço</p>
+                                    {addr.revealed ? (
+                                      <p className="text-sm font-semibold text-[#1e1a20]">{addr.text}</p>
+                                    ) : (
+                                      <p className="text-sm font-medium text-[#b0a3af] italic">{addr.text}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
                             {/* Checklist */}
                             <div>
                               <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Checklist do Serviço</h4>
@@ -808,6 +868,28 @@ export default function EspecialistaDashboard({ employee }: Props) {
                           </div>
                         ))}
                       </div>
+                      {/* Address with 24h protection */}
+                      {(() => {
+                        const addr = getAddressDisplay(selectedBooking);
+                        return (
+                          <div className={`silk-inset p-4 rounded-2xl mb-6 flex items-center gap-3 ${addr.revealed ? '' : 'opacity-75'}`}>
+                            <span
+                              className="material-symbols-outlined text-[20px] flex-shrink-0"
+                              style={{ color: addr.revealed ? '#561668' : '#b0a3af', ...(addr.revealed ? {} : { fontVariationSettings: "'FILL' 1" }) }}
+                            >
+                              {addr.revealed ? 'location_on' : 'lock'}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold text-[#80737f] uppercase tracking-widest mb-1">Endereço</p>
+                              {addr.revealed ? (
+                                <p className="text-sm font-semibold text-[#1e1a20]">{addr.text}</p>
+                              ) : (
+                                <p className="text-sm font-medium text-[#b0a3af] italic">{addr.text}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div>
                         <h4 className="text-[11px] font-bold text-[#561668] uppercase tracking-widest mb-3">Checklist do Serviço</h4>
                         <div className="flex flex-col gap-2">

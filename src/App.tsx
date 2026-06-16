@@ -390,7 +390,7 @@ export default function App() {
 
               <div>
                 <p className="font-bold text-[#561668] uppercase tracking-wider text-[10px] md:text-xs">4. Compartilhamento de Dados</p>
-                <p className="mt-1">Seus dados de pagamento são criptografados e gerenciados pelo Mercado Pago. A especialista atribuída recebe apenas o nome e endereço para a prestação do serviço. O Método Pame não vende, aluga ou compartilha seus dados pessoais com terceiros para fins de marketing.</p>
+                <p className="mt-1">Seus dados de pagamento são criptografados e gerenciados pelo Mercado Pago. A especialista atribuída recebe apenas o nome do cliente e, por segurança, o endereço completo é liberado somente 24 horas antes do atendimento agendado. O Método Pame não vende, aluga ou compartilha seus dados pessoais com terceiros para fins de marketing.</p>
               </div>
 
               <div>
