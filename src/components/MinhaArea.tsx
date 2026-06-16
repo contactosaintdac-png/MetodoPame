@@ -646,14 +646,18 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                             </p>
                           </>
                         ) : (
-                          <div className="mt-8 text-center py-4">
-                            <p className="text-sm text-[#4e434e] mb-4 font-medium">Sua residência não possui agendamentos ativos.</p>
-                            <button
-                              onClick={() => onScreenChange('triage')}
-                              className="px-6 py-2.5 bg-[#561668] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#703081] active:scale-95 transition-all cursor-pointer shadow-md"
-                            >
-                              Solicitar Avaliação
-                                               {nextBooking && (
+          <div className="mt-8 text-center py-4">
+            <p className="text-sm text-[#4e434e] mb-4 font-medium">Sua residência não possui agendamentos ativos.</p>
+            <button
+              onClick={() => onScreenChange('triage')}
+              className="px-6 py-2.5 bg-[#561668] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#703081] active:scale-95 transition-all cursor-pointer shadow-md"
+            >
+              Solicitar Avaliação
+            </button>
+          </div>
+        )}
+
+        {nextBooking && (
                         <div className="mt-8 pt-4 border-t border-[#efe5ee]/60 relative z-10 flex flex-col gap-4">
                           {/* Details row */}
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -714,6 +718,7 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
                         </div>
                       )}
                     </div>
+                  </div>
 
                     {/* Member Status Card */}
                     <div className="silk-lift p-6 flex flex-col justify-between min-h-[280px]">

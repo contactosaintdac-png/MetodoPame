@@ -39,6 +39,7 @@ export interface Employee {
   photoURL?: string;
   weeklyAvailability?: string[][]; // Array of arrays containing shifts
   createdAt?: string;
+  pendingUpdate?: { name?: string; whatsapp?: string; zones?: string; } | null;
 }
 
 export interface Review {
@@ -64,7 +65,7 @@ export interface Booking {
   addons?: string[];
   assignedEmployeeId?: string;
   employeeName?: string;
-  createdAt?: string;
+  createdAt?: any;
   review?: Review;
 }
 

@@ -183,7 +183,7 @@ export default function App() {
         if (docSnap.exists()) {
           const data = docSnap.data() as TriageData;
           setTriageData(data);
-          if (currentScreen === 'welcome' || currentScreen === 'triage') {
+          if (currentScreen === 'welcome') {
             setTimeout(() => handleScreenChange('minha-area'), 50);
           }
         } else {
@@ -213,6 +213,7 @@ export default function App() {
       'minha-area': '/minha-area',
       admin:        '/admin',
       waitlist:     '/lista',
+      'not-found':  '/404',
     };
     window.history.pushState({}, '', paths[screen] || '/');
   };
