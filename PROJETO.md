@@ -398,6 +398,7 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 - **Dashboard de Métricas Admin com SVG Dinâmico** — Removido mockups e placeholders. O painel agora computa faturamento total e número de reservas em tempo real com gráficos em SVG spline interativos. Exibe também feedbacks reais dos clientes logados.
 - **Sistema de Avaliação Pós-Serviço & Nota de Especialistas** — Modais interativos em `MinhaArea.tsx` para os clientes avaliarem atendimentos passados (1 a 5 estrelas + comentário). No admin (`AdminPanel.tsx`), cada especialista exibe sua nota média real calculada sob demanda. Criada nova aba "Avaliações" no admin.
 - **Centro de Alertas In-App de Deslocamento** — Centro de notificações via Firestore na Área do Cliente ("A caminho" e "Concluído") com exclusão de estimativas falsas de tempo tipo Uber para preservar o conceito luxuoso e agendado.
+- **Redesenho da Lista de Espera (/lista) e Melhoria de Legibilidade** — Remoção de imagem estática com elementos falsos de interface (textos assados e ícone de menu hambúrguer cinza). Redesenho completo do fluxo móvel dividindo as seções de texto e imagem para contraste e legibilidade ideais, e otimização dos inputs, dropdowns e placeholders para digitação confortável em celulares.
 
 ### 🟡 Importante
 *(Ninguno por el momento)*

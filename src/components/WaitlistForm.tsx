@@ -212,7 +212,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
             <img
               alt="Luxury Interior"
               className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNszep7MsfJsOi_9TRLEqOTBDDQjfrczJguOdLVfC2-PSRV5s6EgND1q3HJhGQOlBO_Mb5D3DJ9vHhP9MriNBPAfBMfEOEmWgOw6Z0p3-wSKA9_im41yYO2gT5CnKZ1O8EtGHxHl6PYLUGtaOwOB2W0u2m5Lemo6CesCi6oKYojP5-kzCGSr9o-hDFIABQ6eE7sXckqdQyABPfahZdVbSIaD0D6l880UcOw9eHAaxyhzbZDVk47NcQRS_jW2toJr_BSEnxjI-stabg"
+              src="/waitlist_luxury.png"
             />
             <div className="absolute inset-0 hero-overlay"></div>
           </div>
@@ -542,32 +542,34 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
           </div>
         </header>
 
-        {/* Hero Section */}
-        <section className="relative w-full h-[400px] flex items-end overflow-hidden">
-          <div className="absolute inset-0 z-0">
+        {/* Hero Section - Text on solid background for perfect legibility */}
+        <div className="pt-8 pb-4 px-6 text-center">
+          <p className="text-[10px] font-extrabold text-[#561668] uppercase tracking-[0.25em] mb-2">Lista de Espera</p>
+          <h1 className="font-display text-3.5xl text-[#561668] leading-tight italic font-bold mb-3" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}>
+            Lista de Espera Exclusiva
+          </h1>
+          <p className="text-xs text-[#4e434e] max-w-[280px] mx-auto leading-relaxed font-semibold">
+            Acesso prioritário ao ecossistema de gestão e bem-estar mais exclusivo do Brasil.
+          </p>
+        </div>
+
+        {/* Beautiful framed luxury image */}
+        <div className="px-5 pb-6">
+          <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-[#efe5ee] shadow-[0_4px_12px_rgba(112,48,129,0.05)]">
             <img
               alt="Luxury Residence"
-              className="w-full h-full object-cover scale-105"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaeF8rJczu0O1jFq1H4JOS-wCg8HK2RaDwjabqm7t8FSfJ42MlnqexLEgafePCfsglZ4J_Vy1JanxD8AUgLuH203OwqikQSmw_OdipRq0_8EH5EONjFdcafwvCXFJo0IA1p-zuT0l4d_x6I0rFgvpOFDCZB9LpqCjFrPsLHzcGLgmn5fnNSZW6qZbJGsElrFcYRw2lDx2kR9tW7ZoNOKDGWkAv6Vse5kHPaInaMrlBKQEKHiVV5hvzMaeKn0VkiOc3rfa4SQxqdUd-"
+              className="w-full h-full object-cover"
+              src="/waitlist_luxury.png"
             />
-            <div className="absolute inset-0 hero-gradient"></div>
           </div>
-          <div className="relative z-10 w-full px-6 pb-12 text-center">
-            <h1 className="font-display text-3.5xl text-[#561668] mb-2 leading-tight italic" style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}>
-              Lista de Espera Exclusiva
-            </h1>
-            <p className="text-xs text-[#4e434e]/85 max-w-[280px] mx-auto leading-relaxed font-medium">
-              Acesso prioritário ao ecossistema de gestão e bem-estar mais exclusivo do Brasil.
-            </p>
-          </div>
-        </section>
+        </div>
 
         {/* Form Section */}
-        <section className="px-5 -mt-10 relative z-20 pb-12">
-          <div className="silk-lift rounded-3xl p-6 space-y-6 text-left">
-            <div className="space-y-1 text-center mb-6">
+        <section className="px-5 pb-12">
+          <div className="bg-white border border-[#efe5ee] rounded-3xl p-6 space-y-6 text-left shadow-[0_8px_24px_rgba(112,48,129,0.03)]">
+            <div className="space-y-1 text-center mb-4">
               <p className="text-xs font-extrabold text-[#561668] uppercase tracking-widest">Inscrição VIP</p>
-              <div className="h-[1px] w-12 bg-[#561668]/30 mx-auto mt-2"></div>
+              <div className="h-[1px] w-12 bg-[#561668]/20 mx-auto mt-2"></div>
             </div>
             
             {referrerName && (
@@ -583,10 +585,10 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
             {/* Input Groups */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Nome Completo</label>
+                <label className="text-[11px] font-extrabold text-[#561668] ml-2">Nome Completo</label>
                 <input
                   required
-                  className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-[#d1c2d0] text-sm font-sans focus:outline-none"
+                  className="w-full h-12 rounded-xl px-4 border border-[#efe5ee] bg-white text-[#1e1a20] placeholder:text-[#80737f]/50 text-sm font-sans focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
                   placeholder="Ex: Maria Luísa Fontes"
                   type="text"
                   value={fullName}
@@ -595,10 +597,10 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
               </div>
               
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">WhatsApp</label>
+                <label className="text-[11px] font-extrabold text-[#561668] ml-2">WhatsApp</label>
                 <input
                   required
-                  className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-[#d1c2d0] text-sm font-sans focus:outline-none"
+                  className="w-full h-12 rounded-xl px-4 border border-[#efe5ee] bg-white text-[#1e1a20] placeholder:text-[#80737f]/50 text-sm font-sans focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
                   placeholder="(48) 99999-9999"
                   type="tel"
                   value={whatsapp}
@@ -607,10 +609,10 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
               </div>
               
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">E-mail</label>
+                <label className="text-[11px] font-extrabold text-[#561668] ml-2">E-mail</label>
                 <input
                   required
-                  className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset placeholder:text-[#d1c2d0] text-sm font-sans focus:outline-none"
+                  className="w-full h-12 rounded-xl px-4 border border-[#efe5ee] bg-white text-[#1e1a20] placeholder:text-[#80737f]/50 text-sm font-sans focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all"
                   placeholder="contato@exemplo.com"
                   type="email"
                   value={email}
@@ -620,11 +622,11 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
               
               {/* Bairro (Dropdown) */}
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Bairro de Residência</label>
+                <label className="text-[11px] font-extrabold text-[#561668] ml-2">Bairro de Residência</label>
                 <div className="relative">
                   <select
                     required
-                    className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset text-sm font-sans appearance-none focus:outline-none"
+                    className="w-full h-12 rounded-xl px-4 border border-[#efe5ee] bg-white text-[#1e1a20] text-sm font-sans appearance-none focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all cursor-pointer"
                     value={neighborhood}
                     onChange={e => setNeighborhood(e.target.value)}
                   >
@@ -637,17 +639,17 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
                     <option value="Sul do Rio">Sul do Rio</option>
                     <option value="Outro (Tijucas / Região)">Outro (Tijucas / Região)</option>
                   </select>
-                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#d1c2d0] pointer-events-none">expand_more</span>
+                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#561668]/50 pointer-events-none">expand_more</span>
                 </div>
               </div>
               
               {/* Serviço (Dropdown) */}
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Serviço Desejado</label>
+                <label className="text-[11px] font-extrabold text-[#561668] ml-2">Serviço Desejado</label>
                 <div className="relative">
                   <select
                     required
-                    className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset text-sm font-sans appearance-none focus:outline-none"
+                    className="w-full h-12 rounded-xl px-4 border border-[#efe5ee] bg-white text-[#1e1a20] text-sm font-sans appearance-none focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all cursor-pointer"
                     value={serviceType}
                     onChange={e => setServiceType(e.target.value)}
                   >
@@ -657,17 +659,17 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
                     <option value="Limpeza Pós-Obra">Limpeza Pós-Obra</option>
                     <option value="Outro">Outro</option>
                   </select>
-                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#d1c2d0] pointer-events-none">expand_more</span>
+                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#561668]/50 pointer-events-none">expand_more</span>
                 </div>
               </div>
               
               {/* Como nos conheceu (Dropdown) */}
               <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-[#4e434e] ml-2">Como nos conheceu?</label>
+                <label className="text-[11px] font-extrabold text-[#561668] ml-2">Como nos conheceu?</label>
                 <div className="relative">
                   <select
                     required
-                    className="w-full h-12 rounded-2xl px-5 bg-surface text-on-surface input-inset text-sm font-sans appearance-none focus:outline-none"
+                    className="w-full h-12 rounded-xl px-4 border border-[#efe5ee] bg-white text-[#1e1a20] text-sm font-sans appearance-none focus:outline-none focus:border-[#561668] focus:ring-1 focus:ring-[#561668] transition-all cursor-pointer"
                     value={source}
                     onChange={e => setSource(e.target.value)}
                   >
@@ -677,7 +679,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
                     <option value="Já era cliente da Pame">Já era cliente da Pame</option>
                     <option value="Outro">Outro</option>
                   </select>
-                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#d1c2d0] pointer-events-none">expand_more</span>
+                  <span className="material-symbols-outlined absolute right-4 top-3 text-[#561668]/50 pointer-events-none">expand_more</span>
                 </div>
               </div>
               
@@ -685,7 +687,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-14 bg-[#561668] text-white font-extrabold rounded-2xl shadow-lg active:scale-95 transition-all mt-6 text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full h-14 bg-[#561668] hover:bg-[#703081] text-white font-extrabold rounded-xl shadow-md active:scale-[0.97] hover:shadow-lg transition-all mt-6 text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSubmitting ? (
                   <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
