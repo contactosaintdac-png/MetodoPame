@@ -533,13 +533,7 @@ export default function WaitlistForm({ onScreenChange }: WaitlistFormProps) {
             </button>
           </div>
           <div className="font-sans font-black text-lg text-[#561668] tracking-tight">Método Pame</div>
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-[#561668]/20">
-            <img
-              alt="User Profile"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxyA7Dj01WadC7ZzmpP-srCz8rAG2ZDs1x0O7SMvPc5biVBZq7UmZBJcuwMMADxTFCHrV5SqKGSEoRgtO7vTnhabXy-ab5DVa5ZQfbkBL6FoJf4MbbDW28f_IaLaH2zcmMeujIxc5VJXO2QfUX1xO67o4wngIEHdQo_2OvqFD7GW7o3eCu6J7mkr58paalevOUNZcQNBP9ifODyFljvWH_pujgQbNMuYSM4xp8oJGTIxQCLust8JEFkjKMVSpwygjZ1LSw2mR0DB6u"
-            />
-          </div>
+          <div className="w-8"></div>
         </header>
 
         {/* Hero Section - Text on solid background for perfect legibility */}
