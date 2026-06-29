@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/send-address-reveal",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 5 * * *"
     }
   ],
   "rewrites": [
