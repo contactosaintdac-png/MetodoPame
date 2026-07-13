@@ -1,0 +1,545 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Método Pame | Home Detail — LMS Firestore Schema",
+  "description": "Schema técnico de las colecciones de Firestore para el LMS de capacitación de especialistas. Este archivo es companion del documento LMS_Arquitectura_de_Contenido.md. Antigravity puede usar este schema directamente para diseñar las collections y las security rules.",
+  "version": "1.1",
+  "generatedAt": "2026-07-13",
+  "generatedBy": "GLM 5.2",
+  "forUseBy": "Antigravity",
+  "changelog": {
+    "v1.1": [
+      "isFounder() usa validación por email (no Custom Claims, no requiere plan Blaze).",
+      "isEmployeeActive() requiere que /employees/{id} tenga como document ID el Firebase Auth UID.",
+      "final_exam_attempts movido a subcolección: /employees/{employeeId}/final_exam_attempts/{attemptId}.",
+      "final_exam_questions: read = false (solo Admin SDK vía Vercel Functions).",
+      "Agregadas Vercel Functions: /api/generate-final-exam y /api/grade-final-exam (server-side para no exponer respuestas correctas)."
+    ]
+  },
+
+  "collections": {
+
+    "modules": {
+      "path": "/modules/{moduleId}",
+      "description": "Los 15 módulos del curso de capacitación.",
+      "documentIdPattern": "mod_01 a mod_15",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "mod_01", "description": "Identificador único. Formato: mod_NN." },
+        "number":         { "type": "number",  "required": true,  "example": 1, "description": "Número de módulo (1-15). Para ordenamiento." },
+        "title":          { "type": "string",  "required": true,  "example": "Boas-vindas ao Método Pame" },
+        "slug":           { "type": "string",  "required": true,  "example": "boas-vindas-ao-metodo-pame", "description": "URL-friendly." },
+        "description":    { "type": "string",  "required": true,  "example": "Apresentação do método, da Pame e do que significa ser 'do Método'." },
+        "objective":      { "type": "string",  "required": true,  "example": "Que a especialista entenda o que é o Método Pame, quem é Pame, e o que significa representá-lo." },
+        "block":          { "type": "string",  "required": true,  "enum": ["identidad", "postura", "conducta", "tecnica", "estandar", "operacion"] },
+        "estimatedMinutes": { "type": "number", "required": true, "example": 30 },
+        "lessons":        { "type": "array",   "required": true,  "items": { "type": "string" }, "example": ["les_01_01", "les_01_02", "les_01_03"], "description": "IDs de lecciones en orden." },
+        "evaluationId":   { "type": "string",  "required": true,  "example": "eva_01" },
+        "prerequisiteModuleId": { "type": ["string", "null"], "required": true, "example": null, "description": "ID del módulo previo. null para módulo 1." },
+        "order":          { "type": "number",  "required": true,  "example": 1 },
+        "status":         { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" },
+        "createdAt":      { "type": "timestamp", "required": true, "firestoreType": "FieldValue.serverTimestamp()" },
+        "updatedAt":      { "type": "timestamp", "required": true, "firestoreType": "FieldValue.serverTimestamp()" }
+      },
+      "indexes": [
+        { "fields": ["number"], "order": "asc" },
+        { "fields": ["block", "order"], "order": "asc" },
+        { "fields": ["status"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isEmployeeActive() || isFounder()",
+        "write": "isFounder()"
+      }
+    },
+
+    "lessons": {
+      "path": "/lessons/{lessonId}",
+      "description": "Lecciones individuales. Cada lección pertenece a un módulo.",
+      "documentIdPattern": "les_{mod}_{lesson} (ej: les_08_02)",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "les_08_02" },
+        "moduleId":       { "type": "string",  "required": true,  "example": "mod_08", "description": "Referencia al módulo." },
+        "number":         { "type": "number",  "required": true,  "example": 2 },
+        "title":          { "type": "string",  "required": true,  "example": "Produtos proibidos em mármore" },
+        "type":           { "type": "string",  "required": true,  "enum": ["reading", "video", "hybrid"], "default": "reading" },
+        "content":        { "type": "string",  "required": true,  "format": "markdown", "description": "Contenido en PT-BR. Markdown-formatted." },
+        "videoUrl":       { "type": ["string", "null"], "required": true, "default": null, "description": "URL del video para tipos video/hybrid. null para reading." },
+        "videoDurationSeconds": { "type": ["number", "null"], "required": true, "default": null },
+        "estimatedMinutes": { "type": "number", "required": true, "example": 12 },
+        "completionCriteria": {
+          "type": "object",
+          "required": true,
+          "description": "Define cómo se considera esta lección completada.",
+          "fields": {
+            "type":                { "type": "string", "required": true, "enum": ["manual_confirmation", "video_watch_threshold"] },
+            "thresholdPercent":    { "type": ["number", "null"], "required": true, "example": 90, "description": "Para video_watch_threshold. null para manual_confirmation." },
+            "buttonLabel":         { "type": ["string", "null"], "required": true, "example": "Marcar como lida", "description": "Para manual_confirmation. null para video." },
+            "requiresVideoWatch":  { "type": "boolean", "required": true, "default": false }
+          }
+        },
+        "order":          { "type": "number",  "required": true,  "example": 2 },
+        "status":         { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" },
+        "createdAt":      { "type": "timestamp", "required": true },
+        "updatedAt":      { "type": "timestamp", "required": true }
+      },
+      "indexes": [
+        { "fields": ["moduleId", "order"], "order": "asc" },
+        { "fields": ["status"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isEmployeeActive() || isFounder()",
+        "write": "isFounder()"
+      }
+    },
+
+    "evaluations": {
+      "path": "/evaluations/{evaluationId}",
+      "description": "Evaluaciones de cada módulo. Una evaluación por módulo.",
+      "documentIdPattern": "eva_{mod} (ej: eva_08)",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "eva_08" },
+        "moduleId":       { "type": "string",  "required": true,  "example": "mod_08" },
+        "title":          { "type": "string",  "required": true,  "example": "Avaliação — Módulo 8: Cuidado de mármore" },
+        "description":    { "type": "string",  "required": true,  "example": "Instruções para a avaliação." },
+        "passingScorePercent": { "type": "number", "required": true, "default": 70 },
+        "questions":      {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "object",
+            "fields": {
+              "id":                     { "type": "string", "required": true, "example": "q_08_01" },
+              "type":                   { "type": "string", "required": true, "enum": ["multiple_choice", "open_short", "scenario"] },
+              "question":               { "type": "string", "required": true },
+              "options":                { "type": ["array", "null"], "required": true, "items": { "type": "string" }, "description": "Para multiple_choice. null para otros." },
+              "correctOptionIndex":     { "type": ["number", "null"], "required": true, "description": "Para multiple_choice (0-based). null para otros." },
+              "expectedAnswerKeywords": { "type": ["array", "null"], "required": true, "items": { "type": "string" }, "description": "Para open_short y scenario. null para multiple_choice." },
+              "feedback":               { "type": "string", "required": true },
+              "points":                 { "type": "number", "required": true, "default": 1 },
+              "order":                  { "type": "number", "required": true }
+            }
+          }
+        },
+        "totalQuestions":  { "type": "number",  "required": true,  "description": "Calculado: questions.length" },
+        "estimatedMinutes": { "type": "number", "required": true },
+        "maxAttempts":     { "type": "number",  "required": true,  "default": 2 },
+        "status":          { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" },
+        "createdAt":       { "type": "timestamp", "required": true },
+        "updatedAt":       { "type": "timestamp", "required": true }
+      },
+      "indexes": [
+        { "fields": ["moduleId"], "order": "asc" },
+        { "fields": ["status"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isEmployeeActive() || isFounder()",
+        "write": "isFounder()"
+      }
+    },
+
+    "trainingProgress": {
+      "path": "/employees/{employeeId}/trainingProgress/{progressId}",
+      "description": "Progreso de cada empleada en cada módulo. Subcolección dentro del documento de la empleada.",
+      "documentIdPattern": "{employeeId}_{moduleId} (ej: emp_001_mod_08)",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "emp_001_mod_08" },
+        "employeeId":     { "type": "string",  "required": true,  "example": "emp_001" },
+        "moduleId":       { "type": "string",  "required": true,  "example": "mod_08" },
+        "moduleStatus":   { "type": "string",  "required": true,  "enum": ["not_started", "in_progress", "completed", "failed"] },
+        "lessonsProgress": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "object",
+            "fields": {
+              "lessonId":                { "type": "string", "required": true },
+              "status":                  { "type": "string", "required": true, "enum": ["not_started", "in_progress", "completed"] },
+              "videoProgressPercent":    { "type": ["number", "null"], "required": true, "description": "0-100 para video. null para reading." },
+              "videoWatchTimeSeconds":   { "type": ["number", "null"], "required": true },
+              "completedAt":             { "type": ["timestamp", "null"], "required": true },
+              "lastVisitedAt":           { "type": ["timestamp", "null"], "required": true }
+            }
+          }
+        },
+        "evaluationAttempts": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "object",
+            "fields": {
+              "attemptNumber":   { "type": "number", "required": true },
+              "startedAt":       { "type": "timestamp", "required": true },
+              "completedAt":     { "type": ["timestamp", "null"], "required": true },
+              "scorePercent":    { "type": ["number", "null"], "required": true },
+              "answers": {
+                "type": "array",
+                "required": true,
+                "items": {
+                  "type": "object",
+                  "fields": {
+                    "questionId":  { "type": "string", "required": true },
+                    "answer":      { "type": "string", "required": true },
+                    "correct":     { "type": "boolean", "required": true }
+                  }
+                }
+              },
+              "passed":          { "type": "boolean", "required": true }
+            }
+          }
+        },
+        "bestScorePercent":  { "type": ["number", "null"], "required": true },
+        "passed":            { "type": "boolean", "required": true, "default": false },
+        "startedAt":         { "type": ["timestamp", "null"], "required": true },
+        "completedAt":       { "type": ["timestamp", "null"], "required": true },
+        "lastActivityAt":    { "type": "timestamp", "required": true }
+      },
+      "indexes": [
+        { "fields": ["employeeId", "moduleStatus"], "order": "asc" },
+        { "fields": ["moduleId", "moduleStatus"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isOwner(employeeId) || isFounder()",
+        "write": "isOwner(employeeId) || isFounder()"
+      }
+    },
+
+    "certifications": {
+      "path": "/certifications/{certificationId}",
+      "description": "Certificados emitidos. El ID es el código de certificado. Público para verificación.",
+      "documentIdPattern": "= certificationCode (ej: MP-CERT-2026-emp_001-A4B7C9)",
+      "fields": {
+        "id":                     { "type": "string",  "required": true,  "example": "MP-CERT-2026-emp_001-A4B7C9" },
+        "employeeId":             { "type": "string",  "required": true,  "example": "emp_001" },
+        "employeeName":           { "type": "string",  "required": true,  "example": "Maria Silva", "description": "Denormalizado para el certificado." },
+        "level":                  { "type": "string",  "required": true,  "enum": ["Certificada Método Pame", "Em Formação"] },
+        "finalExamScorePercent":  { "type": "number",  "required": true,  "example": 92 },
+        "modulesCompleted":       { "type": "number",  "required": true,  "example": 15, "description": "Debe ser 15." },
+        "issuedAt":               { "type": "timestamp", "required": true },
+        "issuedBy":               { "type": "string",  "required": true,  "default": "pame" },
+        "certificateCode":        { "type": "string",  "required": true,  "example": "MP-CERT-2026-emp_001-A4B7C9" },
+        "valid":                  { "type": "boolean", "required": true,  "default": true },
+        "revokedAt":              { "type": ["timestamp", "null"], "required": true, "default": null },
+        "revokedReason":          { "type": ["string", "null"], "required": true, "default": null }
+      },
+      "indexes": [
+        { "fields": ["employeeId"], "order": "asc" },
+        { "fields": ["certificateCode"], "order": "asc" },
+        { "fields": ["valid"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "true",
+        "write": "isFounder()"
+      }
+    },
+
+    "final_exam_questions": {
+      "path": "/final_exam_questions/{questionId}",
+      "description": "Preguntas adicionales de síntesis que solo aparecen en el examen final (no en evaluaciones de módulo). NO legibles por el cliente — solo accesibles vía Vercel Function /api/generate-final-exam con Admin SDK.",
+      "fields": {
+        "id":                     { "type": "string",  "required": true,  "example": "q_final_01" },
+        "moduleId":               { "type": "string",  "required": true,  "default": "final_exam" },
+        "type":                   { "type": "string",  "required": true,  "enum": ["multiple_choice", "open_short", "scenario"] },
+        "question":               { "type": "string",  "required": true },
+        "options":                { "type": ["array", "null"], "required": true, "items": { "type": "string" } },
+        "correctOptionIndex":     { "type": ["number", "null"], "required": true },
+        "expectedAnswerKeywords": { "type": ["array", "null"], "required": true, "items": { "type": "string" } },
+        "feedback":               { "type": "string",  "required": true },
+        "points":                 { "type": "number",  "required": true,  "default": 1 },
+        "order":                  { "type": "number",  "required": true },
+        "status":                 { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" }
+      },
+      "securityRules": {
+        "read": "false",
+        "write": "isFounder()",
+        "note": "Solo Admin SDK (Vercel Functions) puede leer. El cliente NUNCA tiene acceso directo a estas preguntas."
+      }
+    },
+
+    "final_exam_attempts": {
+      "path": "/employees/{employeeId}/final_exam_attempts/{attemptId}",
+      "description": "Historial de intentos del examen final. Subcolección dentro del documento de la empleada (v1.1: movida desde colección root para resolver bug de scope en security rules).",
+      "documentIdPattern": "Auto-generated UUID",
+      "fields": {
+        "id":                     { "type": "string",  "required": true },
+        "employeeId":             { "type": "string",  "required": true, "description": "= request.auth.uid. Para verificación en security rules." },
+        "startedAt":              { "type": "timestamp", "required": true },
+        "completedAt":            { "type": ["timestamp", "null"], "required": true },
+        "questions": {
+          "type": "array",
+          "required": true,
+          "description": "Snapshot COMPLETO de las 40 preguntas (con respuestas correctas y keywords). NO se envía al cliente. Se usa para que /api/grade-final-exam pueda corregir server-side sin releer las collections de evaluations.",
+          "items": { "type": "object" }
+        },
+        "clientQuestions": {
+          "type": "array",
+          "required": true,
+          "description": "Snapshot SIN campos sensibles (lo que se envió al cliente). Útil para debug y para mostrar a la empleada su revisión.",
+          "items": { "type": "object" }
+        },
+        "answers": {
+          "type": "array",
+          "required": true,
+          "description": "Las respuestas de la empleada (enviadas a /api/grade-final-exam).",
+          "items": {
+            "type": "object",
+            "fields": {
+              "questionId":  { "type": "string", "required": true },
+              "answer":      { "type": "string", "required": true },
+              "correct":     { "type": "boolean", "required": true }
+            }
+          }
+        },
+        "scorePercent":           { "type": ["number", "null"], "required": true, "description": "Calculado server-side por /api/grade-final-exam." },
+        "passed":                 { "type": "boolean", "required": true, "description": "Calculado server-side." },
+        "certificationLevel":     { "type": ["string", "null"], "required": true, "enum": ["Certificada Método Pame", "Em Formação", null] },
+        "gradedAt":               { "type": ["timestamp", "null"], "required": true, "description": "Cuando se corrigió server-side." }
+      },
+      "indexes": [
+        { "fields": ["employeeId", "startedAt"], "order": "desc" }
+      ],
+      "securityRules": {
+        "read": "isOwner(employeeId) || isFounder()",
+        "write": "false",
+        "note": "El cliente NUNCA escribe directamente aquí. Los writes los hacen las Vercel Functions con Admin SDK (que ignoran las security rules)."
+      }
+    }
+  },
+
+  "employeeExtension": {
+    "description": "Campos nuevos que se agregan al documento /employees/{employeeId} ya existente. NO es una colección nueva.",
+    "path": "/employees/{employeeId}",
+    "newFields": {
+      "trainingStatus": {
+        "type": "string",
+        "required": true,
+        "enum": ["not_started", "in_progress", "completed", "certified"],
+        "default": "not_started",
+        "description": "Estado general del curso."
+      },
+      "certificationLevel": {
+        "type": ["string", "null"],
+        "required": true,
+        "default": null,
+        "enum": ["Certificada Método Pame", "Em Formação", null]
+      },
+      "certificationDate": {
+        "type": ["timestamp", "null"],
+        "required": true,
+        "default": null
+      },
+      "certificationCode": {
+        "type": ["string", "null"],
+        "required": true,
+        "default": null,
+        "pattern": "^MP-CERT-\\d{4}-emp_\\d{3}-[A-Z0-9]{6}$",
+        "example": "MP-CERT-2026-emp_001-A4B7C9"
+      },
+      "trainingStartedAt": {
+        "type": ["timestamp", "null"],
+        "required": true,
+        "default": null
+      },
+      "trainingCompletedAt": {
+        "type": ["timestamp", "null"],
+        "required": true,
+        "default": null
+      },
+      "finalExamScore": {
+        "type": ["number", "null"],
+        "required": true,
+        "default": null
+      },
+      "finalExamAttempts": {
+        "type": "array",
+        "required": true,
+        "default": [],
+        "items": {
+          "type": "object",
+          "fields": {
+            "attemptId":   { "type": "string", "required": true },
+            "startedAt":   { "type": "timestamp", "required": true },
+            "scorePercent": { "type": "number", "required": true },
+            "passed":      { "type": "boolean", "required": true }
+          }
+        }
+      }
+    }
+  },
+
+  "completionCriteriaTypes": {
+    "description": "Los dos tipos de criterio de completitud de lección. Esto define la complejidad de implementación.",
+
+    "manual_confirmation": {
+      "appliesTo": "lessons with type = 'reading'",
+      "ux": "Botón 'Marcar como lida' al final de la lección. Click → status = 'completed'.",
+      "implementation": {
+        "frontendEvent": "onClick del botón",
+        "firestoreWrite": "1 write por lección completada",
+        "trackingRequired": false,
+        "videoPlayerRequired": false,
+        "complexity": "baja"
+      },
+      "fields": {
+        "type": "manual_confirmation",
+        "buttonLabel": "Marcar como lida",
+        "thresholdPercent": null,
+        "requiresVideoWatch": false
+      }
+    },
+
+    "video_watch_threshold": {
+      "appliesTo": "lessons with type = 'video' or 'hybrid'",
+      "ux": "Player de video con barra de progreso. Cuando videoProgressPercent >= 90, lección se marca automáticamente como completed. Botón 'Próxima lição' se desbloquea.",
+      "implementation": {
+        "frontendEvent": "onTimeUpdate del video player cada 5 segundos (debounced)",
+        "firestoreWrite": "writes periódicos cada 5 segundos + 1 write final al llegar a 90%",
+        "trackingRequired": true,
+        "videoPlayerRequired": true,
+        "complexity": "media",
+        "notes": "Implementar debounce de 5 segundos para no quemar writes en Firestore. Considerar también guardar el progreso en localStorage por si la especialista se desconecta."
+      },
+      "fields": {
+        "type": "video_watch_threshold",
+        "thresholdPercent": 90,
+        "buttonLabel": null,
+        "requiresVideoWatch": true
+      }
+    }
+  },
+
+  "securityRulesHelpers": {
+    "description": "Funciones helper para las security rules de Firestore. v1.1: isFounder() usa email (no Custom Claims), isEmployeeActive() requiere /employees/{id} = Auth UID, final_exam_attempts es subcolección, final_exam_questions no es legible por cliente.",
+    "code": "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Helpers\n    function isFounder() {\n      // Validación por email — no usa Custom Claims (no requiere plan Blaze)\n      return request.auth != null && (\n        request.auth.token.email == 'metodopame.homedetail@gmail.com' ||\n        request.auth.token.email == 'contactosaintdac@gmail.com'\n      );\n    }\n\n    function isEmployeeActive() {\n      // REQUISITO: el document ID de /employees/{id} debe ser el Firebase Auth UID\n      // Si están usando add() (auto ID) hoy, migrar a set(doc(db, 'employees', user.uid), {...})\n      return request.auth != null\n        && exists(/databases/{database}/documents/employees/$(request.auth.uid))\n        && get(/databases/{database}/documents/employees/$(request.auth.uid)).data.status == 'active';\n    }\n\n    function isOwner(employeeId) {\n      return request.auth != null && request.auth.uid == employeeId;\n    }\n\n    // Modules, lessons: lectura para empleadas activas, escritura solo FOUNDER\n    match /modules/{moduleId} {\n      allow read: if isEmployeeActive() || isFounder();\n      allow write: if isFounder();\n    }\n    match /lessons/{lessonId} {\n      allow read: if isEmployeeActive() || isFounder();\n      allow write: if isFounder();\n    }\n\n    // Evaluations: lectura para empleadas activas (necesitan rendir evaluaciones de módulo)\n    // Si Antigravity decide servirlas server-side también, cambiar a: allow read: if isFounder();\n    match /evaluations/{evaluationId} {\n      allow read: if isEmployeeActive() || isFounder();\n      allow write: if isFounder();\n    }\n\n    // Progreso de capacitación: subcolección dentro de la empleada\n    match /employees/{employeeId}/trainingProgress/{progressId} {\n      allow read: if isOwner(employeeId) || isFounder();\n      allow write: if isOwner(employeeId) || isFounder();\n    }\n\n    // Intentos del examen final: subcolección dentro de la empleada\n    // La empleada puede leer su propio intento PERO no escribir directamente\n    // (los writes los hacen las Vercel Functions con Admin SDK)\n    match /employees/{employeeId}/final_exam_attempts/{attemptId} {\n      allow read: if isOwner(employeeId) || isFounder();\n      allow write: if false;\n    }\n\n    // Certificaciones: lectura pública (para verificación de certificado)\n    match /certifications/{certificationId} {\n      allow read: if true;\n      allow write: if isFounder();\n    }\n\n    // Preguntas del examen final: NO legibles por el cliente\n    // Solo las Vercel Functions con Admin SDK pueden leerlas\n    match /final_exam_questions/{questionId} {\n      allow read: if false;\n      allow write: if isFounder();\n    }\n  }\n}"
+  },
+
+  "vercelFunctions": {
+    "description": "Functions server-side para el examen final. Necesarias para no exponer respuestas correctas al cliente.",
+    "functions": {
+
+      "generateFinalExam": {
+        "path": "/api/generate-final-exam",
+        "method": "POST",
+        "auth": "Firebase Auth token de empleada active con 15 módulos passed",
+        "requestBody": { "employeeId": "string" },
+        "responseBody": { "attemptId": "string", "questions": "array (sin correctOptionIndex ni expectedAnswerKeywords)" },
+        "logic": [
+          "Verificar Auth token del request",
+          "Verificar que employeeId == token.uid (anti-suplantación)",
+          "Leer /employees/{employeeId}, verificar status == 'active'",
+          "Leer los 15 documentos en /employees/{employeeId}/trainingProgress/, verificar todos passed == true",
+          "Verificar cooldown: si rindió en las últimas 24h, rechazar 429",
+          "Verificar límite mensual: si ya rindió 2 veces en el mes, rechazar 429",
+          "Construir examen de 40 preguntas (muestra aleatoria por bloque + 3 de final_exam_questions)",
+          "Crear documento en /employees/{employeeId}/final_exam_attempts/{attemptId} con: startedAt=now(), questions=[completo con respuestas], clientQuestions=[sin campos sensibles], answers=[], scorePercent=null, passed=false, certificationLevel=null, gradedAt=null",
+          "Retornar { attemptId, questions: clientQuestions } al cliente"
+        ],
+        "usesAdminSDK": true,
+        "notes": "Los writes los hace Admin SDK (ignora security rules). El cliente nunca escribe en final_exam_attempts directamente."
+      },
+
+      "gradeFinalExam": {
+        "path": "/api/grade-final-exam",
+        "method": "POST",
+        "auth": "Firebase Auth token de la empleada dueña del intento",
+        "requestBody": { "attemptId": "string", "answers": "array of { questionId, answer }" },
+        "responseBody": { "scorePercent": "number", "passed": "boolean", "certificationLevel": "string|null", "feedback": "array" },
+        "logic": [
+          "Verificar Auth token del request",
+          "Verificar que el attemptId pertenece a la empleada que hace el request",
+          "Verificar que el intento no esté ya corregido (gradedAt == null)",
+          "Verificar que no pasaron más de 3 horas desde startedAt (si pasaron, marcar como expirado y rechazar)",
+          "Leer el documento del intento para obtener el snapshot completo de preguntas (con respuestas correctas)",
+          "Corregir las respuestas: multiple_choice compara correctOptionIndex; open_short y scenario verifican expectedAnswerKeywords (case-insensitive, ignorando acentos)",
+          "Calcular scorePercent = (puntos obtenidos / puntos totales) * 100",
+          "Determinar passed y certificationLevel (>=90 = Certificada, 70-89 = Em Formação, <70 = no passed)",
+          "Actualizar el documento del intento con answers, scorePercent, passed, certificationLevel, gradedAt=now(), completedAt=now()",
+          "Si passed == true: actualizar /employees/{employeeId} con trainingStatus, certificationLevel, certificationDate, trainingCompletedAt, finalExamScore, agregar intento a finalExamAttempts[]",
+          "Si passed == true: generar certificationCode único (formato MP-CERT-{year}-{employeeId}-{random6})",
+          "Si certificationLevel == 'Certificada Método Pame': crear documento en /certifications/{certificationCode}",
+          "Retornar al cliente { scorePercent, passed, certificationLevel, feedback } (feedback SIN revelar respuesta correcta, solo bien/mal + texto explicativo)"
+        ],
+        "usesAdminSDK": true,
+        "notes": "Toda la corrección es server-side. El cliente no tiene acceso a correctOptionIndex ni expectedAnswerKeywords en ningún momento."
+      }
+    }
+  },
+
+  "certificateSpec": {
+    "description": "Especificaciones visuales canónicas del certificado (del brand-book).",
+    "format": "PDF generado client-side con @react-pdf/renderer",
+    "palette": {
+      "background": "#561668",
+      "accent": "#C9A84C",
+      "text": "#FFFFFF",
+      "logoVersion": "white"
+    },
+    "typography": {
+      "font": "Manrope",
+      "weight": "regular, bold",
+      "case": "uppercase for headers, normal for body",
+      "note": "NO usar Cormorant Garamond — esa tipografía es exclusiva para headings de landing de clientas."
+    },
+    "fields": {
+      "header": "CERTIFICADO",
+      "subtitle": "Método Pame | Home Detail",
+      "body": "Certificamos que [NOME DA ESPECIALISTA] completou o curso de formação do Método Pame | Home Detail, com aproveitamento de [SCORE]% no exame final, e está habilitada a atuar como especialista certificada do método.",
+      "footer": "Emitido em [DATA]. Código de verificação: [CERTIFICATION_CODE].",
+      "signature": "Pame — Fundadora, Método Pame"
+    },
+    "verificationUrl": "metodopame.com/verificar-certificado/{certificateCode}"
+  },
+
+  "certificationLevels": {
+    "Certificada Método Pame": {
+      "condition": "finalExamScore >= 90 AND modulesCompleted == 15",
+      "employeeStatus": "trainingStatus = 'certified', certificationLevel = 'Certificada Método Pame'",
+      "permission": "Puede ser asignada sola a residencias de alto estándar."
+    },
+    "Em Formação": {
+      "condition": "finalExamScore >= 70 AND finalExamScore < 90 AND modulesCompleted == 15",
+      "employeeStatus": "trainingStatus = 'completed', certificationLevel = 'Em Formação'",
+      "permission": "Puede hacer pasantía con especialista senior. NO puede ser asignada sola."
+    },
+    "No certificada": {
+      "condition": "finalExamScore < 70 OR modulesCompleted < 15",
+      "employeeStatus": "trainingStatus = 'in_progress'",
+      "permission": "No puede ser asignada a ninguna residencia."
+    }
+  },
+
+  "namingConventions": {
+    "moduleId": "mod_NN (ej: mod_01 a mod_15, siempre 2 dígitos)",
+    "lessonId": "les_{mod}_{lesson} (ej: les_08_02)",
+    "evaluationId": "eva_{mod} (ej: eva_08)",
+    "questionId": "q_{mod}_{n} (ej: q_08_01)",
+    "progressId": "{employeeId}_{moduleId} (ej: emp_001_mod_08)",
+    "certificateCode": "MP-CERT-{year}-{employeeId}-{random6} (ej: MP-CERT-2026-emp_001-A4B7C9)",
+    "slug": "kebab-case PT-BR (ej: cuidado-de-marmore-e-pedras-nobres)",
+    "timestamps": "ISO 8601 UTC en JSON, Firestore timestamps en la base"
+  },
+
+  "modulesReference": {
+    "description": "Tabla de referencia de los 15 módulos para que Antigravity pueda poblar la collection /modules con los documentos vacíos.",
+    "list": [
+      { "id": "mod_01", "number": 1, "title": "Boas-vindas ao Método Pame", "block": "identidad", "lessons": 3, "estimatedMinutes": 30, "prerequisite": null },
+      { "id": "mod_02", "number": 2, "title": "Quem é a nossa cliente", "block": "identidad", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_01" },
+      { "id": "mod_03", "number": 3, "title": "Postura profissional da especialista", "block": "postura", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_02" },
+      { "id": "mod_04", "number": 4, "title": "Pontualidade britânica", "block": "postura", "lessons": 3, "estimatedMinutes": 20, "prerequisite": "mod_03" },
+      { "id": "mod_05", "number": 5, "title": "Privacidade e sigilo absoluto", "block": "conducta", "lessons": 5, "estimatedMinutes": 45, "prerequisite": "mod_04" },
+      { "id": "mod_06", "number": 6, "title": "Política de zero uso pessoal", "block": "conducta", "lessons": 4, "estimatedMinutes": 30, "prerequisite": "mod_05" },
+      { "id": "mod_07", "number": 7, "title": "Código de postura residencial", "block": "conducta", "lessons": 5, "estimatedMinutes": 40, "prerequisite": "mod_06" },
+      { "id": "mod_08", "number": 8, "title": "Cuidado de mármore e pedras nobres", "block": "tecnica", "lessons": 4, "estimatedMinutes": 60, "prerequisite": "mod_07" },
+      { "id": "mod_09", "number": 9, "title": "Cuidado de madeira maciça e revestimentos nobres", "block": "tecnica", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_08" },
+      { "id": "mod_10", "number": 10, "title": "Cuidado de vidros e espelhos", "block": "tecnica", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_09" },
+      { "id": "mod_11", "number": 11, "title": "Cuidado de metais, grifería e inox", "block": "tecnica", "lessons": 4, "estimatedMinutes": 35, "prerequisite": "mod_10" },
+      { "id": "mod_12", "number": 12, "title": "Protocolo de limpeza por ambiente", "block": "tecnica", "lessons": 6, "estimatedMinutes": 90, "prerequisite": "mod_11" },
+      { "id": "mod_13", "number": 13, "title": "O capricho Pame", "block": "estandar", "lessons": 4, "estimatedMinutes": 40, "prerequisite": "mod_12" },
+      { "id": "mod_14", "number": 14, "title": "Reporte interno — como reportar a Pame", "block": "operacion", "lessons": 5, "estimatedMinutes": 35, "prerequisite": "mod_13" },
+      { "id": "mod_15", "number": 15, "title": "Conduta em situações difíceis", "block": "operacion", "lessons": 5, "estimatedMinutes": 50, "prerequisite": "mod_14" }
+    ],
+    "totals": {
+      "modules": 15,
+      "lessons": 59,
+      "estimatedMinutesTotal": 635,
+      "estimatedHoursTotal": 10.6
+    }
+  }
+}

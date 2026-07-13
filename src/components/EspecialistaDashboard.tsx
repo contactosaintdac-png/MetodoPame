@@ -3,15 +3,21 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collectionGroup, query, where, orderBy, getDocs, doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type { Employee, Booking } from '../types';
+import LMSOverview from './LMSOverview';
+import LMSModule from './LMSModule';
+import LMSLesson from './LMSLesson';
+import LMSEvaluation from './LMSEvaluation';
+import LMSCertificate from './LMSCertificate';
 
 // ─────────────────────────────────────────────
 //  TYPES
 // ─────────────────────────────────────────────
-type EspecialistaTab = 'dashboard' | 'agenda' | 'perfil' | 'protocolos';
+type EspecialistaTab = 'dashboard' | 'agenda' | 'perfil' | 'protocolos' | 'capacitacao';
 
 const NAV_ITEMS: { id: EspecialistaTab; icon: string; label: string }[] = [
   { id: 'dashboard',  icon: 'dashboard',     label: 'Dashboard'   },
   { id: 'agenda',     icon: 'calendar_month', label: 'Agenda'      },
+  { id: 'capacitacao', icon: 'school',        label: 'Capacitação' },
   { id: 'perfil',     icon: 'star',           label: 'Perfil'      },
   { id: 'protocolos', icon: 'auto_stories',   label: 'Protocolos'  },
 ];
@@ -131,6 +137,15 @@ export default function EspecialistaDashboard({ employee }: Props) {
   const [myBookings, setMyBookings]         = useState<Booking[]>([]);
   const [localAvailability, setLocalAvailability] = useState(employee?.weeklyAvailability || {});
   const [savingAvailability, setSavingAvailability] = useState(false);
+
+  // LMS Capacitação sub-view states
+  const [lmsView, setLmsView] = useState<'overview' | 'module' | 'lesson' | 'evaluation' | 'certificate'>('overview');
+  const [lmsParams, setLmsParams] = useState<{ slug?: string; lessonNumber?: number }>({});
+
+  const handleLmsNavigate = (view: 'overview' | 'module' | 'lesson' | 'evaluation' | 'certificate', param?: string, lessonNumber?: number) => {
+    setLmsView(view);
+    setLmsParams({ slug: param, lessonNumber });
+  };
 
   // Calendar States for Agenda Tab
   const [agendaMode, setAgendaMode]         = useState<'list' | 'calendar'>('list');
@@ -485,6 +500,35 @@ export default function EspecialistaDashboard({ employee }: Props) {
               </h1>
               <p className="text-lg text-[#80737f]">Sua excelência hoje define o padrão de amanhã.</p>
             </section>
+
+            {/* Banner Capacitação */}
+            {employee && (
+              <section className="mb-10 bg-white border border-[#efe5ee] p-6 rounded-3xl silk-lift-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="material-symbols-outlined text-[#561668] text-[40px] bg-[#fff7fd] p-3 rounded-2xl border border-[#efe5ee]">school</span>
+                  <div>
+                    <h3 className="font-bold text-[#561668] text-base">Sua Capacitação Técnica</h3>
+                    <p className="text-xs text-[#80737f]">
+                      {employee.trainingStatus === 'certified' ? (
+                        <span className="text-[#C9A84C] font-bold">✓ Certificada Método Pame</span>
+                      ) : employee.trainingStatus === 'completed' ? (
+                        <span className="text-[#561668] font-bold">✓ Formação concluída (Em Formação)</span>
+                      ) : employee.trainingStatus === 'in_progress' ? (
+                        <span>Progresso: Em Treinamento</span>
+                      ) : (
+                        <span>Curso não iniciado ainda</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('capacitacao')}
+                  className="bg-[#561668] hover:bg-[#431051] text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all silk-lift-sm"
+                >
+                  Acessar Curso →
+                </button>
+              </section>
+            )}
 
             {/* KPI Bento — dados reais */}
             <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -1271,6 +1315,28 @@ export default function EspecialistaDashboard({ employee }: Props) {
                 Manual de uso exclusivo das especialistas do Método Pame. Em caso de dúvidas, entre em contato com a coordenação.
               </p>
             </div>
+          </div>
+        )}
+        {/* ╔═══════════════════════╗
+            ║   CAPACITAÇÃO (LMS)   ║
+            ╚═══════════════════════╝ */}
+        {activeTab === 'capacitacao' && employee && (
+          <div>
+            {lmsView === 'overview' && (
+              <LMSOverview employee={employee} onNavigate={handleLmsNavigate} />
+            )}
+            {lmsView === 'module' && lmsParams.slug && (
+              <LMSModule employee={employee} moduleSlug={lmsParams.slug} onNavigate={handleLmsNavigate} />
+            )}
+            {lmsView === 'lesson' && lmsParams.slug && lmsParams.lessonNumber !== undefined && (
+              <LMSLesson employee={employee} moduleSlug={lmsParams.slug} lessonNumber={lmsParams.lessonNumber} onNavigate={handleLmsNavigate} />
+            )}
+            {lmsView === 'evaluation' && (
+              <LMSEvaluation employee={employee} moduleSlug={lmsParams.slug} onNavigate={handleLmsNavigate} />
+            )}
+            {lmsView === 'certificate' && (
+              <LMSCertificate employee={employee} onNavigate={handleLmsNavigate} />
+            )}
           </div>
         )}
 

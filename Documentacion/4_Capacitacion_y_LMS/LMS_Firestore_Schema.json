@@ -1,0 +1,474 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Método Pame | Home Detail — LMS Firestore Schema",
+  "description": "Schema técnico de las colecciones de Firestore para el LMS de capacitación de especialistas. Este archivo es companion del documento LMS_Arquitectura_de_Contenido.md. Antigravity puede usar este schema directamente para diseñar las collections y las security rules.",
+  "version": "1.0",
+  "generatedAt": "2026-07-13",
+  "generatedBy": "GLM 5.2",
+  "forUseBy": "Antigravity",
+
+  "collections": {
+
+    "modules": {
+      "path": "/modules/{moduleId}",
+      "description": "Los 15 módulos del curso de capacitación.",
+      "documentIdPattern": "mod_01 a mod_15",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "mod_01", "description": "Identificador único. Formato: mod_NN." },
+        "number":         { "type": "number",  "required": true,  "example": 1, "description": "Número de módulo (1-15). Para ordenamiento." },
+        "title":          { "type": "string",  "required": true,  "example": "Boas-vindas ao Método Pame" },
+        "slug":           { "type": "string",  "required": true,  "example": "boas-vindas-ao-metodo-pame", "description": "URL-friendly." },
+        "description":    { "type": "string",  "required": true,  "example": "Apresentação do método, da Pame e do que significa ser 'do Método'." },
+        "objective":      { "type": "string",  "required": true,  "example": "Que a especialista entenda o que é o Método Pame, quem é Pame, e o que significa representá-lo." },
+        "block":          { "type": "string",  "required": true,  "enum": ["identidad", "postura", "conducta", "tecnica", "estandar", "operacion"] },
+        "estimatedMinutes": { "type": "number", "required": true, "example": 30 },
+        "lessons":        { "type": "array",   "required": true,  "items": { "type": "string" }, "example": ["les_01_01", "les_01_02", "les_01_03"], "description": "IDs de lecciones en orden." },
+        "evaluationId":   { "type": "string",  "required": true,  "example": "eva_01" },
+        "prerequisiteModuleId": { "type": ["string", "null"], "required": true, "example": null, "description": "ID del módulo previo. null para módulo 1." },
+        "order":          { "type": "number",  "required": true,  "example": 1 },
+        "status":         { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" },
+        "createdAt":      { "type": "timestamp", "required": true, "firestoreType": "FieldValue.serverTimestamp()" },
+        "updatedAt":      { "type": "timestamp", "required": true, "firestoreType": "FieldValue.serverTimestamp()" }
+      },
+      "indexes": [
+        { "fields": ["number"], "order": "asc" },
+        { "fields": ["block", "order"], "order": "asc" },
+        { "fields": ["status"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isEmployeeActive() || isFounder()",
+        "write": "isFounder()"
+      }
+    },
+
+    "lessons": {
+      "path": "/lessons/{lessonId}",
+      "description": "Lecciones individuales. Cada lección pertenece a un módulo.",
+      "documentIdPattern": "les_{mod}_{lesson} (ej: les_08_02)",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "les_08_02" },
+        "moduleId":       { "type": "string",  "required": true,  "example": "mod_08", "description": "Referencia al módulo." },
+        "number":         { "type": "number",  "required": true,  "example": 2 },
+        "title":          { "type": "string",  "required": true,  "example": "Produtos proibidos em mármore" },
+        "type":           { "type": "string",  "required": true,  "enum": ["reading", "video", "hybrid"], "default": "reading" },
+        "content":        { "type": "string",  "required": true,  "format": "markdown", "description": "Contenido en PT-BR. Markdown-formatted." },
+        "videoUrl":       { "type": ["string", "null"], "required": true, "default": null, "description": "URL del video para tipos video/hybrid. null para reading." },
+        "videoDurationSeconds": { "type": ["number", "null"], "required": true, "default": null },
+        "estimatedMinutes": { "type": "number", "required": true, "example": 12 },
+        "completionCriteria": {
+          "type": "object",
+          "required": true,
+          "description": "Define cómo se considera esta lección completada.",
+          "fields": {
+            "type":                { "type": "string", "required": true, "enum": ["manual_confirmation", "video_watch_threshold"] },
+            "thresholdPercent":    { "type": ["number", "null"], "required": true, "example": 90, "description": "Para video_watch_threshold. null para manual_confirmation." },
+            "buttonLabel":         { "type": ["string", "null"], "required": true, "example": "Marcar como lida", "description": "Para manual_confirmation. null para video." },
+            "requiresVideoWatch":  { "type": "boolean", "required": true, "default": false }
+          }
+        },
+        "order":          { "type": "number",  "required": true,  "example": 2 },
+        "status":         { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" },
+        "createdAt":      { "type": "timestamp", "required": true },
+        "updatedAt":      { "type": "timestamp", "required": true }
+      },
+      "indexes": [
+        { "fields": ["moduleId", "order"], "order": "asc" },
+        { "fields": ["status"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isEmployeeActive() || isFounder()",
+        "write": "isFounder()"
+      }
+    },
+
+    "evaluations": {
+      "path": "/evaluations/{evaluationId}",
+      "description": "Evaluaciones de cada módulo. Una evaluación por módulo.",
+      "documentIdPattern": "eva_{mod} (ej: eva_08)",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "eva_08" },
+        "moduleId":       { "type": "string",  "required": true,  "example": "mod_08" },
+        "title":          { "type": "string",  "required": true,  "example": "Avaliação — Módulo 8: Cuidado de mármore" },
+        "description":    { "type": "string",  "required": true,  "example": "Instruções para a avaliação." },
+        "passingScorePercent": { "type": "number", "required": true, "default": 70 },
+        "questions":      {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "object",
+            "fields": {
+              "id":                     { "type": "string", "required": true, "example": "q_08_01" },
+              "type":                   { "type": "string", "required": true, "enum": ["multiple_choice", "open_short", "scenario"] },
+              "question":               { "type": "string", "required": true },
+              "options":                { "type": ["array", "null"], "required": true, "items": { "type": "string" }, "description": "Para multiple_choice. null para otros." },
+              "correctOptionIndex":     { "type": ["number", "null"], "required": true, "description": "Para multiple_choice (0-based). null para otros." },
+              "expectedAnswerKeywords": { "type": ["array", "null"], "required": true, "items": { "type": "string" }, "description": "Para open_short y scenario. null para multiple_choice." },
+              "feedback":               { "type": "string", "required": true },
+              "points":                 { "type": "number", "required": true, "default": 1 },
+              "order":                  { "type": "number", "required": true }
+            }
+          }
+        },
+        "totalQuestions":  { "type": "number",  "required": true,  "description": "Calculado: questions.length" },
+        "estimatedMinutes": { "type": "number", "required": true },
+        "maxAttempts":     { "type": "number",  "required": true,  "default": 2 },
+        "status":          { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" },
+        "createdAt":       { "type": "timestamp", "required": true },
+        "updatedAt":       { "type": "timestamp", "required": true }
+      },
+      "indexes": [
+        { "fields": ["moduleId"], "order": "asc" },
+        { "fields": ["status"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isEmployeeActive() || isFounder()",
+        "write": "isFounder()"
+      }
+    },
+
+    "trainingProgress": {
+      "path": "/employees/{employeeId}/trainingProgress/{progressId}",
+      "description": "Progreso de cada empleada en cada módulo. Subcolección dentro del documento de la empleada.",
+      "documentIdPattern": "{employeeId}_{moduleId} (ej: emp_001_mod_08)",
+      "fields": {
+        "id":             { "type": "string",  "required": true,  "example": "emp_001_mod_08" },
+        "employeeId":     { "type": "string",  "required": true,  "example": "emp_001" },
+        "moduleId":       { "type": "string",  "required": true,  "example": "mod_08" },
+        "moduleStatus":   { "type": "string",  "required": true,  "enum": ["not_started", "in_progress", "completed", "failed"] },
+        "lessonsProgress": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "object",
+            "fields": {
+              "lessonId":                { "type": "string", "required": true },
+              "status":                  { "type": "string", "required": true, "enum": ["not_started", "in_progress", "completed"] },
+              "videoProgressPercent":    { "type": ["number", "null"], "required": true, "description": "0-100 para video. null para reading." },
+              "videoWatchTimeSeconds":   { "type": ["number", "null"], "required": true },
+              "completedAt":             { "type": ["timestamp", "null"], "required": true },
+              "lastVisitedAt":           { "type": ["timestamp", "null"], "required": true }
+            }
+          }
+        },
+        "evaluationAttempts": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "object",
+            "fields": {
+              "attemptNumber":   { "type": "number", "required": true },
+              "startedAt":       { "type": "timestamp", "required": true },
+              "completedAt":     { "type": ["timestamp", "null"], "required": true },
+              "scorePercent":    { "type": ["number", "null"], "required": true },
+              "answers": {
+                "type": "array",
+                "required": true,
+                "items": {
+                  "type": "object",
+                  "fields": {
+                    "questionId":  { "type": "string", "required": true },
+                    "answer":      { "type": "string", "required": true },
+                    "correct":     { "type": "boolean", "required": true }
+                  }
+                }
+              },
+              "passed":          { "type": "boolean", "required": true }
+            }
+          }
+        },
+        "bestScorePercent":  { "type": ["number", "null"], "required": true },
+        "passed":            { "type": "boolean", "required": true, "default": false },
+        "startedAt":         { "type": ["timestamp", "null"], "required": true },
+        "completedAt":       { "type": ["timestamp", "null"], "required": true },
+        "lastActivityAt":    { "type": "timestamp", "required": true }
+      },
+      "indexes": [
+        { "fields": ["employeeId", "moduleStatus"], "order": "asc" },
+        { "fields": ["moduleId", "moduleStatus"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "isOwner(employeeId) || isFounder()",
+        "write": "isOwner(employeeId) || isFounder()"
+      }
+    },
+
+    "certifications": {
+      "path": "/certifications/{certificationId}",
+      "description": "Certificados emitidos. El ID es el código de certificado. Público para verificación.",
+      "documentIdPattern": "= certificationCode (ej: MP-CERT-2026-emp_001-A4B7C9)",
+      "fields": {
+        "id":                     { "type": "string",  "required": true,  "example": "MP-CERT-2026-emp_001-A4B7C9" },
+        "employeeId":             { "type": "string",  "required": true,  "example": "emp_001" },
+        "employeeName":           { "type": "string",  "required": true,  "example": "Maria Silva", "description": "Denormalizado para el certificado." },
+        "level":                  { "type": "string",  "required": true,  "enum": ["Certificada Método Pame", "Em Formação"] },
+        "finalExamScorePercent":  { "type": "number",  "required": true,  "example": 92 },
+        "modulesCompleted":       { "type": "number",  "required": true,  "example": 15, "description": "Debe ser 15." },
+        "issuedAt":               { "type": "timestamp", "required": true },
+        "issuedBy":               { "type": "string",  "required": true,  "default": "pame" },
+        "certificateCode":        { "type": "string",  "required": true,  "example": "MP-CERT-2026-emp_001-A4B7C9" },
+        "valid":                  { "type": "boolean", "required": true,  "default": true },
+        "revokedAt":              { "type": ["timestamp", "null"], "required": true, "default": null },
+        "revokedReason":          { "type": ["string", "null"], "required": true, "default": null }
+      },
+      "indexes": [
+        { "fields": ["employeeId"], "order": "asc" },
+        { "fields": ["certificateCode"], "order": "asc" },
+        { "fields": ["valid"], "order": "asc" }
+      ],
+      "securityRules": {
+        "read": "true",
+        "write": "isFounder()"
+      }
+    },
+
+    "final_exam_questions": {
+      "path": "/final_exam_questions/{questionId}",
+      "description": "Preguntas adicionales de síntesis que solo aparecen en el examen final (no en evaluaciones de módulo).",
+      "fields": {
+        "id":                     { "type": "string",  "required": true,  "example": "q_final_01" },
+        "moduleId":               { "type": "string",  "required": true,  "default": "final_exam" },
+        "type":                   { "type": "string",  "required": true,  "enum": ["multiple_choice", "open_short", "scenario"] },
+        "question":               { "type": "string",  "required": true },
+        "options":                { "type": ["array", "null"], "required": true, "items": { "type": "string" } },
+        "correctOptionIndex":     { "type": ["number", "null"], "required": true },
+        "expectedAnswerKeywords": { "type": ["array", "null"], "required": true, "items": { "type": "string" } },
+        "feedback":               { "type": "string",  "required": true },
+        "points":                 { "type": "number",  "required": true,  "default": 1 },
+        "order":                  { "type": "number",  "required": true },
+        "status":                 { "type": "string",  "required": true,  "enum": ["draft", "published"], "default": "draft" }
+      },
+      "securityRules": {
+        "read": "isEmployeeActive() || isFounder()",
+        "write": "isFounder()"
+      }
+    },
+
+    "final_exam_attempts": {
+      "path": "/final_exam_attempts/{attemptId}",
+      "description": "Historial de intentos del examen final. Una empleada puede tener varios.",
+      "documentIdPattern": "Auto-generated UUID",
+      "fields": {
+        "id":                     { "type": "string",  "required": true },
+        "employeeId":             { "type": "string",  "required": true },
+        "startedAt":              { "type": "timestamp", "required": true },
+        "completedAt":            { "type": ["timestamp", "null"], "required": true },
+        "questions": {
+          "type": "array",
+          "required": true,
+          "description": "Snapshot de las 40 preguntas que se le presentaron.",
+          "items": { "type": "object" }
+        },
+        "answers": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "object",
+            "fields": {
+              "questionId":  { "type": "string", "required": true },
+              "answer":      { "type": "string", "required": true },
+              "correct":     { "type": "boolean", "required": true }
+            }
+          }
+        },
+        "scorePercent":           { "type": ["number", "null"], "required": true },
+        "passed":                 { "type": "boolean", "required": true },
+        "certificationLevel":     { "type": ["string", "null"], "required": true, "enum": ["Certificada Método Pame", "Em Formação", null] }
+      },
+      "indexes": [
+        { "fields": ["employeeId", "startedAt"], "order": "desc" }
+      ],
+      "securityRules": {
+        "read": "isOwner(employeeId) || isFounder()",
+        "write": "isOwner(employeeId) || isFounder()"
+      }
+    }
+  },
+
+  "employeeExtension": {
+    "description": "Campos nuevos que se agregan al documento /employees/{employeeId} ya existente. NO es una colección nueva.",
+    "path": "/employees/{employeeId}",
+    "newFields": {
+      "trainingStatus": {
+        "type": "string",
+        "required": true,
+        "enum": ["not_started", "in_progress", "completed", "certified"],
+        "default": "not_started",
+        "description": "Estado general del curso."
+      },
+      "certificationLevel": {
+        "type": ["string", "null"],
+        "required": true,
+        "default": null,
+        "enum": ["Certificada Método Pame", "Em Formação", null]
+      },
+      "certificationDate": {
+        "type": ["timestamp", "null"],
+        "required": true,
+        "default": null
+      },
+      "certificationCode": {
+        "type": ["string", "null"],
+        "required": true,
+        "default": null,
+        "pattern": "^MP-CERT-\\d{4}-emp_\\d{3}-[A-Z0-9]{6}$",
+        "example": "MP-CERT-2026-emp_001-A4B7C9"
+      },
+      "trainingStartedAt": {
+        "type": ["timestamp", "null"],
+        "required": true,
+        "default": null
+      },
+      "trainingCompletedAt": {
+        "type": ["timestamp", "null"],
+        "required": true,
+        "default": null
+      },
+      "finalExamScore": {
+        "type": ["number", "null"],
+        "required": true,
+        "default": null
+      },
+      "finalExamAttempts": {
+        "type": "array",
+        "required": true,
+        "default": [],
+        "items": {
+          "type": "object",
+          "fields": {
+            "attemptId":   { "type": "string", "required": true },
+            "startedAt":   { "type": "timestamp", "required": true },
+            "scorePercent": { "type": "number", "required": true },
+            "passed":      { "type": "boolean", "required": true }
+          }
+        }
+      }
+    }
+  },
+
+  "completionCriteriaTypes": {
+    "description": "Los dos tipos de criterio de completitud de lección. Esto define la complejidad de implementación.",
+
+    "manual_confirmation": {
+      "appliesTo": "lessons with type = 'reading'",
+      "ux": "Botón 'Marcar como lida' al final de la lección. Click → status = 'completed'.",
+      "implementation": {
+        "frontendEvent": "onClick del botón",
+        "firestoreWrite": "1 write por lección completada",
+        "trackingRequired": false,
+        "videoPlayerRequired": false,
+        "complexity": "baja"
+      },
+      "fields": {
+        "type": "manual_confirmation",
+        "buttonLabel": "Marcar como lida",
+        "thresholdPercent": null,
+        "requiresVideoWatch": false
+      }
+    },
+
+    "video_watch_threshold": {
+      "appliesTo": "lessons with type = 'video' or 'hybrid'",
+      "ux": "Player de video con barra de progreso. Cuando videoProgressPercent >= 90, lección se marca automáticamente como completed. Botón 'Próxima lição' se desbloquea.",
+      "implementation": {
+        "frontendEvent": "onTimeUpdate del video player cada 5 segundos (debounced)",
+        "firestoreWrite": "writes periódicos cada 5 segundos + 1 write final al llegar a 90%",
+        "trackingRequired": true,
+        "videoPlayerRequired": true,
+        "complexity": "media",
+        "notes": "Implementar debounce de 5 segundos para no quemar writes en Firestore. Considerar también guardar el progreso en localStorage por si la especialista se desconecta."
+      },
+      "fields": {
+        "type": "video_watch_threshold",
+        "thresholdPercent": 90,
+        "buttonLabel": null,
+        "requiresVideoWatch": true
+      }
+    }
+  },
+
+  "securityRulesHelpers": {
+    "description": "Funciones helper para las security rules de Firestore.",
+    "code": "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function isFounder() {\n      return request.auth != null && request.auth.token.role == 'FOUNDER';\n    }\n\n    function isEmployeeActive() {\n      return request.auth != null\n        && exists(/databases/{database}/documents/employees/$(request.auth.uid))\n        && get(/databases/{database}/documents/employees/$(request.auth.uid)).data.status == 'active';\n    }\n\n    function isOwner(employeeId) {\n      return request.auth != null && request.auth.uid == employeeId;\n    }\n\n    match /modules/{moduleId} {\n      allow read: if isEmployeeActive() || isFounder();\n      allow write: if isFounder();\n    }\n\n    match /lessons/{lessonId} {\n      allow read: if isEmployeeActive() || isFounder();\n      allow write: if isFounder();\n    }\n\n    match /evaluations/{evaluationId} {\n      allow read: if isEmployeeActive() || isFounder();\n      allow write: if isFounder();\n    }\n\n    match /employees/{employeeId}/trainingProgress/{progressId} {\n      allow read: if isOwner(employeeId) || isFounder();\n      allow write: if isOwner(employeeId) || isFounder();\n    }\n\n    match /certifications/{certificationId} {\n      allow read: if true;\n      allow write: if isFounder();\n    }\n\n    match /final_exam_questions/{questionId} {\n      allow read: if isEmployeeActive() || isFounder();\n      allow write: if isFounder();\n    }\n\n    match /final_exam_attempts/{attemptId} {\n      allow read: if isOwner(employeeId) || isFounder();\n      allow write: if isOwner(employeeId) || isFounder();\n    }\n  }\n}"
+  },
+
+  "certificateSpec": {
+    "description": "Especificaciones visuales canónicas del certificado (del brand-book).",
+    "format": "PDF generado client-side con @react-pdf/renderer",
+    "palette": {
+      "background": "#561668",
+      "accent": "#C9A84C",
+      "text": "#FFFFFF",
+      "logoVersion": "white"
+    },
+    "typography": {
+      "font": "Manrope",
+      "weight": "regular, bold",
+      "case": "uppercase for headers, normal for body",
+      "note": "NO usar Cormorant Garamond — esa tipografía es exclusiva para headings de landing de clientas."
+    },
+    "fields": {
+      "header": "CERTIFICADO",
+      "subtitle": "Método Pame | Home Detail",
+      "body": "Certificamos que [NOME DA ESPECIALISTA] completou o curso de formação do Método Pame | Home Detail, com aproveitamento de [SCORE]% no exame final, e está habilitada a atuar como especialista certificada do método.",
+      "footer": "Emitido em [DATA]. Código de verificação: [CERTIFICATION_CODE].",
+      "signature": "Pame — Fundadora, Método Pame"
+    },
+    "verificationUrl": "metodopame.com/verificar-certificado/{certificateCode}"
+  },
+
+  "certificationLevels": {
+    "Certificada Método Pame": {
+      "condition": "finalExamScore >= 90 AND modulesCompleted == 15",
+      "employeeStatus": "trainingStatus = 'certified', certificationLevel = 'Certificada Método Pame'",
+      "permission": "Puede ser asignada sola a residencias de alto estándar."
+    },
+    "Em Formação": {
+      "condition": "finalExamScore >= 70 AND finalExamScore < 90 AND modulesCompleted == 15",
+      "employeeStatus": "trainingStatus = 'completed', certificationLevel = 'Em Formação'",
+      "permission": "Puede hacer pasantía con especialista senior. NO puede ser asignada sola."
+    },
+    "No certificada": {
+      "condition": "finalExamScore < 70 OR modulesCompleted < 15",
+      "employeeStatus": "trainingStatus = 'in_progress'",
+      "permission": "No puede ser asignada a ninguna residencia."
+    }
+  },
+
+  "namingConventions": {
+    "moduleId": "mod_NN (ej: mod_01 a mod_15, siempre 2 dígitos)",
+    "lessonId": "les_{mod}_{lesson} (ej: les_08_02)",
+    "evaluationId": "eva_{mod} (ej: eva_08)",
+    "questionId": "q_{mod}_{n} (ej: q_08_01)",
+    "progressId": "{employeeId}_{moduleId} (ej: emp_001_mod_08)",
+    "certificateCode": "MP-CERT-{year}-{employeeId}-{random6} (ej: MP-CERT-2026-emp_001-A4B7C9)",
+    "slug": "kebab-case PT-BR (ej: cuidado-de-marmore-e-pedras-nobres)",
+    "timestamps": "ISO 8601 UTC en JSON, Firestore timestamps en la base"
+  },
+
+  "modulesReference": {
+    "description": "Tabla de referencia de los 15 módulos para que Antigravity pueda poblar la collection /modules con los documentos vacíos.",
+    "list": [
+      { "id": "mod_01", "number": 1, "title": "Boas-vindas ao Método Pame", "block": "identidad", "lessons": 3, "estimatedMinutes": 30, "prerequisite": null },
+      { "id": "mod_02", "number": 2, "title": "Quem é a nossa cliente", "block": "identidad", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_01" },
+      { "id": "mod_03", "number": 3, "title": "Postura profissional da especialista", "block": "postura", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_02" },
+      { "id": "mod_04", "number": 4, "title": "Pontualidade britânica", "block": "postura", "lessons": 3, "estimatedMinutes": 20, "prerequisite": "mod_03" },
+      { "id": "mod_05", "number": 5, "title": "Privacidade e sigilo absoluto", "block": "conducta", "lessons": 5, "estimatedMinutes": 45, "prerequisite": "mod_04" },
+      { "id": "mod_06", "number": 6, "title": "Política de zero uso pessoal", "block": "conducta", "lessons": 4, "estimatedMinutes": 30, "prerequisite": "mod_05" },
+      { "id": "mod_07", "number": 7, "title": "Código de postura residencial", "block": "conducta", "lessons": 5, "estimatedMinutes": 40, "prerequisite": "mod_06" },
+      { "id": "mod_08", "number": 8, "title": "Cuidado de mármore e pedras nobres", "block": "tecnica", "lessons": 4, "estimatedMinutes": 60, "prerequisite": "mod_07" },
+      { "id": "mod_09", "number": 9, "title": "Cuidado de madeira maciça e revestimentos nobres", "block": "tecnica", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_08" },
+      { "id": "mod_10", "number": 10, "title": "Cuidado de vidros e espelhos", "block": "tecnica", "lessons": 4, "estimatedMinutes": 45, "prerequisite": "mod_09" },
+      { "id": "mod_11", "number": 11, "title": "Cuidado de metais, grifería e inox", "block": "tecnica", "lessons": 4, "estimatedMinutes": 35, "prerequisite": "mod_10" },
+      { "id": "mod_12", "number": 12, "title": "Protocolo de limpeza por ambiente", "block": "tecnica", "lessons": 6, "estimatedMinutes": 90, "prerequisite": "mod_11" },
+      { "id": "mod_13", "number": 13, "title": "O capricho Pame", "block": "estandar", "lessons": 4, "estimatedMinutes": 40, "prerequisite": "mod_12" },
+      { "id": "mod_14", "number": 14, "title": "Reporte interno — como reportar a Pame", "block": "operacion", "lessons": 5, "estimatedMinutes": 35, "prerequisite": "mod_13" },
+      { "id": "mod_15", "number": 15, "title": "Conduta em situações difíceis", "block": "operacion", "lessons": 5, "estimatedMinutes": 50, "prerequisite": "mod_14" }
+    ],
+    "totals": {
+      "modules": 15,
+      "lessons": 59,
+      "estimatedMinutesTotal": 635,
+      "estimatedHoursTotal": 10.6
+    }
+  }
+}

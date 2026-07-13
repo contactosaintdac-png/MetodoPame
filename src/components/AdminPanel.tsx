@@ -6,6 +6,11 @@ import { notifyEmployeeRemoval, notifyEmployeeAssignment, notifyClientAssignment
 import { scheduleCafeVirtualEvent } from '../lib/calendar';
 
 import type { Employee, Booking } from '../types';
+import { populateLMSData } from '../utils/populateLMS';
+import LMSOverview from './LMSOverview';
+import LMSModule from './LMSModule';
+import LMSLesson from './LMSLesson';
+import LMSEvaluation from './LMSEvaluation';
 
 const MOCK_REFERRALS = [
   {
@@ -53,7 +58,7 @@ const SHIFTS = [
   { id: 'completo', label: 'Integral' },
 ];
 
-type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes' | 'concierge' | 'espera' | 'avaliacoes';
+type AdminTab = 'dashboard' | 'agenda' | 'equipe' | 'recrutamento' | 'indicacoes' | 'concierge' | 'espera' | 'avaliacoes' | 'capacitacao';
 
 const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard'    },
@@ -64,6 +69,7 @@ const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
   { id: 'indicacoes',   icon: 'stars',         label: 'Indicações'   },
   { id: 'avaliacoes',   icon: 'star',          label: 'Avaliações'   },
   { id: 'concierge',    icon: 'chat',          label: 'Mensagens'    },
+  { id: 'capacitacao',  icon: 'school',        label: 'Capacitação'  },
 ];
 
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
@@ -79,6 +85,20 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [agendaView, setAgendaView]         = useState<'lista' | 'calendario' | 'google'>('calendario');
   const [agendaDate, setAgendaDate]         = useState<Date>(new Date());
   const [trendMetric, setTrendMetric]       = useState<'revenue' | 'volume'>('revenue');
+
+  // LMS Admin State
+  const [selectedEmployeeLMS, setSelectedEmployeeLMS] = useState<Employee | null>(null);
+  const [showLMSProgressModal, setShowLMSProgressModal] = useState(false);
+  const [lmsModalView, setLmsModalView] = useState<'overview' | 'module' | 'lesson' | 'evaluation'>('overview');
+  const [lmsModalParams, setLmsModalParams] = useState<{ slug?: string; lessonNumber?: number }>({});
+  
+  const [seedingStatus, setSeedingStatus] = useState<'' | 'loading' | 'success' | 'error'>('');
+  const [seedingMessage, setSeedingMessage] = useState('');
+
+  const handleLmsModalNavigate = (view: 'overview' | 'module' | 'lesson' | 'evaluation', param?: string, lessonNumber?: number) => {
+    setLmsModalView(view);
+    setLmsModalParams({ slug: param, lessonNumber });
+  };
 
   const handleSignOut = async () => {
     try {
@@ -674,6 +694,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     indicacoes:   'Gestão de Indicações VIP',
     avaliacoes:   'Avaliações dos Clientes',
     concierge:    'Mensagens Concierge',
+    capacitacao:  'Capacitação & LMS',
   }[id]);
 
   const allRatedBookings = bookings.filter(b => typeof b.rating === 'number');
@@ -1678,6 +1699,16 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                         <span className="material-symbols-outlined text-[16px]">edit</span>
                       </button>
                       <button
+                        onClick={() => {
+                          setSelectedEmployeeLMS(emp);
+                          setShowLMSProgressModal(true);
+                        }}
+                        className="w-9 h-9 rounded-full bg-[#f4ebf4] text-[#C9A84C] flex items-center justify-center hover:bg-[#e9e0e8] transition-colors"
+                        title="Ver Progresso de Capacitação"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">school</span>
+                      </button>
+                      <button
                         onClick={() => handleDeleteEmployee(emp.id)}
                         className="w-9 h-9 rounded-full bg-[#f4ebf4] text-[#ba1a1a] flex items-center justify-center hover:bg-[#ffdad6] transition-colors"
                         title="Desativar"
@@ -2454,6 +2485,157 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
         {/* ╔══════════════════════════════╗
             ║   TAB: CONCIERGE / MENSAGENS  ║
             ╚══════════════════════════════╝ */}
+        {/* ╔══════════════════════════════╗
+            ║   TAB: CAPACITAÇÃO & LMS     ║
+            ╚══════════════════════════════╝ */}
+        {activeTab === 'capacitacao' && (
+          <div className="flex flex-col gap-8">
+            {/* KPI Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="silk-lift rounded-3xl p-6 bg-white flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="material-symbols-outlined text-[#561668] p-3 bg-[#e9e0e8] rounded-2xl">school</span>
+                  <span className="text-[10px] font-bold text-[#561668] bg-[#fcd7ff] px-2.5 py-1 rounded-full uppercase tracking-wider">Ativos</span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold mb-1">Em Treinamento</p>
+                  <h3 className="text-2xl font-bold text-[#1e1a20]">
+                    {employees.filter(e => e.trainingStatus === 'in_progress').length}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="silk-lift rounded-3xl p-6 bg-white flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="material-symbols-outlined text-[#C9A84C] p-3 bg-[#fffdf9] rounded-2xl">workspace_premium</span>
+                  <span className="text-[10px] font-bold text-[#C9A84C] bg-[#fffdf9] px-2.5 py-1 rounded-full uppercase tracking-wider">Certificados</span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold mb-1">Especialistas Certificadas</p>
+                  <h3 className="text-2xl font-bold text-[#1e1a20]">
+                    {employees.filter(e => e.trainingStatus === 'certified').length}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="silk-lift rounded-3xl p-6 bg-white flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="material-symbols-outlined text-[#ba1a1a] p-3 bg-red-50 rounded-2xl">pending_actions</span>
+                  <span className="text-[10px] font-bold text-[#ba1a1a] bg-red-100 px-2.5 py-1 rounded-full uppercase tracking-wider">LMS Setup</span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold mb-1">Configuração do Banco</p>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm("Deseja semear ou atualizar a base de dados do LMS? Isso recriará os 15 módulos e 59 lições padrão em português.")) {
+                        setSeedingStatus('loading');
+                        try {
+                          await populateLMSData(db, (msg) => setSeedingMessage(msg));
+                          setSeedingStatus('success');
+                          setSeedingMessage('Dados do LMS inicializados com sucesso!');
+                          setTimeout(() => setSeedingStatus(''), 5000);
+                        } catch (err: any) {
+                          setSeedingStatus('error');
+                          setSeedingMessage(`Erro: ${err.message || err}`);
+                        }
+                      }
+                    }}
+                    disabled={seedingStatus === 'loading'}
+                    className="mt-2 text-xs bg-[#561668] hover:bg-[#431051] text-white px-4 py-2 rounded-xl font-bold uppercase tracking-wider transition-all silk-lift-sm"
+                  >
+                    {seedingStatus === 'loading' ? 'Semeando...' : 'Semear Banco de Dados'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {seedingStatus && (
+              <div className={`p-4 rounded-2xl border text-xs font-semibold ${
+                seedingStatus === 'loading' ? 'bg-[#fff7fd] border-[#efe5ee] text-[#561668] animate-pulse' :
+                seedingStatus === 'success' ? 'bg-[#e2f0d9] border-[#385723]/20 text-[#385723]' :
+                'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                {seedingMessage}
+              </div>
+            )}
+
+            {/* List of specialists in training */}
+            <div className="bg-white border border-[#efe5ee] rounded-3xl p-6 silk-lift-md">
+              <h3 className="text-lg font-bold text-[#561668] mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#C9A84C]">group</span>
+                Acompanhamento de Alunas / Candidatas
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-[#e9e0e8] text-[#80737f] uppercase tracking-wider font-bold">
+                      <th className="pb-4">Nome</th>
+                      <th className="pb-4">Estatus LMS</th>
+                      <th className="pb-4">Nota Exame</th>
+                      <th className="pb-4">Certificação</th>
+                      <th className="pb-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {employees.map(emp => (
+                      <tr key={emp.id} className="border-b border-[#efe5ee] last:border-0 hover:bg-[#fff7fd]/50 transition-colors">
+                        <td className="py-4 font-bold text-[#1e1a20] flex items-center gap-3">
+                          <img src={emp.photoURL} alt={emp.name} className="w-8 h-8 rounded-full border" />
+                          <div>
+                            <span className="block">{emp.name}</span>
+                            <span className="text-[10px] text-[#80737f] font-medium">{emp.email}</span>
+                          </div>
+                        </td>
+                        <td className="py-4">
+                          <span className={`px-2.5 py-1 rounded-full font-bold text-[9px] uppercase tracking-wider ${
+                            emp.trainingStatus === 'certified' ? 'bg-[#fffdf9] text-[#C9A84C] border border-[#C9A84C]/20' :
+                            emp.trainingStatus === 'completed' ? 'bg-[#fff7fd] text-[#561668]' :
+                            emp.trainingStatus === 'in_progress' ? 'bg-yellow-50 text-yellow-800' :
+                            'bg-[#f2f2f3] text-[#80737f]'
+                          }`}>
+                            {emp.trainingStatus === 'certified' ? 'Certificada' :
+                             emp.trainingStatus === 'completed' ? 'Pendente Exame' :
+                             emp.trainingStatus === 'in_progress' ? 'Em Treinamento' : 'Não Iniciado'}
+                          </span>
+                        </td>
+                        <td className="py-4 font-bold text-[#561668]">
+                          {emp.finalExamScore !== undefined && emp.finalExamScore !== null ? `${emp.finalExamScore}%` : '—'}
+                        </td>
+                        <td className="py-4 font-medium text-[#4e434e]">
+                          {emp.certificationLevel ? (
+                            <div>
+                              <span className="block text-xs font-bold text-[#C9A84C]">{emp.certificationLevel}</span>
+                              <span className="text-[9px] text-[#80737f] block font-mono">{emp.certificationCode}</span>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td className="py-4 text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedEmployeeLMS(emp);
+                              setShowLMSProgressModal(true);
+                            }}
+                            className="bg-[#f4ebf4] hover:bg-[#e9e0e8] text-[#561668] px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">school</span>
+                            Ver Ficha
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {employees.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center py-10 text-[#80737f] italic">Nenhuma aluna cadastrada no sistema.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'concierge' && (
           <div className="animate-fade-in flex flex-col h-[calc(100vh-8rem)]">
             <div className="mb-6">
@@ -2714,6 +2896,77 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Progresso de Capacitação (LMS) Modal */}
+      {showLMSProgressModal && selectedEmployeeLMS && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-[#fff7fd] w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-y-auto silk-lift-lg border border-[#efe5ee] relative flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-[#efe5ee] px-8 py-5 flex items-center justify-between z-20">
+              <div>
+                <h3 className="text-xl font-bold text-[#561668] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#C9A84C]">school</span>
+                  Progresso de Capacitação (LMS)
+                </h3>
+                <p className="text-xs text-[#80737f] mt-0.5">
+                  Visualizando o progresso oficial de <strong>{selectedEmployeeLMS.name}</strong>
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowLMSProgressModal(false);
+                  setSelectedEmployeeLMS(null);
+                  setLmsModalView('overview');
+                  setLmsModalParams({});
+                }}
+                className="w-10 h-10 rounded-full hover:bg-[#efe5ee] flex items-center justify-center transition-colors text-[#561668]"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 flex-grow">
+              {lmsModalView === 'overview' && (
+                <LMSOverview 
+                  employee={selectedEmployeeLMS} 
+                  onNavigate={handleLmsModalNavigate} 
+                  isAdminView={true} 
+                  adminTargetEmployeeId={selectedEmployeeLMS.id}
+                />
+              )}
+              {lmsModalView === 'module' && lmsModalParams.slug && (
+                <LMSModule 
+                  employee={selectedEmployeeLMS} 
+                  moduleSlug={lmsModalParams.slug} 
+                  onNavigate={handleLmsModalNavigate} 
+                  isAdminView={true} 
+                  adminTargetEmployeeId={selectedEmployeeLMS.id}
+                />
+              )}
+              {lmsModalView === 'lesson' && lmsModalParams.slug && lmsModalParams.lessonNumber !== undefined && (
+                <LMSLesson 
+                  employee={selectedEmployeeLMS} 
+                  moduleSlug={lmsModalParams.slug} 
+                  lessonNumber={lmsModalParams.lessonNumber} 
+                  onNavigate={handleLmsModalNavigate} 
+                  isAdminView={true} 
+                  adminTargetEmployeeId={selectedEmployeeLMS.id}
+                />
+              )}
+              {lmsModalView === 'evaluation' && (
+                <LMSEvaluation 
+                  employee={selectedEmployeeLMS} 
+                  moduleSlug={lmsModalParams.slug} 
+                  onNavigate={handleLmsModalNavigate} 
+                  isAdminView={true} 
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

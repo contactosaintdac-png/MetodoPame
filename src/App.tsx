@@ -16,6 +16,7 @@ import Sidebar from './components/Sidebar';
 import MinhaArea from './components/MinhaArea';
 import AdminPanel from './components/AdminPanel';
 import NotFound from './components/NotFound';
+import VerifyCertificate from './components/VerifyCertificate';
 import { useAuth } from './contexts/AuthContext';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
@@ -29,6 +30,7 @@ const getInitialScreen = (): ApplicationScreen => {
   if (path === '/pricing') return 'pricing';
   if (path === '/avaliacao')  return 'triage';
   if (path === '/lista' || path === '/waitlist') return 'waitlist';
+  if (path.startsWith('/verificar-certificado')) return 'verify-certificate';
   return 'not-found';
 };
 
@@ -214,6 +216,7 @@ export default function App() {
       admin:        '/admin',
       waitlist:     '/lista',
       'not-found':  '/404',
+      'verify-certificate': '/verificar-certificado'
     };
     window.history.pushState({}, '', paths[screen] || '/');
   };
@@ -270,6 +273,11 @@ export default function App() {
       ) : currentScreen === 'minha-area' ? (
         <div className="w-full h-screen overflow-y-auto bg-[#fff7fd]">
           <MinhaArea onScreenChange={handleScreenChange} />
+        </div>
+
+      ) : currentScreen === 'verify-certificate' ? (
+        <div className="w-full min-h-screen bg-[#fff7fd]">
+          <VerifyCertificate onBackToApp={() => handleScreenChange('welcome')} />
         </div>
 
       ) : currentScreen === 'not-found' ? (

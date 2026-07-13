@@ -25,7 +25,7 @@ export interface AddonService {
   description: string;
 }
 
-export type ApplicationScreen = 'welcome' | 'triage' | 'pricing' | 'recruitment' | 'minha-area' | 'admin' | 'waitlist' | 'not-found';
+export type ApplicationScreen = 'welcome' | 'triage' | 'pricing' | 'recruitment' | 'minha-area' | 'admin' | 'waitlist' | 'not-found' | 'verify-certificate';
 
 export interface Employee {
   id?: string;
@@ -42,6 +42,22 @@ export interface Employee {
   weeklyAvailability?: string[][]; // Array of arrays containing shifts
   createdAt?: string;
   pendingUpdate?: { name?: string; whatsapp?: string; zones?: string; } | null;
+  // LMS Training fields
+  trainingStatus?: 'not_started' | 'in_progress' | 'completed' | 'certified';
+  certificationLevel?: 'Certificada Método Pame' | 'Em Formação' | null;
+  certificationDate?: any;
+  certificationCode?: string | null;
+  trainingStartedAt?: any;
+  trainingCompletedAt?: any;
+  finalExamScore?: number | null;
+  finalExamAttempts?: Array<{
+    attemptId: string;
+    startedAt: any;
+    gradedAt?: any;
+    scorePercent: number;
+    passed: boolean;
+    certificationLevel?: string | null;
+  }>;
 }
 
 export interface Review {
@@ -84,3 +100,126 @@ export interface Referral {
   createdAt: any;
   updatedAt: any;
 }
+
+// ─── LMS TYPES ───────────────────────────────────────────────────────────────
+
+export interface LMSModule {
+  id: string;
+  number: number;
+  title: string;
+  slug: string;
+  description: string;
+  objective: string;
+  block: 'identidad' | 'postura' | 'conducta' | 'tecnica' | 'estandar' | 'operacion';
+  estimatedMinutes: number;
+  lessons: string[];
+  evaluationId: string;
+  prerequisiteModuleId: string | null;
+  order: number;
+  status: 'draft' | 'published';
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface LMSCompletionCriteria {
+  type: 'manual_confirmation' | 'video_watch_threshold';
+  thresholdPercent?: number | null;
+  buttonLabel?: string | null;
+  requiresVideoWatch: boolean;
+}
+
+export interface LMSLesson {
+  id: string;
+  moduleId: string;
+  number: number;
+  title: string;
+  type: 'reading' | 'video' | 'hybrid';
+  content: string;
+  videoUrl: string | null;
+  videoDurationSeconds: number | null;
+  estimatedMinutes: number;
+  completionCriteria: LMSCompletionCriteria;
+  order: number;
+  status: 'draft' | 'published';
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface LMSQuestion {
+  id: string;
+  type: 'multiple_choice' | 'open_short' | 'scenario';
+  question: string;
+  options: string[] | null;
+  correctOptionIndex: number | null;
+  expectedAnswerKeywords: string[] | null;
+  feedback: string;
+  points: number;
+  order: number;
+}
+
+export interface LMSEvaluation {
+  id: string;
+  moduleId: string;
+  title: string;
+  description: string;
+  passingScorePercent: number;
+  questions: LMSQuestion[];
+  totalQuestions: number;
+  estimatedMinutes: number;
+  maxAttempts: number;
+  status: 'draft' | 'published';
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface LMSLessonProgress {
+  lessonId: string;
+  status: 'not_started' | 'in_progress' | 'completed';
+  videoProgressPercent: number | null;
+  videoWatchTimeSeconds: number | null;
+  completedAt: any;
+  lastVisitedAt: any;
+}
+
+export interface LMSEvaluationAttempt {
+  attemptNumber: number;
+  startedAt: any;
+  completedAt: any;
+  scorePercent: number | null;
+  answers: Array<{
+    questionId: string;
+    answer: string;
+    correct: boolean;
+  }>;
+  passed: boolean;
+}
+
+export interface LMSTrainingProgress {
+  id: string;
+  employeeId: string;
+  moduleId: string;
+  moduleStatus: 'not_started' | 'in_progress' | 'completed' | 'failed';
+  lessonsProgress: LMSLessonProgress[];
+  evaluationAttempts: LMSEvaluationAttempt[];
+  bestScorePercent: number | null;
+  passed: boolean;
+  startedAt: any;
+  completedAt: any;
+  lastActivityAt: any;
+}
+
+export interface LMSCertification {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  level: 'Certificada Método Pame' | 'Em Formação';
+  finalExamScorePercent: number;
+  modulesCompleted: number;
+  issuedAt: any;
+  issuedBy: string;
+  certificateCode: string;
+  valid: boolean;
+  revokedAt: any;
+  revokedReason: string | null;
+}
+

@@ -14,6 +14,15 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Check if the specialist account exists and is active in Firestore
+    // Note: requires employee document ID to be their Firebase Auth UID.
+    // Optimization note for future scale: cache status in custom claims to save Firestore read cost.
+    function isEmployeeActive() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.status == 'active';
+    }
+
     // Rules for Specialists (Employees)
     match /employees/{employeeId} {
       // Anyone can submit a recruitment application form
@@ -25,9 +34,8 @@ service cloud.firestore {
       allow read, write: if isAdmin();
       
       // Active specialists can read their own profile data and request updates (cannot change status, active flag or email)
-      allow read: if request.auth != null && request.auth.token.email == resource.data.email;
-      allow update: if request.auth != null 
-                    && request.auth.token.email == resource.data.email
+      allow read: if isOwner(employeeId);
+      allow update: if isOwner(employeeId)
                     && request.resource.data.status == resource.data.status
                     && request.resource.data.active == resource.data.active
                     && request.resource.data.email == resource.data.email;
@@ -98,6 +106,47 @@ service cloud.firestore {
                     && resource.data.assignedEmployeeId != null
                     && exists(/databases/$(database)/documents/employees/$(resource.data.assignedEmployeeId))
                     && request.auth.token.email == get(/databases/$(database)/documents/employees/$(resource.data.assignedEmployeeId)).data.email;
+    }
+
+    // ─── RULES FOR TRAINING SYSTEM (LMS) ──────────────────────────────────────────
+    
+    // Modules, lessons, and evaluations are readable by active specialists and admins, writeable by admin
+    match /modules/{moduleId} {
+      allow read: if isEmployeeActive() || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /lessons/{lessonId} {
+      allow read: if isEmployeeActive() || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /evaluations/{evaluationId} {
+      allow read: if isEmployeeActive() || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Training progress subcollection is readable and writeable by the specialist owner and admin
+    match /employees/{employeeId}/trainingProgress/{progressId} {
+      allow read: if isOwner(employeeId) || isAdmin();
+      allow write: if isOwner(employeeId) || isAdmin();
+    }
+
+    // Final exam attempts can only be read by the specialist owner and admin
+    // Writes are blocked for clients (only created/graded server-side via Firebase Admin SDK)
+    match /employees/{employeeId}/final_exam_attempts/{attemptId} {
+      allow read: if isOwner(employeeId) || isAdmin();
+      allow write: if false;
+    }
+
+    // Final exam questions (synthesis) are never readable by clients (only read by Admin SDK)
+    match /final_exam_questions/{questionId} {
+      allow read: if false;
+      allow write: if isAdmin();
+    }
+
+    // Certifications are publicly readable (for verification) and writeable by admin
+    match /certifications/{certificationId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

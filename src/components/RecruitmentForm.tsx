@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, firebaseConfig } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore';
 import { ApplicationScreen, Employee } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import EspecialistaDashboard from './EspecialistaDashboard';
@@ -189,12 +189,14 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
     }
 
     let tempApp;
+    let createdUid: string | null = null;
     try {
       // Create account in Firebase Auth using a secondary app instance
       const appName = `temp-reg-${Date.now()}`;
       tempApp = initializeApp(firebaseConfig, appName);
       const tempAuth = getAuth(tempApp);
-      await createUserWithEmailAndPassword(tempAuth, emailToRegister, candidacyPassword);
+      const userCredential = await createUserWithEmailAndPassword(tempAuth, emailToRegister, candidacyPassword);
+      createdUid = userCredential.user.uid;
     } catch (authError: any) {
       console.error('Error creating auth account:', authError);
       let errorMsg = 'Ocorreu um erro ao criar sua credencial de acesso. Tente novamente.';
@@ -219,7 +221,10 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
     }
 
     try {
-      const docRef = await addDoc(collection(db, 'employees'), {
+      if (!createdUid) {
+        throw new Error('UID de autenticação não encontrado.');
+      }
+      await setDoc(doc(db, 'employees', createdUid), {
         name: fullName,
         email: emailToRegister,
         cpf,
@@ -235,7 +240,7 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
         photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=561668&color=fff`,
         createdAt: serverTimestamp(),
       });
-      setCreatedEmployeeId(docRef.id);
+      setCreatedEmployeeId(createdUid);
       setCafeScheduled(false);
       setCafeVirtualDate('');
       setCafeVirtualTime('');
