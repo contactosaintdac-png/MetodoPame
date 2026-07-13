@@ -228,8 +228,9 @@ Misma lógica dinámica por tamaño de residencia.
 Todo nuevo cliente debe pasar obligatoriamente por las siguientes etapas antes de tener acceso al checkout:
 1. **Lista de Espera (Acesso Prioritário):** Registro inicial en el sitio.
 2. **Avaliação da Residência:** Formulario de 4 pasos sobre el hogar (historial de limpieza, dimensiones, superficies nobles, frecuencia deseada).
-3. **Entrevista de Orientação com a Pame:** Reunión telefónica/virtual (llamada internamente **"Café Virtual com a Pame"**) para alinear expectativas, evaluar compatibilidad y confirmar disponibilidad.
-4. **Acceso al checkout:** Habilitado únicamente después de completar los pasos anteriores con éxito.
+3. **Acceso al checkout:** Habilitado únicamente después de completar los pasos anteriores con éxito.
+
+*Nota interna:* La "Entrevista de Orientação com a Pame" (antes llamada Café Virtual) NO es para las clientas. Es un paso de selección exclusivo para las funcionarias/especialistas.
 
 ---
 

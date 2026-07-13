@@ -331,7 +331,7 @@ OPENAI_API_KEY=           ← API Key de OpenAI (opcional / legacy)
 - ✅ Email de Pame: `metodopame.homedetail@gmail.com`
 - ✅ Matching automático con load balancing (Pame puede reasignar manualmente)
 - ✅ Login con Google solo para clientes (funcionárias usan email+contraseña)
-- ✅ La entrevista se llama "Café Virtual com a Pame" — NUNCA "entrevista"
+- ✅ La entrevista se llama "Café Virtual com a Pame" — NUNCA "entrevista" (Es un paso exclusivo de selección para funcionarias/candidatas, NO para clientas).
 - ✅ Cambios en Avaliação da Residência aplican solo a nuevas reservas, no al paquete activo
 - ✅ El triage se llama "Avaliação da Residência" — NUNCA "triage" ni "triagem"
 - ✅ **Campanha de Recomendação Círculo de Excelência:** Se implementó y activó por completo la campaña automatizada en el site (detección de `?ref`, descuento de R$ 100 automático en checkout y panel de control de referidos en admin). Pame puede alternar entre la campaña automatizada digital y la difusión manual por WhatsApp según convenga.
@@ -399,9 +399,10 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 - **Sistema de Avaliação Pós-Serviço & Nota de Especialistas** — Modais interativos em `MinhaArea.tsx` para os clientes avaliarem atendimentos passados (1 a 5 estrelas + comentário). No admin (`AdminPanel.tsx`), cada especialista exibe sua nota média real calculada sob demanda. Criada nova aba "Avaliações" no admin.
 - **Centro de Alertas In-App de Deslocamento** — Centro de notificações via Firestore na Área do Cliente ("A caminho" e "Concluído") com exclusão de estimativas falsas de tempo tipo Uber para preservar o conceito luxuoso e agendado.
 - **Redesenho da Lista de Espera (/lista) e Melhoria de Legibilidade** — Remoção de imagem estática com elementos falsos de interface (textos assados e ícone de menu hambúrguer cinza). Redesenho completo do fluxo móvel dividindo as seções de texto e imagem para contraste e legibilidade ideais, e otimização dos inputs, dropdowns e placeholders para digitação confortável em celulares.
+- **Configuração do Hermes Agent** — Injeção do sistema operacional da marca (`SOUL.md`) com o tom de voz rioplatense, diretrizes anti-clichês, formatos de carrossel do Instagram e regras rígidas de copywriting.
 
 ### 🟡 Importante
-*(Ninguno por el momento)*
+- **Planejamento da Arquitetura do LMS (Curso de Capacitação)** — Desenho da estrutura de base de dados no Firestore (módulos, aulas, progresso, avaliações, certificados) para abrigar o curso interno de especialização das funcionárias de forma nativa na plataforma.
 
 ### 🔵 Para más adelante
 1. Conectar WhatsApp Business API (API Oficial) em produção para todas as notificações transacionais e lembretes detalhados (postergado para fase comercial posterior).
@@ -423,6 +424,6 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 
 ---
 
-*Última actualización: Junio 2026*
+*Última actualización: Julio 2026*
 *Desarrollado con Google Antigravity 2.0*
 
