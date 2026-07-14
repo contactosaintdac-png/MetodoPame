@@ -11,6 +11,18 @@
   ],
   "rewrites": [
     {
+      "source": "/api/generate-final-exam",
+      "destination": "/api/lms?action=generate-final-exam"
+    },
+    {
+      "source": "/api/grade-final-exam",
+      "destination": "/api/lms?action=grade-final-exam"
+    },
+    {
+      "source": "/api/migrate-employees",
+      "destination": "/api/lms?action=migrate-employees"
+    },
+    {
       "source": "/((?!api/|assets/).*)",
       "destination": "/index.html"
     }
