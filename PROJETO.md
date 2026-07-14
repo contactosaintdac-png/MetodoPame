@@ -397,19 +397,47 @@ Se encuentra implementado el rastreo de eventos y visitas de usuarios en producc
 - **Suporte PWA e Service Worker Seguro** — Manifesto (`public/manifest.json`) com suporte standalone para iOS/Android. Service worker (`public/sw.js`) configurado de forma segura sem cachear dados confidenciais, autenticação ou disponibilidade (estratégia network-first com fallback offline).
 - **Dashboard de Métricas Admin com SVG Dinâmico** — Removido mockups e placeholders. O painel agora computa faturamento total e número de reservas em tempo real com gráficos em SVG spline interativos. Exibe também feedbacks reais dos clientes logados.
 - **Sistema de Avaliação Pós-Serviço & Nota de Especialistas** — Modais interativos em `MinhaArea.tsx` para os clientes avaliarem atendimentos passados (1 a 5 estrelas + comentário). No admin (`AdminPanel.tsx`), cada especialista exibe sua nota média real calculada sob demanda. Criada nova aba "Avaliações" no admin.
-- **Centro de Alertas In-App de Deslocamento** — Centro de notificações via Firestore na Área do Cliente ("A caminho" e "Concluído") com exclusão de estimativas falsas de tempo tipo Uber para preservar o conceito luxuoso e agendado.
-- **Redesenho da Lista de Espera (/lista) e Melhoria de Legibilidade** — Remoção de imagem estática com elementos falsos de interface (textos assados e ícone de menu hambúrguer cinza). Redesenho completo do fluxo móvel dividindo as seções de texto e imagem para contraste e legibilidade ideais, e otimização dos inputs, dropdowns e placeholders para digitação confortável em celulares.
-- **Configuração do Hermes Agent** — Injeção do sistema operacional da marca (`SOUL.md`) com o tom de voz rioplatense, diretrizes anti-clichês, formatos de carrossel do Instagram e regras rígidas de copywriting.
+
+### 🟢 LMS — Sistema de Capacitação de Especialistas (Julio 2026)
+
+- **Implementación completa del LMS** — 15 módulos, 59 lecciones, sistema de evaluaciones por módulo, examen final generado dinámicamente server-side, certificado PDF descargable.
+- **Siembra de datos** — Botón "Semear Banco de Dados" en el Panel Admin pobla las colecciones `modules`, `lessons`, `evaluations`, `final_exam_questions` en Firestore con contenido de prueba realista.
+- **Migración de IDs de Especialistas** — Botón "Migrar IDs de Especialistas" en el Panel Admin migra documentos de `/employees` con auto-ID al UID de Firebase Auth, prerequisito para las security rules del LMS.
+- **Fix: Login loop de especialistas** — `checkSpecialist()` en `RecruitmentForm.tsx` fue refactorizado para hacer una lectura directa por UID (`getDoc(doc(db, 'employees', user.uid))`) en lugar de una query de colección (`getDocs(query(...))`) que estaba silenciosamente bloqueada por las Firestore security rules (Firestore distingue entre `read` point read y `list` collection query; el código anterior necesitaba `list` pero las rules solo tienen `allow read: if isOwner()`).
+- **Refactor API unificada** — Para mantenerse dentro del límite de 12 Serverless Functions del plan Vercel Hobby, se consolidaron `api/generate-final-exam.ts`, `api/grade-final-exam.ts` y `api/migrate-employees.ts` en un único `api/lms.ts` con dispatch por parámetro `?action=`. Las URLs del frontend siguen siendo las mismas gracias a rewrites en `vercel.json`.
+- **Fix: Error de índice de Firestore en migración** — La función de migración hacía una query `collectionGroup('bookings').where('assignedEmployeeId', ...)` que requería un índice compuesto inexistente. Se removió esa parte (las referencias en bookings pueden actualizarse en etapa separada cuando se cree el índice).
 
 ### 🟡 Importante
 - **Planejamento da Arquitetura do LMS (Curso de Capacitação)** — Desenho da estrutura de base de dados no Firestore (módulos, aulas, progresso, avaliações, certificados) para abrigar o curso interno de especialização das funcionárias de forma nativa na plataforma.
 
-### 🔵 Para más adelante
-1. Conectar WhatsApp Business API (API Oficial) em produção para todas as notificações transacionais e lembretes detalhados (postergado para fase comercial posterior).
-2. Notificações Web Push nativas de navegador (postergado).
+---
 
-### 🌌 Visión a largo plazo (Objetivo a futuro)
-4. Modelo de expansión tipo Uber para limpieza (abarcar más zonas y escalar operaciones).
+## 21. Backlog técnico — Pendientes concretos
+
+Estos pendientes fueron identificados durante la implementación del LMS (Julio 2026). Ordenados por prioridad:
+
+### 🔴 Alta prioridad (bloquean flujo completo de Pame)
+- [ ] **Verificar walkthrough completo de Pame** — Loguearse como `teste.funcionaria@metodopame.com` / `Pame@2026!`, recorrer los 15 módulos, completar evaluaciones, rendir examen final, descargar certificado PDF.
+- [ ] **Semear los datos del LMS** — Ir a Admin → Capacitação → clic en "Semear Banco de Dados". Los datos de prueba deben inyectarse correctamente ahora que las Firestore rules están en producción.
+
+### 🟡 Media prioridad (mejoras de estabilidad)
+- [ ] **Crear índice de Firestore para `bookings.assignedEmployeeId`** — Necesario para la migración completa de referencias en bookings. Link directo de Firebase en el error de migración anterior (requiere abrir en Firebase Console y confirmar la creación del índice).
+- [ ] **Migrar referencias en `bookings.assignedEmployeeId`** — Una vez creado el índice, volver a ejecutar la lógica de migración para actualizar las reservas existentes al nuevo UID de la especialista.
+- [ ] **Idempotencia del botón "Semear Banco de Dados"** — Actualmente, presionar el botón dos veces puede crear duplicados. Implementar una verificación de existencia antes de crear documentos (`setDoc` con `merge: true` o verificar con `getDoc` primero).
+- [ ] **Pame responde cuestionario de conocimiento** — Las preguntas de las evaluaciones son placeholder realista. Cuando Pame llene el cuestionario de contenido real, reemplazar las preguntas de prueba por las definitivas y mantener `status: 'published'`.
+
+### 🔵 Baja prioridad (optimizaciones)
+- [ ] **Code splitting de `@react-pdf/renderer`** — El bundle pesa ~2.7 MB principalmente por esta librería. Hacer lazy loading de `LMSCertificate.tsx` para reducir el tiempo de carga inicial. Impacto en mobile y conexiones lentas.
+- [ ] **Reemplazar contenido placeholder del LMS con contenido real** — Los 59 videos son placeholders (YouTube embeds de ejemplo). Cuando Pame grabe el contenido, reemplazar las URLs.
+- [ ] **`allow list` en `/employees` para admin** — Las Firestore rules actuales no tienen `allow list` en `/employees`. Si en el futuro se quiere hacer queries de colección desde el cliente (como filtrar por email), habría que agregar `allow list: if isAdmin()`.
+- [ ] **Conectar WhatsApp Business API oficial** — Postergado para fase comercial. Actualmente se usa Meta Cloud API con token manual.
+- [ ] **Notificaciones Web Push nativas** — Postergado.
+
+### 🟢 Decisiones técnicas tomadas (no reabrir sin razón)
+- **Firebase Auth sin Custom Claims** — Se eligió no usar Custom Claims para evitar requerir el plan Blaze de Firebase. Los roles se verifican leyendo el documento de Firestore.
+- **`/employees` usa UID como document ID** — Migración necesaria para todos los entornos. El script de migración está disponible via botón en Admin Panel.
+- **Examen final server-side** — La generación y corrección del examen final se hace en `api/lms.ts` (Firebase Admin SDK) para evitar que el candidato pueda ver las respuestas correctas en el cliente.
+- **Vercel Hobby con máximo 12 functions** — La API del LMS está consolidada en un único endpoint con dispatch por parámetro para no exceder el límite.
 
 ---
 
