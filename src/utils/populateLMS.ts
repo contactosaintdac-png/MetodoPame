@@ -457,5 +457,6 @@ export async function populateLMSData(db: Firestore, onProgress: (msg: string) =
   } catch (err: any) {
     console.error('Error al sembrar datos del LMS:', err);
     onProgress(`ERROR: ${err.message || err}`);
+    throw err;
   }
 }
