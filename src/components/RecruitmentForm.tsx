@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, firebaseConfig } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, setDoc, getDoc } from 'firebase/firestore';
 import { ApplicationScreen, Employee } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import EspecialistaDashboard from './EspecialistaDashboard';
@@ -87,32 +87,30 @@ export default function RecruitmentForm({ onScreenChange }: RecruitmentFormProps
     }
 
     // User is logged in — check if they are an active specialist
+    // We do a direct point read by UID (allowed by isOwner rule) instead of a
+    // collection query (which would be blocked by Firestore rules for non-admins).
     const checkSpecialist = async () => {
       try {
-        if (user.email) {
-          const q = query(
-            collection(db, 'employees'),
-            where('email', '==', user.email),
-            where('status', '==', 'active')
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            setEmployeeData({ id: snap.docs[0].id, ...snap.docs[0].data() } as Employee);
-            setView('dashboard');
-            setIsClientLoggedIn(false);
-            return;
-          }
+        // 1. Try a direct read: /employees/{user.uid}
+        const empDocRef = doc(db, 'employees', user.uid);
+        const empDoc = await getDoc(empDocRef);
+
+        if (empDoc.exists() && empDoc.data()?.status === 'active') {
+          setEmployeeData({ id: empDoc.id, ...empDoc.data() } as Employee);
+          setView('dashboard');
+          setIsClientLoggedIn(false);
+          return;
         }
 
-        // User is logged in but NOT an active specialist.
+        // 2. Document doesn't exist or status is not 'active'.
         // Check if they signed in with Google (Google Auth means they are a client)
         const isGoogleUser = user.providerData.some(p => p.providerId === 'google.com');
         if (isGoogleUser) {
           setIsClientLoggedIn(true);
           setView('candidatura');
         } else {
-          // They signed in with email/password (specialist credentials), but are not active.
-          // They could be pending or disabled. Sign them out and show error.
+          // They signed in with email/password but are not an active specialist.
+          // Could be pending approval or the migration hasn't run yet.
           await signOut();
           setLoginError('Sua conta de especialista ainda não foi ativada ou foi suspensa pela coordenação. Entre em contato com a Pame.');
           setView('login');
