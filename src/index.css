@@ -96,16 +96,22 @@
 
 /* === Stitch Design System — Silk Neumorphic Classes === */
 .silk-lift {
-  background: #fff7fd;
   box-shadow: -8px -8px 20px rgba(255, 255, 255, 0.8), 8px 8px 24px rgba(226, 217, 230, 1);
 }
-.silk-lift-sm {
+.silk-lift:not([class*="bg-"]) {
   background: #fff7fd;
+}
+.silk-lift-sm {
   box-shadow: -4px -4px 8px rgba(255, 255, 255, 0.8), 4px 4px 8px rgba(226, 217, 230, 1);
 }
-.silk-inset {
+.silk-lift-sm:not([class*="bg-"]) {
   background: #fff7fd;
+}
+.silk-inset {
   box-shadow: inset -4px -4px 10px rgba(255, 255, 255, 0.8), inset 4px 4px 10px rgba(226, 217, 230, 0.6);
+}
+.silk-inset:not([class*="bg-"]) {
+  background: #fff7fd;
 }
 .silk-active {
   background: #ffffff;
