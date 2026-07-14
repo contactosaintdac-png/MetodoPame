@@ -438,12 +438,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
 
-          const bookingsSnap = await db.collectionGroup('bookings').where('assignedEmployeeId', '==', employeeId).get();
-          if (!bookingsSnap.empty) {
-            for (const bookingDoc of bookingsSnap.docs) {
-              await bookingDoc.ref.update({ assignedEmployeeId: authUid });
-            }
-          }
+          // NOTE: Booking references (assignedEmployeeId) are NOT updated here
+          // because it requires a Firestore collection group index on 'bookings/assignedEmployeeId'
+          // that hasn't been created yet. The login fix (document ID = Auth UID) is independent
+          // of this step and is already handled above.
+          report.push(`   ✓ Documento migrado. (Referências em bookings serão atualizadas em etapa separada)`);
 
           await db.collection('employees').doc(employeeId).delete();
           migratedCount++;
