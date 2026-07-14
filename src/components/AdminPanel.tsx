@@ -2525,26 +2525,62 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 </div>
                 <div>
                   <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold mb-1">Configuração do Banco</p>
-                  <button
-                    onClick={async () => {
-                      if (window.confirm("Deseja semear ou atualizar a base de dados do LMS? Isso recriará os 15 módulos e 59 lições padrão em português.")) {
-                        setSeedingStatus('loading');
-                        try {
-                          await populateLMSData(db, (msg) => setSeedingMessage(msg));
-                          setSeedingStatus('success');
-                          setSeedingMessage('Dados do LMS inicializados com sucesso!');
-                          setTimeout(() => setSeedingStatus(''), 5000);
-                        } catch (err: any) {
-                          setSeedingStatus('error');
-                          setSeedingMessage(`Erro: ${err.message || err}`);
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={async () => {
+                        if (window.confirm("Deseja semear ou atualizar a base de dados do LMS? Isso recriará os 15 módulos e 59 lições padrão em português.")) {
+                          setSeedingStatus('loading');
+                          try {
+                            await populateLMSData(db, (msg) => setSeedingMessage(msg));
+                            setSeedingStatus('success');
+                            setSeedingMessage('Dados do LMS inicializados com sucesso!');
+                            setTimeout(() => setSeedingStatus(''), 5000);
+                          } catch (err: any) {
+                            setSeedingStatus('error');
+                            setSeedingMessage(`Erro: ${err.message || err}`);
+                          }
                         }
-                      }
-                    }}
-                    disabled={seedingStatus === 'loading'}
-                    className="mt-2 text-xs bg-[#561668] hover:bg-[#431051] text-white px-4 py-2 rounded-xl font-bold uppercase tracking-wider transition-all silk-lift-sm"
-                  >
-                    {seedingStatus === 'loading' ? 'Semeando...' : 'Semear Banco de Dados'}
-                  </button>
+                      }}
+                      disabled={seedingStatus === 'loading'}
+                      className="text-xs bg-[#561668] hover:bg-[#431051] text-white px-4 py-2 rounded-xl font-bold uppercase tracking-wider transition-all silk-lift-sm"
+                    >
+                      {seedingStatus === 'loading' ? 'Semeando...' : 'Semear Banco de Dados'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!user) return;
+                        if (window.confirm("Deseja migrar os IDs de todas as especialistas existentes para usar o UID de Auth? Isso resolverá o problema de permissão no login do LMS.")) {
+                          setSeedingStatus('loading');
+                          setSeedingMessage('Iniciando migração...');
+                          try {
+                            const token = await user.getIdToken();
+                            const res = await fetch('/api/migrate-employees', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                              }
+                            });
+                            const data = await res.json();
+                            if (!res.ok) {
+                              throw new Error(data.error || 'Erro desconhecido na migração');
+                            }
+                            setSeedingStatus('success');
+                            setSeedingMessage(`Migração realizada com sucesso!`);
+                            setTimeout(() => setSeedingStatus(''), 5000);
+                            fetchEmployees();
+                          } catch (err: any) {
+                            setSeedingStatus('error');
+                            setSeedingMessage(`Erro: ${err.message || err}`);
+                          }
+                        }
+                      }}
+                      disabled={seedingStatus === 'loading'}
+                      className="text-xs border border-[#561668] text-[#561668] hover:bg-[#fff7fd] px-4 py-2 rounded-xl font-bold uppercase tracking-wider transition-all silk-lift-sm"
+                    >
+                      {seedingStatus === 'loading' ? 'Processando...' : 'Migrar IDs de Especialistas'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
