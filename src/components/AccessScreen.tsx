@@ -10,11 +10,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-interface WelcomeScreenProps {
+interface AccessScreenProps {
   onScreenChange: (screen: ApplicationScreen) => void;
 }
 
-export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
+export default function AccessScreen({ onScreenChange }: AccessScreenProps) {
   const { user, signInWithGoogle } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -50,15 +50,17 @@ export default function WelcomeScreen({ onScreenChange }: WelcomeScreenProps) {
       {/* Hidden H1 for SEO */}
       <h1 className="sr-only">Método Pame - Home Detail | Serviços Residenciais de Alto Padrão</h1>
 
-      {/* Mobile-Only Header Brand (Top Center) */}
-      <div className="md:hidden absolute top-5 left-5 z-40 flex items-center gap-2">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-lg border border-[#efe5ee]">
-          <img
-            alt="Logo Método Pame"
-            className="w-full h-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcxmZMz9YKjAnrCGzskq9ne1p2Otcvat0qmcKlgJO1O9Pc7p6GZ9k9sB7x8Bfy-btyeFytukZNZyc4mH4DDLbmVbNtXPveuW1Prq5KisOb_95gOr56Vo1Pfq5Qy5dXZ3tztUkwO3Jb912XSEQTYJeWscExtul9l3KF7xCnbqF9bxW_tx793Iq9qn0sAtprJ9AKuF31pHBO0XWSLYT7rznLDE8oID8WpkTxa98338r0926IQBQVWpvto5T16QSrMcVKK3lI83Bfbbn"
-          />
-        </div>
+      {/* Top Left Navigation Header (Back to Landing Page) */}
+      <div className="absolute top-5 left-5 z-40 flex items-center gap-3">
+        <button
+          onClick={() => onScreenChange('welcome')}
+          className="flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2 bg-white/90 backdrop-blur-md hover:bg-white border border-[#efe5ee] rounded-full shadow-[2px_2px_8px_rgba(112,48,129,0.15)] transition-all text-[#561668] font-bold text-[10px] md:text-[11px] tracking-widest uppercase cursor-pointer active-scale"
+        >
+          <span className="material-symbols-outlined text-[16px] md:text-[16px]">
+            arrow_back
+          </span>
+          <span>Voltar ao site</span>
+        </button>
       </div>
 
       {/* Login / Dashboard Button - Top Right */}

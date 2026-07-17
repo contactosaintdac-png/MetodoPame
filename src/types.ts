@@ -25,7 +25,7 @@ export interface AddonService {
   description: string;
 }
 
-export type ApplicationScreen = 'welcome' | 'triage' | 'pricing' | 'recruitment' | 'minha-area' | 'admin' | 'waitlist' | 'not-found' | 'verify-certificate';
+export type ApplicationScreen = 'welcome' | 'acesso' | 'triage' | 'pricing' | 'recruitment' | 'minha-area' | 'admin' | 'waitlist' | 'not-found' | 'verify-certificate';
 
 export interface Employee {
   id?: string;

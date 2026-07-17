@@ -1,230 +1,75 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
+/* Custom properties */
+:root {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Cormorant Garamond", Georgia, serif;
-  
-  /* Atomsfera PAME 2.0 / Silk & Stone Palette */
-  --color-primary: #561668;
-  --color-primary-container: #703081;
-  --color-on-primary: #ffffff;
-  --color-on-primary-container: #eca1fb;
-  --color-inverse-primary: #f2afff;
-  
-  --color-secondary: #5d5e60;
-  --color-on-secondary: #ffffff;
-  --color-secondary-container: #e0dfe1;
-  --color-on-secondary-container: #626264;
-  
-  --color-tertiary: #38333d;
-  --color-on-tertiary: #ffffff;
-  --color-tertiary-container: #4f4a54;
-  --color-on-tertiary-container: #c2bac6;
-  
-  --color-background: #fff7fd;
-  --color-on-background: #1e1a20;
-  
-  --color-surface: #fff7fd;
-  --color-on-surface: #1e1a20;
-  --color-on-surface-variant: #4e434e;
-  
-  --color-surface-dim: #e0d7e0;
-  --color-surface-bright: #fff7fd;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #faf1fa;
-  --color-surface-container: #f4ebf4;
-  --color-surface-container-high: #efe5ee;
-  --color-surface-container-highest: #e9e0e8;
-  --color-surface-variant: #e9e0e8;
-  
-  --color-outline: #80737f;
-  --color-outline-variant: #d1c2d0;
-  
-  --color-error: #ba1a1a;
-  --color-on-error: #ffffff;
-  --color-error-container: #ffdad6;
-  --color-on-error-container: #93000a;
+
+  /* Colors */
+  --paper: #F5F1EA;
+  --paper-dark: #EDE7DC;
+  --violet: #561668;
+  --violet-dark: #3D0F4A;
+  --gold: #C9A84C;
+  --ink: #1A1715;
+  --ink-20: rgba(26, 23, 21, 0.2);
+  --ink-60: #6B645C;
+  --ink-80: #3D3833;
+
+  /* Spacing scale (optional) */
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1.5rem;
+  --space-lg: 2.25rem;
+  --space-xl: 3rem;
 }
 
-@layer utilities {
-  /* Silk Soft Neumorphic utilities adjusted for Atmosfera PAME 2.0 Palette */
-  .neu-raised {
-    box-shadow: 6px 6px 12px #d9cbd9, -6px -6px 12px #ffffff;
-  }
-  
-  .neu-pressed {
-    box-shadow: inset 4px 4px 8px #d9cbd9, inset -4px -4px 8px #ffffff;
-  }
-  
-  .neu-button {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 4px 4px 8px #d9cbd9, -4px -4px 8px #ffffff;
-  }
-  
-  .neu-button:active {
-    box-shadow: inset 2px 2px 5px #d9cbd9, inset -2px -2px 5px #ffffff;
-  }
-  
-  .neu-hover:hover {
-    box-shadow: 2px 2px 5px #d9cbd9, -2px -2px 5px #ffffff;
-    transform: translateY(1px);
-  }
-  
-  .neu-active:active {
-    box-shadow: inset 4px 4px 8px #d9cbd9, inset -4px -4px 8px #ffffff;
-  }
-  
-  .silk-shadow {
-    box-shadow: 0 4px 20px -2px rgba(112, 48, 129, 0.08), 0 2px 8px -2px rgba(112, 48, 129, 0.04);
-  }
-
-  .silk-neu-flat {
-    background: #fff7fd;
-    box-shadow: 8px 8px 16px #e6dde6, -8px -8px 16px #ffffff;
-  }
-
-  .silk-neu-inset {
-    background: #fff7fd;
-    box-shadow: inset 6px 6px 12px #e6dde6, inset -6px -6px 12px #ffffff;
-  }
-
-  .silk-neu-glow {
-    background: #fff7fd;
-    box-shadow: 0 0 20px #f4ebf4, inset 0 0 10px #ffffff;
-  }
+/* Base */
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--paper);
+  color: var(--ink);
 }
 
-/* === Stitch Design System — Silk Neumorphic Classes === */
-.silk-lift {
-  box-shadow: -8px -8px 20px rgba(255, 255, 255, 0.8), 8px 8px 24px rgba(226, 217, 230, 1);
-}
-.silk-lift:not([class*="bg-"]) {
-  background: #fff7fd;
-}
-.silk-lift-sm {
-  box-shadow: -4px -4px 8px rgba(255, 255, 255, 0.8), 4px 4px 8px rgba(226, 217, 230, 1);
-}
-.silk-lift-sm:not([class*="bg-"]) {
-  background: #fff7fd;
-}
-.silk-inset {
-  box-shadow: inset -4px -4px 10px rgba(255, 255, 255, 0.8), inset 4px 4px 10px rgba(226, 217, 230, 0.6);
-}
-.silk-inset:not([class*="bg-"]) {
-  background: #fff7fd;
-}
-.silk-active {
-  background: #ffffff;
-  box-shadow: -4px -4px 12px rgba(255, 255, 255, 0.8), 4px 4px 16px rgba(226, 217, 230, 1),
-              inset 0 0 0 1px rgba(86, 22, 104, 0.05);
-}
-.progress-glow {
-  box-shadow: 0 0 10px rgba(86, 22, 104, 0.4);
-}
-.silk-text-glow {
-  text-shadow: 0 0 12px rgba(86, 22, 104, 0.2);
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #faf1fa;
-}
-::-webkit-scrollbar-thumb {
-  background: #d1c2d0;
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #80737f;
-}
-
-/* Premium Noise & Active Scales (Taste Skill) */
-body::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
+/* Utility classes */
+.container {
   width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.012;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
-.active-scale {
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
-}
-.active-scale:active {
-  transform: scale(0.97);
-}
-
-@keyframes pulse-silk {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: .6; transform: scale(0.995); }
-}
-.animate-pulse-silk {
-  animation: pulse-silk 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Hairline (1px solid) */
+.hairline {
+  border-top: 1px solid var(--ink-20);
+  border-bottom: 1px solid var(--ink-20);
+  margin: var(--space-md) 0;
 }
 
-/* Classes extras do Redesenho do Stitch */
-.silk-card {
-  background: rgba(255, 247, 253, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 20px 20px 60px #e0d7e0, -20px -20px 60px #ffffff;
+/* Section numbers */
+.section-number {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
 }
 
-.silk-input {
-  background: #fff7fd;
-  box-shadow: inset 4px 4px 8px #e0d7e0, inset -4px -4px 8px #ffffff;
-  transition: all 0.3s ease;
+/* Ensure no unwanted styles */
+* {
+  box-sizing: border-box;
 }
 
-.silk-input:focus {
-  box-shadow: inset 2px 2px 4px #e0d7e0, inset -2px -2px 4px #ffffff, 0 0 0 1px #561668;
+/* Remove any default margins on headings/p */
+h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
 }
 
-.luxury-gradient-text {
-  background: linear-gradient(135deg, #561668 0%, #340043 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* Ensure images max width */
+img {
+  max-width: 100%;
+  height: auto;
 }
-
-.hero-overlay {
-  background: linear-gradient(to right, rgba(255, 247, 253, 0.95) 30%, rgba(255, 247, 253, 0) 100%);
-}
-
-.hero-gradient {
-  background: linear-gradient(to bottom, rgba(86, 22, 104, 0.1), rgba(255, 247, 253, 1));
-}
-
-.input-inset {
-  box-shadow: inset 2px 2px 5px rgba(226, 217, 230, 0.8), inset -2px -2px 5px rgba(255, 255, 255, 1);
-  border: none;
-  background-color: #fff7fd;
-}
-
-.input-inset:focus {
-  box-shadow: inset 2px 2px 5px rgba(226, 217, 230, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 1);
-  outline: 1px solid #561668;
-}
-
-/* Safe Area Support */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.pt-safe {
-  padding-top: env(safe-area-inset-top);
-}
-.bottom-nav-safe {
-  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
-}
-.top-header-safe {
-  padding-top: calc(1rem + env(safe-area-inset-top));
-}
-
-

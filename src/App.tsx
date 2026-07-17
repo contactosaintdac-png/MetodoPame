@@ -7,7 +7,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ApplicationScreen, TriageData } from './types';
 import { INITIAL_TRIAGE_DATA } from './data';
-import WelcomeScreen from './components/WelcomeScreen';
+import AccessScreen from './components/AccessScreen';
+import LandingPage from './components/landing/LandingPage';
 import WaitlistForm from './components/WaitlistForm';
 import ClientTriage from './components/ClientTriage';
 import PricingMatrix from './components/PricingMatrix';
@@ -24,6 +25,7 @@ import { db } from './lib/firebase';
 const getInitialScreen = (): ApplicationScreen => {
   const path = window.location.pathname;
   if (path === '/' || path === '') return 'welcome';
+  if (path === '/acesso') return 'acesso';
   if (path === '/equipe') return 'recruitment';
   if (path === '/admin')  return 'admin';
   if (path === '/minha-area') return 'minha-area';
@@ -209,6 +211,7 @@ export default function App() {
 
     const paths: Record<ApplicationScreen, string> = {
       welcome:      '/',
+      acesso:       '/acesso',
       triage:       '/avaliacao',
       pricing:      '/pricing',
       recruitment:  '/equipe',
@@ -256,7 +259,10 @@ export default function App() {
         </div>
 
       ) : currentScreen === 'welcome' ? (
-        <WelcomeScreen onScreenChange={handleScreenChange} />
+        <LandingPage onScreenChange={handleScreenChange} />
+
+      ) : currentScreen === 'acesso' ? (
+        <AccessScreen onScreenChange={handleScreenChange} />
 
       ) : currentScreen === 'waitlist' ? (
         <div className="w-full h-screen overflow-y-auto bg-[#fff7fd]">
