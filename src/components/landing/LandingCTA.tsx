@@ -30,12 +30,10 @@ export default function LandingCTA({ onScreenChange, ctaLabel, ctaHref }: Landin
             lineHeight: 1.1,
             letterSpacing: "-0.01em"
           }}
-          className="text-white text-[clamp(1.8rem,5vw,3rem)] mb-6 leading-[1.1]"
+          className="text-white text-[clamp(2rem,5vw,3.5rem)] mb-8"
         >
           Sua casa merece cuidado.<br />
-          <span className="block text-[clamp(1rem,3vw,1.5rem)] opacity-90">
-            Não improvisação.
-          </span>
+          <span className="opacity-90">Não improvisação.</span>
         </h2>
 
         <button

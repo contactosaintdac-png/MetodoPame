@@ -34,7 +34,7 @@ export default function LandingHero({ onScreenChange, ctaLabel, ctaHref }: Landi
           <button
             onClick={() => onScreenChange(ctaHref)}
             style={{ fontFamily: "var(--font-sans)", borderRadius: "2px" }}
-            className="px-[0.875rem] py-[1.75rem] bg-[#561668] text-white hover:bg-[#3D0F4A] transition-all font-semibold text-base tracking-[0.02em] active:scale-[0.98] cursor-pointer"
+            className="px-[1.75rem] py-[0.875rem] bg-[#561668] text-white hover:bg-[#3D0F4A] transition-all font-semibold text-base tracking-[0.02em] active:scale-[0.98] cursor-pointer"
           >
             {ctaLabel} →
           </button>

@@ -259,10 +259,14 @@ export default function App() {
         </div>
 
       ) : currentScreen === 'welcome' ? (
-        <LandingPage onScreenChange={handleScreenChange} />
+        <div className="w-full h-screen overflow-y-auto bg-[#F5F1EA]">
+          <LandingPage onScreenChange={handleScreenChange} />
+        </div>
 
       ) : currentScreen === 'acesso' ? (
-        <AccessScreen onScreenChange={handleScreenChange} />
+        <div className="w-full h-screen overflow-y-auto bg-[#fff7fd]">
+          <AccessScreen onScreenChange={handleScreenChange} />
+        </div>
 
       ) : currentScreen === 'waitlist' ? (
         <div className="w-full h-screen overflow-y-auto bg-[#fff7fd]">
