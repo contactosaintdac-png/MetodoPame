@@ -17,6 +17,20 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      proxy: {
+        // Vite does not execute Vercel functions. Proxy only this read-only
+        // endpoint so the local booking calendar uses real availability.
+        '/api/get-availability': {
+          target: 'https://metodopame.com',
+          changeOrigin: true,
+          secure: true,
+        },
+        '/api/create-preference': {
+          target: 'https://metodopame.com',
+          changeOrigin: true,
+          secure: true,
+        },
+      },
     },
   };
 });

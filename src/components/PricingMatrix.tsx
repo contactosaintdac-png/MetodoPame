@@ -50,6 +50,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   
   const [activeAddons, setActiveAddons] = useState<string[]>([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showGuestExitWarning, setShowGuestExitWarning] = useState(false);
   const [bookingName, setBookingName] = useState('');
   const [bookingPhone, setBookingPhone] = useState('');
   const [bookingDateState, setBookingDateState] = useState('');
@@ -710,6 +711,22 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const exitToHome = () => {
+    setShowGuestExitWarning(false);
+    setShowBookingModal(false);
+    setModalStep('form');
+    onScreenChange('welcome');
+  };
+
+  const handleExitToHome = () => {
+    if (user) {
+      exitToHome();
+      return;
+    }
+
+    setShowGuestExitWarning(true);
   };
 
   return (
@@ -1456,6 +1473,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                     planMode={selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso'}
                     addons={PAME_ADDONS.filter(a => activeAddons.includes(a.id)).map(a => a.name)}
                     totalPrice={totalPrice}
+                    isGuest={!user}
                   />
                   
                   <div className="w-full max-w-sm mt-5 flex flex-col gap-3">
@@ -1483,16 +1501,12 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                         className="w-full flex justify-center items-center gap-2 py-3.5 bg-[#fff7fd] border-2 border-[#561668] text-[#561668] font-bold text-[11px] uppercase tracking-widest rounded-xl hover:bg-[#faf1fa] transition-colors cursor-pointer disabled:opacity-50"
                       >
                         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                        {isSaving ? 'Salvando...' : 'Salvar histórico (Entrar com Google)'}
+                        {isSaving ? 'Salvando...' : 'Entrar com Google e salvar tudo'}
                       </button>
                     )}
 
                     <button
-                      onClick={() => {
-                        setShowBookingModal(false);
-                        setModalStep('form');
-                        onScreenChange('welcome');
-                      }}
+                      onClick={handleExitToHome}
                       className="mt-3 text-xs text-[#80737f] underline hover:text-[#561668] cursor-pointer text-center"
                     >
                       Fechar e voltar ao início
@@ -1502,6 +1516,85 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
               )}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showGuestExitWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-[#1e1a20]/60 px-4 py-8 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guest-exit-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: 'easeOut' }}
+              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/70 bg-[#fff7fd] p-7 shadow-[0_24px_80px_rgba(30,26,32,0.34)] md:p-9"
+            >
+              <button
+                type="button"
+                onClick={() => setShowGuestExitWarning(false)}
+                className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-[#f4ebf4] text-[#561668] transition-colors hover:bg-[#efe5ee]"
+                aria-label="Fechar aviso"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#561668]/10 text-[#561668]">
+                <span className="material-symbols-outlined text-3xl">verified_user</span>
+              </div>
+
+              <p className="mb-2 font-sans text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#703081]">
+                Uma última recomendação
+              </p>
+              <h2
+                id="guest-exit-title"
+                className="font-display text-3xl font-semibold leading-tight text-[#561668]"
+              >
+                Quer manter tudo sob controle?
+              </h2>
+              <p className="mt-4 font-sans text-sm leading-relaxed text-[#4e434e]">
+                Entrar com Google permite acompanhar sua avaliação e seu pedido sem
+                preencher os dados novamente. Também ajuda nossa equipe a oferecer
+                um atendimento mais organizado e seguro para você.
+              </p>
+              <p className="mt-3 rounded-xl border border-[#703081]/15 bg-[#faf1fa] px-4 py-3 font-sans text-xs font-semibold leading-relaxed text-[#561668]">
+                É apenas uma recomendação para sua comodidade. Você pode sair sem criar uma conta.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleGoogleLoginAndSave();
+                  }}
+                  disabled={isSaving}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#561668] px-5 py-4 font-sans text-xs font-extrabold uppercase tracking-[0.12em] text-white shadow-lg transition-all hover:bg-[#703081] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <img
+                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                    alt=""
+                    className="h-5 w-5 rounded-full bg-white p-0.5"
+                  />
+                  {isSaving ? 'Salvando...' : 'Entrar com Google e guardar tudo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={exitToHome}
+                  disabled={isSaving}
+                  className="w-full rounded-xl border border-[#d1c2d0] px-5 py-3.5 font-sans text-[11px] font-bold uppercase tracking-[0.12em] text-[#4e434e] transition-colors hover:border-[#703081] hover:text-[#561668] disabled:opacity-50"
+                >
+                  Sair sem criar conta
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

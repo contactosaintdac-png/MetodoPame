@@ -6,9 +6,10 @@ interface PaymentPendingProps {
   totalPrice: number;
   planMode: string;
   addons: string[];
+  isGuest: boolean;
 }
 
-export default function PaymentPending({ clientName, format, totalPrice, planMode, addons }: PaymentPendingProps) {
+export default function PaymentPending({ clientName, format, totalPrice, planMode, addons, isGuest }: PaymentPendingProps) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -60,6 +61,26 @@ export default function PaymentPending({ clientName, format, totalPrice, planMod
           </div>
         </div>
       </div>
+
+      {isGuest && (
+        <div className="max-w-sm w-full rounded-2xl border border-[#703081]/20 bg-[#fff7fd] p-5 text-left shadow-[0_10px_30px_rgba(86,22,104,0.08)]">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined mt-0.5 text-xl text-[#703081]">cloud_off</span>
+            <div>
+              <p className="font-sans text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#703081]">
+                Proteja os dados do seu pedido
+              </p>
+              <p className="mt-2 font-sans text-xs leading-relaxed text-[#4e434e]">
+                Você está usando a plataforma sem uma conta. Ao fechar esta página,
+                sua avaliação e o histórico deste pedido poderão ser perdidos.
+              </p>
+              <p className="mt-2 font-sans text-xs font-bold leading-relaxed text-[#561668]">
+                Entre com Google abaixo para guardar tudo e ter uma experiência mais simples nas próximas visitas.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
