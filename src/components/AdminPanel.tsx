@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, collectionGroup, onSnapshot, orderBy, where, setDoc } from 'firebase/firestore';
-import { notifyEmployeeRemoval, notifyEmployeeAssignment, notifyClientAssignment } from '../lib/NotificationService';
+import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, orderBy, where, setDoc } from 'firebase/firestore';
 import { scheduleCafeVirtualEvent } from '../lib/calendar';
+import { callBookingsApi } from '../lib/bookings-api';
 
 import type { Employee, Booking } from '../types';
-import { populateLMSData } from '../utils/populateLMS';
 import LMSOverview from './LMSOverview';
 import LMSModule from './LMSModule';
 import LMSLesson from './LMSLesson';
 import LMSEvaluation from './LMSEvaluation';
+import CanonicalPeoplePanel from './CanonicalPeoplePanel';
 
 const MOCK_REFERRALS = [
   {
@@ -73,7 +73,7 @@ const NAV_ITEMS: { id: AdminTab; icon: string; label: string }[] = [
 ];
 
 export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen: string) => void }) {
-  const { user, signInWithGoogle, signOut } = useAuth();
+  const { user, signInWithGoogle, signOut, authorizationSession } = useAuth();
 
   const [employees, setEmployees]           = useState<Employee[]>([]);
   const [bookings, setBookings]             = useState<any[]>([]);
@@ -85,6 +85,54 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [agendaView, setAgendaView]         = useState<'lista' | 'calendario' | 'google'>('calendario');
   const [agendaDate, setAgendaDate]         = useState<Date>(new Date());
   const [trendMetric, setTrendMetric]       = useState<'revenue' | 'volume'>('revenue');
+  const [r7OwnerTestState, setR7OwnerTestState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [r7OwnerTestMessage, setR7OwnerTestMessage] = useState('');
+  const [r7OwnerTestInitPoint, setR7OwnerTestInitPoint] = useState('');
+  const [r7OwnerDiagnostic, setR7OwnerDiagnostic] = useState<'unknown' | 'ready' | 'blocked'>('unknown');
+
+  const showR7OwnerTestAction = Boolean(
+    typeof window !== 'undefined' &&
+    window.location.hostname === 'metodo-pame-r7-test-contactosaintdac.vercel.app' &&
+    new URLSearchParams(window.location.search).get('r7_owner_test') === '1' &&
+    authorizationSession?.authzSource === 'access_grant' &&
+    authorizationSession.roles.includes('owner'),
+  );
+
+  const triggerR7OwnerTest = async () => {
+    if (!user || r7OwnerTestState === 'running' || r7OwnerTestState === 'success') return;
+    setR7OwnerTestState('running'); setR7OwnerTestMessage('Criando preferência TEST…');
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/outbox-worker?action=r7_preview_test_checkout_preference', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await response.json().catch(() => ({})) as { id?: string; init_point?: string; message?: string };
+      if (!response.ok || !payload.id || !payload.init_point) throw new Error(payload.message ?? 'Ação TEST indisponível');
+      setR7OwnerTestInitPoint(payload.init_point); setR7OwnerTestState('success');
+      setR7OwnerTestMessage(`Preferência TEST criada: ${payload.id}`);
+    } catch (error) {
+      setR7OwnerTestState('error');
+      setR7OwnerTestMessage(error instanceof Error ? error.message : 'Ação TEST indisponível');
+    }
+  };
+
+  useEffect(() => {
+    if (!showR7OwnerTestAction || !user) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('/api/outbox-worker?action=r7_preview_test_owner_diagnostic', {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` },
+        });
+        const payload = await response.json().catch(() => ({})) as { canonicalOwner?: boolean; r7TestModeEnabled?: boolean };
+        if (!cancelled) setR7OwnerDiagnostic(response.ok && payload.canonicalOwner && payload.r7TestModeEnabled ? 'ready' : 'blocked');
+      } catch {
+        if (!cancelled) setR7OwnerDiagnostic('blocked');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [showR7OwnerTestAction, user]);
 
   // LMS Admin State
   const [selectedEmployeeLMS, setSelectedEmployeeLMS] = useState<Employee | null>(null);
@@ -201,25 +249,8 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
       setLoading(true);
       const snap = await getDocs(query(collection(db, 'employees')));
       setEmployees(snap.docs.map(d => ({ id: d.id, ...d.data() } as Employee)));
-      try {
-        const bSnap = await getDocs(query(collectionGroup(db, 'bookings')));
-        setBookings(bSnap.docs.map(d => ({ docId: d.id, ref: d.ref, ...d.data() })));
-      } catch (e) {
-        console.warn('collectionGroup bookings indisponível — necessita index. Usando fallback de busca por usuário.', e);
-        try {
-          const uSnap = await getDocs(query(collection(db, 'users')));
-          let allBookings: any[] = [];
-          for (const uDoc of uSnap.docs) {
-            const userBookingsSnap = await getDocs(collection(db, 'users', uDoc.id, 'bookings'));
-            userBookingsSnap.docs.forEach(d => {
-              allBookings.push({ docId: d.id, ref: d.ref, ...d.data() });
-            });
-          }
-          setBookings(allBookings);
-        } catch (errFallback) {
-          console.error('Fallback query failed:', errFallback);
-        }
-      }
+      const bookingResponse = await callBookingsApi<{ items: Array<Record<string, unknown>> }>(user, 'booking.list_all');
+      setBookings(bookingResponse.items.map(item => ({ docId: String(item.bookingId ?? item.id), ...item })));
       try {
         const rSnap = await getDocs(query(collection(db, 'referrals')));
         setReferrals(rSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -375,31 +406,23 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   };
 
   const handleApproveCandidate = async (empId: string) => {
-    try {
-      await updateDoc(doc(db, 'employees', empId), { status: 'active', active: true });
-      fetchEmployees();
-    } catch (err) { console.error(err); }
+    void empId;
+    alert('Candidaturas legadas não podem mais ser aprovadas por esta tela. Use a ficha canônica da candidatura para registrar a decisão humana.');
   };
 
   const handleRejectCandidate = async (empId: string) => {
-    if (confirm('Tem certeza que deseja rejeitar e apagar esta candidatura?')) {
-      try { await deleteDoc(doc(db, 'employees', empId)); fetchEmployees(); }
-      catch (err) { console.error(err); }
-    }
+    void empId;
+    alert('Candidaturas não são apagadas: a rejeição deve ficar registrada na ficha canônica.');
   };
 
   const handleDeleteEmployee = async (empId: string) => {
-    if (confirm('Tem certeza que deseja desativar (ocultar) esta especialista?')) {
-      try { await updateDoc(doc(db, 'employees', empId), { active: false }); fetchEmployees(); }
-      catch (err) { console.error(err); }
-    }
+    void empId;
+    alert('O desligamento de profissionais deve usar o estado operacional canônico; registros legados não alteram elegibilidade.');
   };
 
   const handleHardDeleteEmployee = async (empId: string) => {
-    if (confirm('🚨 ATENÇÃO: Deletar DEFINITIVAMENTE esta especialista? Esta ação não pode ser desfeita.')) {
-      try { await deleteDoc(doc(db, 'employees', empId)); fetchEmployees(); }
-      catch (err) { console.error(err); }
-    }
+    void empId;
+    alert('Profissionais e candidaturas não podem ser apagados por esta tela. Use offboarding/revogação no registro canônico.');
   };
 
   const handleApprovePendingUpdate = async (empId: string, pendingUpdate: any) => {
@@ -440,20 +463,12 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     if (!selectedCandidate?.id || !cafeDate || !cafeTime) return;
     setCafeLoading(true);
     try {
-      // 1. Update candidate record in Firestore
-      const empRef = doc(db, 'employees', selectedCandidate.id);
-      await updateDoc(empRef, {
-        cafeVirtualDate: cafeDate,
-        cafeVirtualTime: cafeTime,
-      });
-
-      // 2. Synchronize with Google Calendar via Resend/Calendar API
-      await scheduleCafeVirtualEvent({
-        candidateName: selectedCandidate.name,
+      const result = await scheduleCafeVirtualEvent({
+        candidateId: selectedCandidate.id,
         date: cafeDate,
         time: cafeTime,
-        whatsapp: selectedCandidate.whatsapp || ''
       });
+      if (!result.success) throw result.error;
 
       alert(`Café Virtual agendado com sucesso para ${selectedCandidate.name}!`);
       setShowCafeModal(false);
@@ -541,40 +556,16 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
 
   // ─── Booking Handlers ─────────────────────────────────────────────────────────
   const handleDeleteBooking = async (bookingRef: any) => {
-    if (confirm('🚨 ATENÇÃO: Deletar DEFINITIVAMENTE este agendamento?')) {
-      try { await deleteDoc(bookingRef); fetchEmployees(); }
-      catch (err) { console.error(err); }
-    }
+    void bookingRef;
+    alert('Exclusão direta de reservas foi desativada. Use cancelamento canônico auditado.');
   };
 
   const handleDeleteAllBookings = async () => {
-    if (confirm('🚨 PERIGO EXTREMO: Apagar TODAS AS RESERVAS do sistema?')) {
-      const input = prompt('Digite CONFIRMAR para continuar:');
-      if (input === 'CONFIRMAR') {
-        setLoading(true);
-        try {
-          for (const b of bookings) await deleteDoc(b.ref);
-          alert('Todas as reservas foram apagadas.');
-          fetchEmployees();
-        } catch (err) { console.error(err); alert('Erro ao apagar reservas.'); }
-        finally { setLoading(false); }
-      }
-    }
+    alert('Exclusão em massa de reservas foi desativada permanentemente.');
   };
 
   const handleDeleteAllEmployees = async () => {
-    if (confirm('🚨 PERIGO EXTREMO: Apagar TODAS AS ESPECIALISTAS do sistema?')) {
-      const input = prompt('Digite CONFIRMAR para continuar:');
-      if (input === 'CONFIRMAR') {
-        setLoading(true);
-        try {
-          for (const emp of employees) await deleteDoc(doc(db, 'employees', emp.id));
-          alert('Todas as especialistas foram apagadas.');
-          fetchEmployees();
-        } catch (err) { console.error(err); alert('Erro ao apagar especialistas.'); }
-        finally { setLoading(false); }
-      }
-    }
+    alert('A exclusão em massa de profissionais foi desativada. Registros legados permanecem somente como compatibilidade histórica.');
   };
 
   const handleEditBooking = async (e: React.FormEvent) => {
@@ -582,12 +573,10 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
     if (!editingBooking) return;
     try {
       let finalData = { ...editBookingData };
-      let newEmpName = '';
       if (editBookingData.assignedEmployeeId) {
         const sel = employees.find(emp => emp.id === editBookingData.assignedEmployeeId);
         if (sel) {
           finalData.assignedEmployeeName = sel.name;
-          newEmpName = sel.name;
         }
       } else {
         finalData.assignedEmployeeName = null;
@@ -596,65 +585,13 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
       const oldEmpId = editingBooking.assignedEmployeeId || null;
       const newEmpId = editBookingData.assignedEmployeeId || null;
 
-      await updateDoc(editingBooking.ref, finalData);
-
-      // Trigger notifications if employee assignment changed
       if (oldEmpId !== newEmpId) {
-        const date = editBookingData.date || editingBooking.date;
-        const shiftStr = editBookingData.format === 'meio' ? 'Meio Turno (4h)' : 'Turno Completo (9h)';
-        const addonsList = editingBooking.addons || [];
-
-        // 1. Notify old specialist if removed
-        if (oldEmpId) {
-          const oldEmp = employees.find(emp => emp.id === oldEmpId);
-          const oldEmpName = oldEmp?.name || editingBooking.assignedEmployeeName || 'Especialista';
-          await notifyEmployeeRemoval(
-            oldEmpName,
-            undefined,
-            undefined,
-            date,
-            oldEmpId
-          );
-        }
-
-        // 2. Notify new specialist if assigned
-        if (newEmpId) {
-          await notifyEmployeeAssignment(
-            newEmpName || 'Especialista',
-            undefined,
-            undefined,
-            date,
-            shiftStr,
-            "Endereço liberado 24h antes do atendimento",
-            addonsList,
-            newEmpId
-          );
-        }
-
-        // 3. Notify client about the confirmation / new specialist
-        const clientUid = editingBooking.ref.parent?.parent?.id;
-        const clientUser = users.find((u: any) => u.id === clientUid);
-        const clientEmail = clientUser?.email;
-        const clientPhone = editingBooking.phone || '';
-        const clientName = editingBooking.name || '';
-        const totalPrice = editBookingData.totalPrice || editingBooking.totalPrice || 0;
-
-        await notifyClientAssignment(
-          clientName,
-          clientEmail,
-          clientPhone,
-          date,
-          shiftStr,
-          totalPrice,
-          newEmpName || 'A definir',
-          undefined,
-          newEmpId || undefined
-        );
+        alert('A atribuição de profissionais está temporariamente desativada até a validação canônica do pagamento.');
+        return;
       }
 
-      setShowEditBookingModal(false);
-      setEditingBooking(null);
-      fetchEmployees();
+      void finalData;
+      alert('Edição direta de reservas foi desativada. Reprogramação e cancelamento exigem comandos canônicos auditados.');
     } catch (err) { console.error(err); }
   };
 
@@ -877,6 +814,21 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
           MAIN CONTENT
       ══════════════════════════════════════════ */}
       <main className="ml-64 flex-1 pt-28 pb-16 px-8 min-h-screen">
+        {showR7OwnerTestAction && (
+          <section className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+            <p className="text-xs font-bold uppercase tracking-wider">R7 TEST temporário · Preview</p>
+            <p className="mt-1 text-sm">Cria uma única Preference sintética do Checkout Pro. Não cria reserva, pedido comercial ou pagamento.</p>
+            <button
+              type="button" onClick={triggerR7OwnerTest}
+              disabled={r7OwnerDiagnostic !== 'ready' || r7OwnerTestState === 'running' || r7OwnerTestState === 'success'}
+              className="mt-3 rounded-xl bg-amber-800 px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+            >
+              {r7OwnerDiagnostic === 'unknown' ? 'Verificando acesso…' : r7OwnerDiagnostic === 'blocked' ? 'Ação TEST indisponível' : r7OwnerTestState === 'running' ? 'Criando…' : 'Criar Preference R7 TEST'}
+            </button>
+            {r7OwnerTestMessage && <p className="mt-3 text-sm">{r7OwnerTestMessage}</p>}
+            {r7OwnerTestInitPoint && <a className="mt-2 block break-all text-sm font-bold underline" href={r7OwnerTestInitPoint}>Abrir Checkout Pro TEST</a>}
+          </section>
+        )}
 
         {/* ╔══════════════════════════════╗
             ║   TAB: DASHBOARD             ║
@@ -1532,6 +1484,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             ╚══════════════════════════════╝ */}
         {activeTab === 'equipe' && (
           <div>
+            <CanonicalPeoplePanel user={user} kind="professional" />
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-extrabold text-[#561668]">Especialistas</h2>
               <button
@@ -1751,6 +1704,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             ╚══════════════════════════════╝ */}
         {activeTab === 'recrutamento' && (
           <div>
+            <CanonicalPeoplePanel user={user} kind="candidate" />
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-extrabold text-[#561668]">
                 Candidaturas Pendentes
@@ -2526,26 +2480,9 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                 <div>
                   <p className="text-[10px] text-[#80737f] uppercase tracking-widest font-bold mb-1">Configuração do Banco</p>
                   <div className="flex flex-col gap-2">
-                    <button
-                      onClick={async () => {
-                        if (window.confirm("Deseja semear ou atualizar a base de dados do LMS? Isso recriará os 15 módulos e 59 lições padrão em português.")) {
-                          setSeedingStatus('loading');
-                          try {
-                            await populateLMSData(db, (msg) => setSeedingMessage(msg));
-                            setSeedingStatus('success');
-                            setSeedingMessage('Dados do LMS inicializados com sucesso!');
-                            setTimeout(() => setSeedingStatus(''), 5000);
-                          } catch (err: any) {
-                            setSeedingStatus('error');
-                            setSeedingMessage(`Erro: ${err.message || err}`);
-                          }
-                        }
-                      }}
-                      disabled={seedingStatus === 'loading'}
-                      className="text-xs bg-[#561668] hover:bg-[#431051] text-white px-4 py-2 rounded-xl font-bold uppercase tracking-wider transition-all silk-lift-sm"
-                    >
-                      {seedingStatus === 'loading' ? 'Semeando...' : 'Semear Banco de Dados'}
-                    </button>
+                    <p className="text-xs text-[#80737f] bg-[#fff7fd] border border-[#efe5ee] rounded-xl px-4 py-3">
+                      Conteúdo e chaves de avaliação são mantidos fora do navegador. A carga do LMS exige um comando administrativo server-side controlado.
+                    </p>
                     <button
                       onClick={async () => {
                         if (!user) return;
@@ -2578,7 +2515,7 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
                       disabled={seedingStatus === 'loading'}
                       className="text-xs border border-[#561668] text-[#561668] hover:bg-[#fff7fd] px-4 py-2 rounded-xl font-bold uppercase tracking-wider transition-all silk-lift-sm"
                     >
-                      {seedingStatus === 'loading' ? 'Processando...' : 'Migrar IDs de Especialistas'}
+                      Migração somente por ferramenta local
                     </button>
                   </div>
                 </div>

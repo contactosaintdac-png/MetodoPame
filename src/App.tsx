@@ -19,8 +19,9 @@ import AdminPanel from './components/AdminPanel';
 import NotFound from './components/NotFound';
 import VerifyCertificate from './components/VerifyCertificate';
 import { useAuth } from './contexts/AuthContext';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
+import { deriveApplicationRole } from './lib/auth-session';
 
 const getInitialScreen = (): ApplicationScreen => {
   const path = window.location.pathname;
@@ -36,15 +37,22 @@ const getInitialScreen = (): ApplicationScreen => {
   return 'not-found';
 };
 
-const FOUNDER_EMAILS = ['metodopame.homedetail@gmail.com', 'contactosaintdac@gmail.com'];
-
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ApplicationScreen>(getInitialScreen);
   const [triageData, setTriageData] = useState<TriageData>(INITIAL_TRIAGE_DATA);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, loading } = useAuth();
-  const [userRole, setUserRole] = useState<'client' | 'specialist' | 'admin' | null>(null);
-  const [roleLoading, setRoleLoading] = useState(true);
+  const {
+    user,
+    loading,
+    authorizationSession,
+    authorizationLoading,
+    authorizationError,
+    hasPermission,
+  } = useAuth();
+  const effectiveAuthorizationSession =
+    user && authorizationSession?.uid === user.uid ? authorizationSession : null;
+  const userRole = user ? deriveApplicationRole(effectiveAuthorizationSession) : null;
+  const roleLoading = authorizationLoading;
 
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -76,66 +84,25 @@ export default function App() {
     }
   }, []);
 
-  // Determine user role when authentication status resolves
+  // Keep the client profile current. Authorization comes only from the server session.
   useEffect(() => {
-    if (loading) return;
+    if (loading || roleLoading || !user || userRole !== 'client') return;
 
-    if (!user) {
-      setUserRole(null);
-      setRoleLoading(false);
-      return;
+    setDoc(doc(db, 'users', user.uid), {
+      email: user.email,
+      name: user.displayName || 'Cliente Método Pame',
+      photoURL: user.photoURL || null,
+      lastLoginAt: serverTimestamp(),
+    }, { merge: true }).catch((error) => {
+      console.error('Error updating client profile:', error);
+    });
+  }, [user, userRole, loading, roleLoading]);
+
+  useEffect(() => {
+    if (authorizationError) {
+      console.warn('Administrative capabilities are unavailable; access is denied safely.');
     }
-
-    const determineRole = async () => {
-      try {
-        setRoleLoading(true);
-        
-        // 1. Check admin status via Firestore or Founder list
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if ((userSnap.exists() && userSnap.data().role === 'admin') || (user.email && FOUNDER_EMAILS.includes(user.email))) {
-          if (!userSnap.exists() || userSnap.data().role !== 'admin') {
-            await setDoc(userRef, { email: user.email, role: 'admin' }, { merge: true });
-          }
-          setUserRole('admin');
-          setRoleLoading(false);
-          return;
-        }
-
-        // 2. Check for active specialist
-        if (user.email) {
-          const q = query(
-            collection(db, 'employees'),
-            where('email', '==', user.email),
-            where('status', '==', 'active')
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            setUserRole('specialist');
-            setRoleLoading(false);
-            return;
-          }
-        }
-
-        setUserRole('client');
-        await setDoc(userRef, {
-          email: user.email,
-          name: user.displayName || 'Cliente Método Pame',
-          photoURL: user.photoURL || null,
-          role: 'client',
-          lastLoginAt: serverTimestamp()
-        }, { merge: true });
-      } catch (err) {
-        console.error('Error determining user role:', err);
-        setUserRole('client'); // fallback
-      } finally {
-        setRoleLoading(false);
-      }
-    };
-
-    determineRole();
-  }, [user, loading]);
+  }, [authorizationError]);
 
   // Route protection and redirection based on roles
   useEffect(() => {
@@ -253,9 +220,14 @@ export default function App() {
           <RecruitmentForm onScreenChange={() => {}} />
         </div>
 
-      ) : currentScreen === 'admin' ? (
+      ) : currentScreen === 'admin' && hasPermission('admin.dashboard.read') ? (
         <div className="w-full h-screen overflow-y-auto bg-[#f8f9fa]">
           <AdminPanel onScreenChange={handleScreenChange} />
+        </div>
+
+      ) : currentScreen === 'admin' ? (
+        <div className="w-full h-screen overflow-y-auto bg-[#F5F1EA]">
+          <LandingPage onScreenChange={handleScreenChange} />
         </div>
 
       ) : currentScreen === 'welcome' ? (

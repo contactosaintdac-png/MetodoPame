@@ -7,8 +7,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { ApplicationScreen } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, limit, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { callBookingsApi } from '../lib/bookings-api';
 
 interface AccessScreenProps {
   onScreenChange: (screen: ApplicationScreen) => void;
@@ -29,10 +28,9 @@ export default function AccessScreen({ onScreenChange }: AccessScreenProps) {
       }
       
       // Verificamos si el usuario tiene reservas
-      const q = query(collection(db, 'users', targetUser.uid, 'bookings'), limit(1));
-      const snap = await getDocs(q);
+      const { items } = await callBookingsApi<{ items: unknown[] }>(targetUser, 'booking.list_own');
       
-      if (snap.empty) {
+      if (items.length === 0) {
         onScreenChange('triage');
       } else {
         onScreenChange('minha-area');

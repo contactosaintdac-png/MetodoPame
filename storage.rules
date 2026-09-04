@@ -1,0 +1,11 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Sensitive candidate documents are accessed only through authenticated,
+    // authorized server commands that issue short-lived, object-specific URLs.
+    // Firebase Storage SDK access from browsers is intentionally denied.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

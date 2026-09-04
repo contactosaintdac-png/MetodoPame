@@ -28,6 +28,7 @@ export interface AddonService {
 export type ApplicationScreen = 'welcome' | 'acesso' | 'triage' | 'pricing' | 'recruitment' | 'minha-area' | 'admin' | 'waitlist' | 'not-found' | 'verify-certificate';
 
 export interface Employee {
+  /** Legacy compatibility record. It is not eligibility or authorization. */
   id?: string;
   name: string;
   email: string;
@@ -58,6 +59,24 @@ export interface Employee {
     passed: boolean;
     certificationLevel?: string | null;
   }>;
+}
+
+export interface CandidateApplication {
+  id?: string;
+  candidateUid: string;
+  state: 'submitted' | 'screening' | 'under_review' | 'approved' | 'rejected' | 'withdrawn';
+  cafe: { state: 'not_scheduled' | 'scheduled' | 'completed' | 'no_show' | 'cancelled' };
+}
+
+export interface Professional {
+  uid: string;
+  applicationId: string;
+  lifecycle: {
+    approval: { state: 'approved' | 'revoked' };
+    operations: { state: 'inactive' | 'active' | 'suspended' | 'offboarded' };
+    training: { state: 'not_started' | 'in_progress' | 'completed' };
+    certification: { state: 'not_certified' | 'certified' | 'revoked' };
+  };
 }
 
 export interface Review {

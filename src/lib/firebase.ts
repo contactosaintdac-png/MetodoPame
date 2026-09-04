@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { connectAuthEmulator, getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { getFirebaseEmulatorConfig } from './firebase-emulator';
 
 export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "dummy-api-key",
@@ -16,3 +17,20 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+const emulatorConfig = getFirebaseEmulatorConfig({
+  VITE_USE_FIREBASE_EMULATORS: import.meta.env.VITE_USE_FIREBASE_EMULATORS,
+  VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+});
+const emulatorState = globalThis as typeof globalThis & {
+  __metodoPameFirebaseEmulatorsConnected?: boolean;
+};
+if (emulatorConfig && !emulatorState.__metodoPameFirebaseEmulatorsConnected) {
+  connectAuthEmulator(auth, emulatorConfig.authUrl, { disableWarnings: true });
+  connectFirestoreEmulator(
+    db,
+    emulatorConfig.firestoreHost,
+    emulatorConfig.firestorePort,
+  );
+  emulatorState.__metodoPameFirebaseEmulatorsConnected = true;
+}

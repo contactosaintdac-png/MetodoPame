@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, collectionGroup, where, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, doc, getDoc, updateDoc, addDoc, where, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { callBookingsApi } from '../lib/bookings-api';
 import { ApplicationScreen, TriageData } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { openInvoiceWindow } from '../utils/invoice';
@@ -112,17 +113,11 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
   useEffect(() => {
     if (!user) return;
 
-    let unsubscribeBookings: (() => void) | undefined;
-
-    const setupBookingsListener = () => {
+    const loadBookings = async () => {
       try {
-        const q = query(
-          collection(db, 'users', user.uid, 'bookings'),
-          orderBy('date', 'desc')
-        );
-        unsubscribeBookings = onSnapshot(q, (querySnapshot) => {
-          const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Booking[];
-          setBookings(data);
+          const response = await callBookingsApi<{ items: Array<Record<string, unknown>> }>(user, 'booking.list_own');
+          const data = response.items.map(item => ({ id: String(item.bookingId ?? item.id), ...item })) as Booking[];
+          setBookings(data.sort((a, b) => b.date.localeCompare(a.date)));
           
           // Default selected booking in calendar to the next upcoming one
           const todayStr = new Date().toISOString().split('T')[0];
@@ -134,14 +129,11 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
           } else if (data.length > 0) {
             setSelectedBooking(data[0]);
           }
-        }, (error) => {
-          console.error("Erro ao escutar histórico:", error);
-        });
       } catch (error) {
-        console.error("Erro ao configurar escuta de reservas:", error);
+        console.error("Erro ao carregar reservas canônicas:", error);
       }
     };
-    setupBookingsListener();
+    void loadBookings();
 
     const fetchTriage = async () => {
       try {
@@ -200,7 +192,6 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
     }
 
     return () => {
-      if (unsubscribeBookings) unsubscribeBookings();
       if (unsubscribeNotifications) unsubscribeNotifications();
       unsubscribeRoot();
       unsubscribeMessages();
@@ -266,13 +257,8 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
 
   // Star Rating Handler (Histórico)
   const handleRateBooking = async (bookingId: string, rating: number, comment?: string) => {
-    try {
-      const docRef = doc(db, 'users', user.uid, 'bookings', bookingId);
-      await updateDoc(docRef, { rating, ratingComment: comment || '' });
-      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, rating, ratingComment: comment || '' } : b));
-    } catch (e) {
-      console.error("Erro ao atualizar avaliação:", e);
-    }
+    void bookingId; void rating; void comment;
+    alert('Avaliações estão temporariamente indisponíveis durante a transição para reservas canônicas.');
   };
 
   // Automatically open rating modal for completed unrated bookings
@@ -364,20 +350,15 @@ export default function MinhaArea({ onScreenChange }: { onScreenChange: (screen:
         ...consolidated,
         { role: 'user' as const, parts: [{ text: finalSendText }] }
       ];
+      const idToken = await user.getIdToken();
 
       const chatResponse = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ 
-          contents,
-          context: {
-            uid: user.uid,
-            name: user.displayName || 'Cliente',
-            bookings: bookings.map(b => ({ id: b.id, date: b.date, time: b.time || '', status: b.status, service: b.service || 'Limpieza' }))
-          }
-        }),
+        body: JSON.stringify({ contents }),
       });
 
       if (!chatResponse.ok) {

@@ -1,0 +1,79 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "professional_capacity",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eligibleForService", "order": "ASCENDING" },
+        { "fieldPath": "assignmentPriority.order", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "booking_holds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "final_exam_attempts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "gradedAt", "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lms_module_attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "professionalUid", "order": "ASCENDING" },
+        { "fieldPath": "state", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lms_final_exam_attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "professionalUid", "order": "ASCENDING" },
+        { "fieldPath": "state", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "candidate_applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payment_attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "outbox_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "nextAttemptAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "candidate_private", "fieldPath": "references", "indexes": [] },
+    { "collectionGroup": "candidate_verifications", "fieldPath": "internalNotes", "indexes": [] },
+    { "collectionGroup": "residence_secrets", "fieldPath": "accessInstructions", "indexes": [] },
+    { "collectionGroup": "messages", "fieldPath": "text", "indexes": [] },
+    { "collectionGroup": "order_private", "fieldPath": "name", "indexes": [] },
+    { "collectionGroup": "order_private", "fieldPath": "email", "indexes": [] },
+    { "collectionGroup": "order_private", "fieldPath": "phone", "indexes": [] },
+    { "collectionGroup": "residence_private", "fieldPath": "address", "indexes": [] },
+    { "collectionGroup": "checkout_command_receipts", "fieldPath": "result", "indexes": [] }
+  ]
+}

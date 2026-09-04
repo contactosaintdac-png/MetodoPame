@@ -8,7 +8,21 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:authz": "node --import tsx --test tests/authz/*.test.ts",
+    "test:authz:emulator": "npx --yes firebase-tools@15.28.1 emulators:exec --project demo-metodo-pame --only auth,firestore \"npm run test:authz\"",
+    "test:storage:emulator": "npx --yes firebase-tools@15.28.1 emulators:exec --project demo-metodo-pame --only storage \"node --import tsx --test tests/authz/storage.rules.test.ts\"",
+    "test:api": "node --import tsx --test tests/api/*.test.ts",
+    "test:f0.4": "node --import tsx --test tests/data/*.test.ts",
+    "test:f0.5": "node --import tsx --test tests/bookings/*.test.ts tests/data/*.test.ts",
+    "test:f0.6": "node --import tsx --test tests/payments/*.test.ts",
+    "test:f0.6:emulator": "npx --yes firebase-tools@15.28.1 emulators:exec --project demo-metodo-pame --only firestore \"BOOKING_HOLD_TTL_SECONDS=900 GUEST_CHECKOUT_INTENT_TTL_SECONDS=900 GUEST_CHECKOUT_TOKEN_SECRET=local-test-secret-local-test-secret MP_EXPECTED_LIVE_MODE=false EXTERNAL_EFFECTS_MODE=mock npm run test:f0.6\"",
+    "test:f0.7": "node --import tsx --test tests/lms/*.test.ts",
+    "dry-run:f0.5": "node --import tsx scripts/data/f0_5_migrate_bookings.ts --fixture tests/fixtures/f0_5_bookings.json",
+    "dry-run:r5": "node --import tsx scripts/data/r5_migrate_people.ts",
+    "release:manifest": "node --import tsx scripts/release/create-release-manifest.ts",
+    "verify:release-manifest": "node --import tsx scripts/release/verify-release-manifest.ts",
+    "test:security": "npm run test:authz && npm run test:api"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -29,6 +43,7 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
@@ -37,5 +52,16 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
+  },
+  "overrides": {
+    "tar": "7.5.22",
+    "glob": {
+      "brace-expansion": "5.0.9"
+    },
+    "form-data": "2.5.6",
+    "nanoid": "3.3.18",
+    "postcss": "8.5.26",
+    "protobufjs": "7.6.5",
+    "body-parser": "1.20.6"
   }
 }

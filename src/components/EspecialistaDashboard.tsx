@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collectionGroup, query, where, orderBy, getDocs, doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import type { Employee, Booking } from '../types';
+import { callBookingsApi } from '../lib/bookings-api';
 import LMSOverview from './LMSOverview';
 import LMSModule from './LMSModule';
 import LMSLesson from './LMSLesson';
@@ -257,27 +258,10 @@ export default function EspecialistaDashboard({ employee }: Props) {
 
   const handleUpdateStatus = async (booking: any, newStatus: 'A caminho' | 'Concluído') => {
     try {
-      const parentUid = booking.parentUserId || booking.ref?.parent?.parent?.id;
-      if (!parentUid) {
-        console.error("parentUserId not found on booking object:", booking);
-        return;
-      }
-      const bRef = doc(db, 'users', parentUid, 'bookings', booking.docId);
-      await updateDoc(bRef, { status: newStatus });
-
-      // Add in-app notification
-      const notifRef = collection(db, 'users', parentUid, 'notifications');
-      const title = newStatus === 'A caminho' ? 'Especialista a caminho' : 'Atendimento concluído';
-      const message = newStatus === 'A caminho' 
-        ? `Sua especialista ${employee?.name || 'designada'} iniciou o deslocamento para o seu atendimento.`
-        : `Seu atendimento de hoje com a especialista ${employee?.name || 'designada'} foi finalizado. Por favor, deixe sua avaliação!`;
-      
-      await addDoc(notifRef, {
-        title,
-        message,
-        read: false,
-        createdAt: serverTimestamp()
-      });
+      if (!user || !booking.docId || typeof booking.version !== 'number') throw new Error('Reserva canônica sem versão válida');
+      await callBookingsApi(user, newStatus === 'Concluído' ? 'booking.complete' : 'booking.start', {
+        bookingId: booking.docId, expectedVersion: booking.version,
+      }, crypto.randomUUID());
 
       // Update local state
       setMyBookings(prev => prev.map(item => item.docId === booking.docId ? { ...item, status: newStatus } : item));
@@ -291,38 +275,22 @@ export default function EspecialistaDashboard({ employee }: Props) {
 
   // ─── Load real bookings assigned to this specialist ──────────────────────────
   useEffect(() => {
-    if (!employee?.id) {
+    if (!employee?.id || !user) {
       setLoadingBookings(false);
       return;
     }
     const fetchMyBookings = async () => {
       try {
-        const q = query(
-          collectionGroup(db, 'bookings'),
-          where('assignedEmployeeId', '==', employee.id),
-          orderBy('date', 'asc')
-        );
-        const snap = await getDocs(q);
-        setMyBookings(snap.docs.map(d => ({ docId: d.id, ref: d.ref, parentUserId: d.ref.parent.parent?.id, ...d.data() })));
+        const response = await callBookingsApi<{ items: Array<Record<string, unknown>> }>(user, 'booking.list_assigned');
+        setMyBookings(response.items.map(item => ({ docId: String(item.bookingId ?? item.id), ...item })) as Booking[]);
       } catch (err) {
-        console.warn('Bookings query needs Firestore composite index. Falling back to unfiltered.', err);
-        // Fallback: try without orderBy (avoids index requirement)
-        try {
-          const q2 = query(
-            collectionGroup(db, 'bookings'),
-            where('assignedEmployeeId', '==', employee.id)
-          );
-          const snap2 = await getDocs(q2);
-          setMyBookings(snap2.docs.map(d => ({ docId: d.id, ref: d.ref, parentUserId: d.ref.parent.parent?.id, ...d.data() })));
-        } catch (err2) {
-          console.error('Could not load bookings:', err2);
-        }
+        console.error('Could not load assigned canonical bookings:', err);
       } finally {
         setLoadingBookings(false);
       }
     };
     fetchMyBookings();
-  }, [employee?.id]);
+  }, [employee?.id, user]);
 
   // ─── Derived data ─────────────────────────────────────────────────────────────
   const today         = new Date();

@@ -21,12 +21,12 @@ export default function PaymentPending({ clientName, format, totalPrice, planMod
       </div>
       
       <div>
-        <h3 className="text-xl font-extrabold text-[#561668]">Pagamento em processamento...</h3>
+        <h3 className="text-xl font-extrabold text-[#561668]">Abrindo o pagamento...</h3>
         <p className="text-xs text-[#80737f] uppercase tracking-widest font-bold mt-1">
-          Pagamento será ativado em breve.
+          A reserva ainda não está confirmada.
         </p>
         <p className="text-sm text-[#4e434e] mt-2 leading-relaxed max-w-xs mx-auto font-medium">
-          Sua solicitação foi registrada com sucesso na nossa curadoria.
+          Você será direcionada ao ambiente seguro do Mercado Pago.
         </p>
       </div>
 
@@ -56,7 +56,7 @@ export default function PaymentPending({ clientName, format, totalPrice, planMod
             </p>
           )}
           <div className="mt-2 flex justify-between items-end">
-            <span className="font-bold text-[#561668] uppercase text-[10px] tracking-widest">Total Reservado</span>
+            <span className="font-bold text-[#561668] uppercase text-[10px] tracking-widest">Total do Checkout</span>
             <span className="font-black text-2xl text-[#561668] leading-none">R$ {totalPrice}</span>
           </div>
         </div>
@@ -72,10 +72,10 @@ export default function PaymentPending({ clientName, format, totalPrice, planMod
               </p>
               <p className="mt-2 font-sans text-xs leading-relaxed text-[#4e434e]">
                 Você está usando a plataforma sem uma conta. Ao fechar esta página,
-                sua avaliação e o histórico deste pedido poderão ser perdidos.
+                os dados preenchidos nesta tela poderão ser perdidos.
               </p>
               <p className="mt-2 font-sans text-xs font-bold leading-relaxed text-[#561668]">
-                Entre com Google abaixo para guardar tudo e ter uma experiência mais simples nas próximas visitas.
+                Entre com Google abaixo para acessar sua área. Isso não confirma a reserva.
               </p>
             </div>
           </div>

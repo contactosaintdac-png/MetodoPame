@@ -1,152 +1,182 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Check if the authenticated user's email is in the admin whitelist
-    function isAdmin() {
-      return request.auth != null && 
-        (request.auth.token.email == 'metodopame.homedetail@gmail.com' || 
-         request.auth.token.email == 'contactosaintdac@gmail.com');
+    // Canonical authority/private records/projections are server-written.
+    // F0.6 adds orders, attempts, verified payment events, webhook receipts,
+    // guest checkout capabilities, reconciliation issues and outbox jobs.
+    // These documents contain financial authority, opaque-token hashes or PII;
+    // browser create/update/delete is never valid. Safe status is served by API.
+    function isAuthenticated() { return request.auth != null; }
+    function isOwner(uid) { return isAuthenticated() && request.auth.uid == uid; }
+    function grantPath(uid) { return /databases/$(database)/documents/access_grants/$(uid); }
+    function hasPermission(permission) {
+      return isAuthenticated() && exists(grantPath(request.auth.uid))
+        && get(grantPath(request.auth.uid)).data.schemaVersion == 1
+        && get(grantPath(request.auth.uid)).data.active == true
+        && get(grantPath(request.auth.uid)).data.permissionsVersion == 2
+        && get(grantPath(request.auth.uid)).data.effectivePermissions is list
+        && permission in get(grantPath(request.auth.uid)).data.effectivePermissions;
+    }
+    function isLegacyAdmin() {
+      return isAuthenticated() && request.auth.token.keys().hasAll(['email', 'email_verified'])
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['metodopame.homedetail@gmail.com', 'contactosaintdac@gmail.com'];
+    }
+    function professionalPath(uid) { return /databases/$(database)/documents/professionals/$(uid); }
+    function isOperationalProfessional(uid) {
+      return isOwner(uid) && hasPermission('bookings.read_assigned') && exists(professionalPath(uid))
+        && get(professionalPath(uid)).data.lifecycle.approval.state == 'approved'
+        && get(professionalPath(uid)).data.lifecycle.operations.state == 'active';
+    }
+    function optionalString(data, key, max) { return !(key in data) || (data[key] is string && data[key].size() <= max); }
+    function optionalBool(data, key) { return !(key in data) || data[key] is bool; }
+    function optionalNumber(data, key, min, max) { return !(key in data) || (data[key] is number && data[key] >= min && data[key] <= max); }
+    function recentTimestamp(value) { return value is timestamp && value <= request.time && value >= request.time - duration.value(5, 'm'); }
+    function validLegacyUser(data) {
+      return data.keys().hasOnly(['name','email','photoURL','role','createdAt','updatedAt','whatsapp','phone','neighborhood','isPreRegistered','referralCode','referrerUid'])
+        && data.keys().hasAll(['email','role','createdAt']) && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.role == 'client' && data.createdAt is timestamp && optionalString(data, 'name', 120)
+        && optionalString(data, 'photoURL', 2048) && optionalString(data, 'whatsapp', 32) && optionalString(data, 'phone', 32)
+        && optionalString(data, 'neighborhood', 120) && optionalString(data, 'referralCode', 80)
+        && optionalString(data, 'referrerUid', 128) && optionalBool(data, 'isPreRegistered');
+    }
+    function validLegacyUserCreate(uid) {
+      return isOwner(uid) && validLegacyUser(request.resource.data)
+        && request.auth.token.email == request.resource.data.email && recentTimestamp(request.resource.data.createdAt);
+    }
+    function validLegacyUserUpdate(uid) {
+      return isOwner(uid) && validLegacyUser(request.resource.data)
+        && request.resource.data.email == resource.data.email && request.resource.data.role == resource.data.role
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+    function validTriage(data) {
+      return data.keys().hasOnly(['cleaningDate','rooms','baths','floors','marble','wood','doubleGlass','chandeliers','frequency','address','phone'])
+        && optionalString(data, 'cleaningDate', 32) && optionalString(data, 'frequency', 32)
+        && optionalString(data, 'address', 500) && optionalString(data, 'phone', 32)
+        && optionalNumber(data, 'rooms', 0, 100) && optionalNumber(data, 'baths', 0, 100)
+        && optionalNumber(data, 'floors', 0, 20) && optionalBool(data, 'marble') && optionalBool(data, 'wood')
+        && optionalBool(data, 'doubleGlass') && optionalBool(data, 'chandeliers');
+    }
+    function validChatRoot(data) {
+      return data.keys().hasOnly(['clientName','clientEmail','lastMessageAt','lastMessageText','hasUnreadAdmin','clearChatAt'])
+        && optionalString(data, 'clientName', 120) && optionalString(data, 'clientEmail', 254)
+        && optionalString(data, 'lastMessageText', 4000) && optionalBool(data, 'hasUnreadAdmin')
+        && (!('lastMessageAt' in data) || data.lastMessageAt is timestamp)
+        && (!('clearChatAt' in data) || data.clearChatAt is timestamp);
+    }
+    function validUserMessage(data) {
+      return data.keys().hasOnly(['role','text','createdAt']) && data.keys().hasAll(['role','text','createdAt'])
+        && data.role == 'user' && data.text is string && data.text.size() >= 1 && data.text.size() <= 4000
+        && recentTimestamp(data.createdAt);
+    }
+    function validReferral(data) {
+      return data.keys().hasOnly(['referrerId','referrerName','referredId','referredName','referredEmail','bookingId','status','createdAt','updatedAt'])
+        && data.keys().hasAll(['referrerId','referredName','referredEmail','status','createdAt'])
+        && data.referrerId == request.auth.uid && data.status == 'pending'
+        && optionalString(data, 'referrerName', 120) && optionalString(data, 'referredId', 128)
+        && data.referredName is string && data.referredName.size() >= 1 && data.referredName.size() <= 120
+        && data.referredEmail is string && data.referredEmail.size() >= 3 && data.referredEmail.size() <= 254
+        && optionalString(data, 'bookingId', 128) && recentTimestamp(data.createdAt);
     }
 
-    // Check if the authenticated user is the owner of the document
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
+    match /access_grants/{id} { allow read, write: if false; }
+    match /candidate_applications/{id} { allow read, write: if false; }
+    match /candidate_application_current/{id} { allow read, write: if false; }
+    match /candidate_private/{id} { allow read, write: if false; }
+    match /candidate_verifications/{id} { allow read, write: if false; }
+    match /candidate_document_metadata/{id} { allow read, write: if false; }
+    match /professionals/{id} { allow read, write: if false; }
+    match /professional_private/{id} { allow read, write: if false; }
+    match /professional_profiles/{id} { allow read, write: if false; }
+    match /professional_capacity/{id} { allow read, write: if false; match /blocks/{blockId} { allow read, write: if false; } }
+    match /client_profiles/{id} { allow read, write: if false; }
+    match /client_private/{id} { allow read, write: if false; }
+    match /residences/{id} { allow read, write: if false; }
+    match /residence_private/{id} { allow read, write: if false; }
+    match /residence_secrets/{id} { allow read, write: if false; }
+    match /service_bookings/{id} { allow read, write: if false; }
+    match /booking_requests/{id} { allow read, write: if false; }
+    match /booking_holds/{id} { allow read, write: if false; }
+    match /booking_series/{id} { allow read, write: if false; }
+    match /capacity_slot_locks/{id} { allow read, write: if false; }
+    match /booking_events/{id} { allow read, write: if false; }
+    match /booking_command_receipts/{id} { allow read, write: if false; }
+    match /booking_shadow_differences/{id} { allow read, write: if false; }
+    match /orders/{id} { allow read, write: if false; }
+    match /order_private/{id} { allow read, write: if false; }
+    match /payment_attempts/{id} { allow read, write: if false; }
+    match /payment_events/{id} { allow read, write: if false; }
+    match /payment_event_applications/{id} { allow read, write: if false; }
+    match /webhook_receipts/{id} { allow read, write: if false; }
+    match /guest_purchase_intents/{id} { allow read, write: if false; }
+    match /checkout_command_receipts/{id} { allow read, write: if false; }
+    match /outbox_jobs/{id} { allow read, write: if false; }
+    match /payment_reconciliation_issues/{id} { allow read, write: if false; }
+    match /operations_booking_views/{id} { allow read, write: if false; }
+    match /finance_booking_views/{id} { allow read, write: if false; }
+    match /audit_log/{id} { allow read, write: if false; }
+    // F0.7: LMS progress, answer snapshots, grades and command receipts are
+    // server-owned. The browser receives only API projections without keys.
+    match /lms_progress/{uid}/modules/{moduleId} { allow read, write: if false; }
+    match /lms_module_attempts/{id} { allow read, write: if false; }
+    match /lms_final_exam_attempts/{id} { allow read, write: if false; }
+    match /lms_command_receipts/{id} { allow read, write: if false; }
+    match /migration_runs/{id} { allow read, write: if false; }
+    match /data_reconciliation_issues/{id} { allow read, write: if false; }
 
-    // Check if the specialist account exists and is active in Firestore
-    // Note: requires employee document ID to be their Firebase Auth UID.
-    // Optimization note for future scale: cache status in custom claims to save Firestore read cost.
-    function isEmployeeActive() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
-        && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.status == 'active';
-    }
+    match /candidate_self_views/{uid}/applications/{applicationId} { allow read: if isOwner(uid); allow write: if false; }
+    match /professional_self_views/{uid} { allow read: if isOwner(uid); allow write: if false; }
+    match /client_booking_views/{uid}/items/{bookingId} { allow read: if isOwner(uid); allow write: if false; }
+    match /professional_booking_views/{uid}/items/{bookingId} { allow read: if isOperationalProfessional(uid); allow write: if false; }
 
-    // Rules for Specialists (Employees)
-    match /employees/{employeeId} {
-      // Anyone can submit a recruitment application form
-      // But it MUST be submitted as status='pending' and active=false for safety
-      allow create: if request.resource.data.status == 'pending' 
-                    && request.resource.data.active == false;
-      
-      // Admins have full access
-      allow read, write: if isAdmin();
-      
-      // Active specialists can read their own profile data and request updates (cannot change status, active flag or email)
-      allow read: if isOwner(employeeId);
-      allow update: if isOwner(employeeId)
-                    && request.resource.data.status == resource.data.status
-                    && request.resource.data.active == resource.data.active
-                    && request.resource.data.email == resource.data.email;
+    match /employees/{uid} {
+      allow read: if isOwner(uid); allow create, update, delete: if false;
+      // Historical records can include correct answers and are intentionally
+      // inaccessible from Web SDK while compatibility is reviewed server-side.
+      match /trainingProgress/{id} { allow read, write: if false; }
+      match /final_exam_attempts/{id} { allow read, write: if false; }
     }
+    match /employee_schedules/{uid}/blocks/{id} { allow read, write: if false; }
+    match /reservas_index/{id} { allow read, write: if false; }
+    match /{path=**}/bookings/{bookingId} { allow read, write: if false; }
 
-    // Rules for Clients and bookings
-    match /users/{userId} {
-      allow read, write: if isAdmin() || isOwner(userId);
-      
-      match /profile/triage {
-        allow read, write: if isAdmin() || isOwner(userId);
+    match /users/{uid} {
+      allow read: if isOwner(uid); allow create: if validLegacyUserCreate(uid); allow update: if validLegacyUserUpdate(uid); allow delete: if false;
+      match /profile/triage { allow read: if isOwner(uid); allow create, update: if isOwner(uid) && validTriage(request.resource.data); allow delete: if false; }
+      match /notifications/{id} {
+        allow read: if isOwner(uid);
+        allow update: if isOwner(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) && request.resource.data.read is bool;
+        allow create, delete: if false;
       }
-      
-      match /bookings/{bookingId} {
-        allow read, write: if isAdmin() || isOwner(userId);
-      }
-      
-      match /concierge_requests/{requestId} {
-        allow read, write: if isAdmin() || isOwner(userId);
-      }
-    }
-
-    // Rules for Specialist calendars / schedules
-    match /employee_schedules/{employeeId}/blocks/{dateStr} {
-      // Clients need to query availability in real-time during triage booking
-      allow read: if true;
-      // Only admins can manually block/unblock slots
-      allow write: if isAdmin();
-    }
-
-    // Rules for Referrals
-    match /referrals/{referralId} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == resource.data.referrerId);
-      allow create: if request.auth != null;
-      allow update, delete: if isAdmin();
-    }
-    // Rules for AI Concierge Chats
-    match /chats/{userId} {
-      allow read, write: if isAdmin() || isOwner(userId);
-      
-      match /messages/{messageId} {
-        allow read, write: if isAdmin() || isOwner(userId);
+      match /concierge_requests/{id} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && request.resource.data.keys().hasOnly(['type','date','details','status','createdAt'])
+          && request.resource.data.type is string && request.resource.data.type.size() <= 120
+          && request.resource.data.details is string && request.resource.data.details.size() <= 4000
+          && request.resource.data.status == 'pending' && recentTimestamp(request.resource.data.createdAt);
+        allow update, delete: if false;
       }
     }
+    match /chats/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validChatRoot(request.resource.data)
+        && (!('clientEmail' in request.resource.data) || request.resource.data.clientEmail == request.auth.token.email);
+      allow delete: if false;
+      match /messages/{id} { allow read: if isOwner(uid); allow create: if isOwner(uid) && validUserMessage(request.resource.data); allow update, delete: if false; }
+    }
+    match /referrals/{id} {
+      allow read: if isAuthenticated() && resource.data.referrerId == request.auth.uid;
+      allow create: if isAuthenticated() && validReferral(request.resource.data);
+      allow update, delete: if false;
+    }
+    match /waitlist/{id} { allow read, write: if false; }
 
-    // Rules for AI Concierge — Global Reservation Index
-    // Clients can write their own bookings to this index (PricingMatrix mirror).
-    // Admins can read/write all. Server-side (Firebase Admin SDK) bypasses these rules.
-    match /reservas_index/{bookingId} {
-      // Clients can create their own index entry (needed for PricingMatrix)
-      allow create: if request.auth != null;
-      // Only admins can read or modify index entries from the client
-      allow read, update, delete: if isAdmin();
-    }
+    match /modules/{id} { allow read: if hasPermission('training.consume') || hasPermission('training.content.manage'); allow write: if false; }
+    match /lessons/{id} { allow read: if hasPermission('training.consume') || hasPermission('training.content.manage'); allow write: if false; }
+    match /evaluations/{id} { allow read, write: if false; }
+    match /final_exam_questions/{id} { allow read, write: if false; }
+    match /certifications/{id} { allow read, write: if false; }
 
-    // Rules for Waitlist
-    match /waitlist/{entryId} {
-      // Anyone can register on the waitlist
-      allow create: if true;
-      // Only admins can read, update or delete waitlist entries
-      allow read, update, delete: if isAdmin();
-    }
-
-    // Rules for collectionGroup bookings (enables fetching all bookings for admins, and assigned bookings for specialists)
-    match /{path=**}/bookings/{bookingId} {
-      allow read, write: if isAdmin();
-      allow read: if request.auth != null 
-                    && resource.data.assignedEmployeeId != null
-                    && exists(/databases/$(database)/documents/employees/$(resource.data.assignedEmployeeId))
-                    && request.auth.token.email == get(/databases/$(database)/documents/employees/$(resource.data.assignedEmployeeId)).data.email;
-    }
-
-    // ─── RULES FOR TRAINING SYSTEM (LMS) ──────────────────────────────────────────
-    
-    // Modules, lessons, and evaluations are readable by active specialists and admins, writeable by admin
-    match /modules/{moduleId} {
-      allow read: if isEmployeeActive() || isAdmin();
-      allow write: if isAdmin();
-    }
-    match /lessons/{lessonId} {
-      allow read: if isEmployeeActive() || isAdmin();
-      allow write: if isAdmin();
-    }
-    match /evaluations/{evaluationId} {
-      allow read: if isEmployeeActive() || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // Training progress subcollection is readable and writeable by the specialist owner and admin
-    match /employees/{employeeId}/trainingProgress/{progressId} {
-      allow read: if isOwner(employeeId) || isAdmin();
-      allow write: if isOwner(employeeId) || isAdmin();
-    }
-
-    // Final exam attempts can only be read by the specialist owner and admin
-    // Writes are blocked for clients (only created/graded server-side via Firebase Admin SDK)
-    match /employees/{employeeId}/final_exam_attempts/{attemptId} {
-      allow read: if isOwner(employeeId) || isAdmin();
-      allow write: if false;
-    }
-
-    // Final exam questions (synthesis) are never readable by clients (only read by Admin SDK)
-    match /final_exam_questions/{questionId} {
-      allow read: if false;
-      allow write: if isAdmin();
-    }
-
-    // Certifications are publicly readable (for verification) and writeable by admin
-    match /certifications/{certificationId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

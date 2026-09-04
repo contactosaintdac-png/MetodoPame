@@ -8,12 +8,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { TriageData, AddonService, ApplicationScreen } from '../types';
 import { PAME_ADDONS } from '../data';
 import { useAuth } from '../contexts/AuthContext';
-import { db, auth } from '../lib/firebase';
-import { createPameCalendarEvent, generateClientCalendarUrl } from '../lib/calendar';
-import { collection, addDoc, serverTimestamp, getDocs, doc, getDoc, updateDoc, setDoc, query, runTransaction } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import PaymentPending from './PaymentPending';
 import { createPreference } from '../services/mercadopago';
-import { notifyClientAssignment, notifyAdminNewBooking, notifyEmployeeAssignment } from '../lib/NotificationService';
 import { trackEvent } from '../lib/tracking';
 
 interface PricingMatrixProps {
@@ -72,9 +70,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   const [shiftTime, setShiftTime] = useState<'manha'|'tarde'|''>('manha');
   const [availabilityStatus, setAvailabilityStatus] = useState<'checking' | 'available' | 'unavailable' | 'idle'>('idle');
   const [alternativeDates, setAlternativeDates] = useState<string[]>([]);
-  const [monthlyDates, setMonthlyDates] = useState<string[]>([]);
   const [unavailableMonthlyDate, setUnavailableMonthlyDate] = useState<string | null>(null);
-  const [assignedEmployeeName, setAssignedEmployeeName] = useState<string>('');
 
   // Calendar Availability States
   const [currentCalendarMonth, setCurrentCalendarMonth] = useState(new Date().getMonth());
@@ -92,13 +88,16 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
     try {
       setLoadingAvailability(true);
       
-      const response = await fetch('/api/get-availability');
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 59);
+      const from = startDate.toISOString().slice(0, 10);
+      const to = endDate.toISOString().slice(0, 10);
+      const response = await fetch(`/api/get-availability?from=${from}&to=${to}`);
       if (!response.ok) {
         throw new Error(`Error fetching availability: ${response.statusText}`);
       }
-      const { employees: employeesList, blocks: blocksMap } = await response.json();
-      
-      const startDate = new Date(year, month, 1);
+      const { availability } = await response.json();
       const cache: Record<string, boolean> = {};
       
       // Calculate availability for the next 60 days to cover monthly packages
@@ -111,41 +110,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         const dayStr = String(currentDate.getDate()).padStart(2, '0');
         const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
         
-        const dayOfWeek = currentDate.getDay();
-        
-        // Filter employees by schedule
-        const availableEmps = employeesList.filter((emp: any) => {
-          if (!emp.weeklyAvailability || !emp.weeklyAvailability[dayOfWeek]) return false;
-          const sched = emp.weeklyAvailability[dayOfWeek];
-          if (sId === 'completo') {
-            return sched.includes('completo');
-          } else if (sId === 'meio_manha') {
-            return sched.includes('meio_manha') || sched.includes('completo');
-          } else if (sId === 'meio_tarde') {
-            return sched.includes('meio_tarde') || sched.includes('completo');
-          }
-          return false;
-        });
-        
-        // Check blocks
-        let hasAvailableSpecialist = false;
-        for (const emp of availableEmps) {
-          const blockedShifts = blocksMap[emp.id]?.[dateStr] || [];
-          let isBlocked = false;
-          if (sId === 'completo') {
-            isBlocked = blockedShifts.includes('completo') || blockedShifts.includes('meio_manha') || blockedShifts.includes('meio_tarde');
-          } else if (sId === 'meio_manha') {
-            isBlocked = blockedShifts.includes('meio_manha') || blockedShifts.includes('completo');
-          } else if (sId === 'meio_tarde') {
-            isBlocked = blockedShifts.includes('meio_tarde') || blockedShifts.includes('completo');
-          }
-          if (!isBlocked) {
-            hasAvailableSpecialist = true;
-            break;
-          }
-        }
-        
-        cache[dateStr] = hasAvailableSpecialist;
+        cache[dateStr] = availability?.[dateStr]?.[sId] === true;
       }
       
       setAvailabilityCache(cache);
@@ -276,53 +241,22 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
   };
 
   const basePrice = getDynamicPricing(selectedFormat, selectedPlanMode).total;
-  const isTestPayment = bookingName.toLowerCase().includes('test_pame');
-  const totalPrice = isTestPayment ? 1.00 : basePrice;
-  const savings = isTestPayment ? 0 : (selectedFormat === 'meio' ? currentPrices.meioSavings : currentPrices.completoSavings);
+  const totalPrice = basePrice;
+  const savings = selectedFormat === 'meio' ? currentPrices.meioSavings : currentPrices.completoSavings;
 
   const getShiftId = () => selectedFormat === 'completo' ? 'completo' : `meio_${shiftTime}`;
 
-  const checkAvailabilityForDate = async (dateStr: string, shiftId: string) => {
+  const checkAvailabilityForDate = async (dateStr: string, shiftId: string): Promise<any> => {
     try {
-      const dateObj = new Date(dateStr + "T12:00:00");
-      const dayOfWeek = dateObj.getDay();
-      
-      const response = await fetch('/api/get-availability');
+      const response = await fetch(`/api/get-availability?from=${dateStr}&to=${dateStr}`);
       if (!response.ok) {
         throw new Error(`Error fetching availability: ${response.statusText}`);
       }
-      const { employees, blocks } = await response.json();
-      
-      let availableEmps = employees.filter((emp: any) => {
-        if (!emp.weeklyAvailability || !emp.weeklyAvailability[dayOfWeek]) return false;
-        const sched = emp.weeklyAvailability[dayOfWeek];
-        if (shiftId === 'completo') {
-          return sched.includes('completo');
-        } else if (shiftId === 'meio_manha') {
-          return sched.includes('meio_manha') || sched.includes('completo');
-        } else if (shiftId === 'meio_tarde') {
-          return sched.includes('meio_tarde') || sched.includes('completo');
-        }
-        return false;
-      });
-      
-      const trulyAvailable = [];
-      for(let emp of availableEmps) {
-        const blockedShifts = blocks[emp.id]?.[dateStr] || [];
-        let isBlocked = false;
-        if (shiftId === 'completo') {
-          isBlocked = blockedShifts.includes('completo') || blockedShifts.includes('meio_manha') || blockedShifts.includes('meio_tarde');
-        } else if (shiftId === 'meio_manha') {
-          isBlocked = blockedShifts.includes('meio_manha') || blockedShifts.includes('completo');
-        } else if (shiftId === 'meio_tarde') {
-          isBlocked = blockedShifts.includes('meio_tarde') || blockedShifts.includes('completo');
-        }
-        if (!isBlocked) trulyAvailable.push(emp);
-      }
-      return trulyAvailable;
+      const { availability } = await response.json();
+      return availability?.[dateStr]?.[shiftId] === true;
     } catch (e) {
       console.error(e);
-      return [];
+      return false;
     }
   };
 
@@ -349,12 +283,10 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         dates.push(d.toISOString().split('T')[0]);
         d.setDate(d.getDate() + 7);
       }
-      setMonthlyDates(dates);
-      
       let failedDate = null;
       for (let dateStr of dates) {
-        const avails = await checkAvailabilityForDate(dateStr, shiftId);
-        if (avails.length === 0) {
+        const available = await checkAvailabilityForDate(dateStr, shiftId);
+        if (!available) {
           failedDate = dateStr;
           break;
         }
@@ -367,8 +299,8 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         setAvailabilityStatus('available');
       }
     } else {
-      const avails = await checkAvailabilityForDate(bookingDateState, shiftId);
-      if (avails.length > 0) {
+      const available = await checkAvailabilityForDate(bookingDateState, shiftId);
+      if (available) {
         setAvailabilityStatus('available');
       } else {
         setAvailabilityStatus('unavailable');
@@ -378,8 +310,8 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
         while(alts.length < 5) {
           checkD.setDate(checkD.getDate() + 1);
           const iso = checkD.toISOString().split('T')[0];
-          const avails2 = await checkAvailabilityForDate(iso, shiftId);
-          if (avails2.length > 0) alts.push(iso);
+          const alternativeAvailable = await checkAvailabilityForDate(iso, shiftId);
+          if (alternativeAvailable) alts.push(iso);
           if (checkD > new Date(Date.now() + 60*24*60*60*1000)) break; // stop after 60 days max
         }
         setAlternativeDates(alts);
@@ -387,332 +319,44 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
     }
   };
 
-  const handlePaymentSelect = async (method: 'pix' | 'card') => {
+  const handlePaymentSelect = async (_method: 'pix' | 'card') => {
     setModalStep('pending');
-    
-    // LOAD BALANCING ASSIGNMENT
-    const shiftId = getShiftId();
-    let assignedEmployee = null;
-    
-    if (selectedPlanMode === 'mensal') {
-      const availablePerDate = await Promise.all(monthlyDates.map(d => checkAvailabilityForDate(d, shiftId)));
-      let intersection = availablePerDate[0] || [];
-      for(let i=1; i<monthlyDates.length; i++) {
-         intersection = intersection.filter(emp => (availablePerDate[i] || []).find(e => e.id === emp.id));
-      }
-      if (intersection.length > 0) {
-        intersection.sort((a, b) => (a.assignedServices || 0) - (b.assignedServices || 0));
-        assignedEmployee = intersection[0];
-      }
-    } else {
-      const avails = await checkAvailabilityForDate(bookingDateState, shiftId);
-      if (avails.length > 0) {
-        avails.sort((a, b) => (a.assignedServices || 0) - (b.assignedServices || 0));
-        assignedEmployee = avails[0];
-      }
-    }
-
-    if (assignedEmployee) {
-      setAssignedEmployeeName(assignedEmployee.name);
-      try {
-        const datesToBlock = selectedPlanMode === 'mensal' ? monthlyDates : [bookingDateState];
-        
-        await runTransaction(db, async (transaction) => {
-          // 1. Reads
-          const blockRefsAndSnaps = [];
-          for (let dateStr of datesToBlock) {
-            const blockRef = doc(db, 'employee_schedules', assignedEmployee.id, 'blocks', dateStr);
-            const blockSnap = await transaction.get(blockRef);
-            blockRefsAndSnaps.push({ ref: blockRef, snap: blockSnap });
-          }
-          const empRef = doc(db, 'employees', assignedEmployee.id);
-          const empSnap = await transaction.get(empRef);
-
-          // 2. Verify availability
-          for (let item of blockRefsAndSnaps) {
-            if (item.snap.exists()) {
-              const shifts = item.snap.data().shifts || [];
-              if (shifts.includes(shiftId)) {
-                throw new Error("Slot ocupado");
-              }
-            }
-          }
-
-          // 3. Writes
-          for (let item of blockRefsAndSnaps) {
-            if (item.snap.exists()) {
-              transaction.update(item.ref, { shifts: [...(item.snap.data().shifts || []), shiftId] });
-            } else {
-              transaction.set(item.ref, { shifts: [shiftId] });
-            }
-          }
-
-          const currentAssigned = empSnap.exists() ? (empSnap.data().assignedServices || 0) : 0;
-          transaction.update(empRef, {
-            assignedServices: currentAssigned + (selectedPlanMode === 'mensal' ? 4 : 1)
-          });
-        });
-        
-        const addonsList = PAME_ADDONS.filter(a => activeAddons.includes(a.id)).map(a => a.name);
-        const shiftStr = selectedFormat === 'meio' ? 'Meio Turno (4h)' : 'Turno Completo (9h)';
-        
-        if (user && user.email) {
-          await notifyClientAssignment(
-            bookingName,
-            user.email,
-            bookingPhone,
-            bookingDateState,
-            shiftStr,
-            totalPrice,
-            assignedEmployee.name,
-            undefined,
-            assignedEmployee.id
-          );
-        }
-        
-        await notifyAdminNewBooking(
-          bookingName,
-          bookingDateState,
-          shiftStr,
-          totalPrice,
-          assignedEmployee.name,
-          addonsList
-        );
-
-        await notifyEmployeeAssignment(
-          assignedEmployee.name,
-          undefined,
-          undefined,
-          bookingDateState,
-          shiftStr,
-          "Endereço liberado 24h antes do atendimento",
-          addonsList,
-          assignedEmployee.id
-        );
-        
-      } catch(e) {
-        console.error("Error blocking slot", e);
-      }
-    }
     try {
-      await createPameCalendarEvent({
-        clientName: bookingName + (assignedEmployee ? ` (${assignedEmployee.name})` : ''),
-        date: new Date(bookingDateState + "T12:00:00"),
-        shift: selectedFormat === 'meio' ? 'Meio Turno (4h)' : 'Turno Completo (9h)',
-        modality: selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso',
-        addons: PAME_ADDONS.filter(a => activeAddons.includes(a.id)).map(a => a.name),
-        totalValue: totalPrice
-      });
-    } catch (err) {
-      console.error("Falha ao agendar calendário", err);
-    }
-
-    if (user) {
-      try {
-        const bookingRef = await addDoc(collection(db, 'users', user.uid, 'bookings'), {
-          name: bookingName,
-          phone: bookingPhone,
-          address: bookingAddress,
-          date: bookingDateState,
-          format: selectedFormat,
-          frequency: triageData.frequency,
-          addons: activeAddons,
-          totalPrice: totalPrice,
-          status: 'Confirmado',
-          assignedEmployeeId: assignedEmployee?.id || null,
-          assignedEmployeeName: assignedEmployee?.name || null,
-          referrerUid: localStorage.getItem('pame_referrer_uid') || null,
-          createdAt: serverTimestamp()
-        });
-
-        // Save the updated address to Firestore triage profile
-        const updatedTriage = { ...triageData, address: bookingAddress };
-        onTriageDataChange(updatedTriage);
-        try {
-          await setDoc(doc(db, 'users', user.uid, 'profile', 'triage'), updatedTriage, { merge: true });
-        } catch (err) {
-          console.error("Failed to update triage address in Firestore", err);
-        }
-
-        // Track conversion Purchase event
-        trackEvent('Purchase', {
-          value: totalPrice,
-          planName: `${selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso'} - ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`,
-          bookingId: bookingRef.id
-        });
-
-        // ── Índice global para Concierge IA ──────────────────────────────────
-        // Permite que la IA busque reservas por nombre sin conocer el UID del cliente.
-        try {
-          await setDoc(doc(db, 'reservas_index', bookingRef.id), {
-            uid:              user.uid,
-            bookingId:        bookingRef.id,
-            nombre:           bookingName,
-            nombre_lower:     bookingName.toLowerCase().trim(),
-            email:            user.email || '',
-            fecha:            bookingDateState,
-            hora:             '09:00',
-            formato:          selectedFormat,
-            frecuencia:       triageData.frequency === 'monthly' ? 'mensal' : 'avulso',
-            estado:           'Confirmado',
-            empleada_nombre:  assignedEmployee?.name || '',
-            empleada_email:   assignedEmployee?.email || '',
-            empleada_id:      assignedEmployee?.id || '',
-            precio:           totalPrice,
-            notas_especiales: '',
-            createdAt:        serverTimestamp(),
-            updatedAt:        serverTimestamp()
-          });
-        } catch (indexErr) {
-          console.error('Error al escribir reservas_index (no bloquea el flujo):', indexErr);
-        }
-        // ────────────────────────────────────────────────────────────────────
-
-        const referrerUid = localStorage.getItem('pame_referrer_uid');
-        if (referrerUid && selectedPlanMode === 'mensal') {
-          try {
-            const referrerDoc = await getDoc(doc(db, 'users', referrerUid));
-            const referrerName = referrerDoc.exists() && referrerDoc.data().name ? referrerDoc.data().name : 'Amigo (Desconhecido)';
-            
-            await addDoc(collection(db, 'referrals'), {
-              referrerId: referrerUid,
-              referrerName: referrerName,
-              referredId: user.uid,
-              referredName: bookingName,
-              referredEmail: user.email || '',
-              bookingId: bookingRef.id,
-              status: 'pending',
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            });
-            localStorage.removeItem('pame_referrer_uid');
-          } catch (err) {
-            console.error("Erro ao registrar indicação", err);
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao salvar histórico do usuário logado:", error);
-      }
-    }
-
-    try {
-      const pref = await createPreference({
+      const preference = await createPreference({
         format: selectedFormat,
         mode: selectedPlanMode,
-        triageData: triageData,
-        activeAddons: activeAddons,
+        triageData,
+        activeAddons,
         clientName: bookingName,
-        clientEmail: user?.email || undefined
+        clientEmail: user?.email || undefined,
+        clientPhone: bookingPhone,
+        address: bookingAddress,
+        localDate: bookingDateState,
+        slot: selectedFormat === 'completo' ? 'full_day' : shiftTime === 'manha' ? 'morning' : 'afternoon',
       });
-
-      if (pref && pref.init_point) {
-        window.location.href = pref.init_point;
-      } else {
-        throw new Error("No init_point received from backend");
+      if (!preference?.init_point || preference.paymentConfirmed !== false) {
+        throw new Error('Invalid pending checkout response');
       }
-    } catch (err) {
-      console.error(err);
-      alert("Error al iniciar el pago. Tu reserva fue guardada, pero no pudimos redirigirte a Mercado Pago.");
-      setIsSaving(false);
-      setModalStep('success'); // Fallback in case redirect fails
+      window.location.href = preference.init_point;
+    } catch (error) {
+      console.error('Checkout preference failed:', error);
+      alert('Não foi possível iniciar o pagamento. Nenhuma reserva foi confirmada.');
+      setModalStep('payment');
     }
   };
-
   const handleGoogleLoginAndSave = async () => {
     try {
       setIsSaving(true);
       await signInWithGoogle();
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const bookingRef = await addDoc(collection(db, 'users', currentUser.uid, 'bookings'), {
-          name: bookingName,
-          phone: bookingPhone,
-          address: bookingAddress,
-          date: bookingDateState,
-          format: selectedFormat,
-          frequency: triageData.frequency,
-          addons: activeAddons,
-          totalPrice: totalPrice,
-          status: 'Confirmado',
-          referrerUid: localStorage.getItem('pame_referrer_uid') || null,
-          createdAt: serverTimestamp()
-        });
-
-        // Save the updated address to Firestore triage profile
-        const updatedTriage = { ...triageData, address: bookingAddress };
-        onTriageDataChange(updatedTriage);
-        try {
-          await setDoc(doc(db, 'users', currentUser.uid, 'profile', 'triage'), updatedTriage, { merge: true });
-        } catch (err) {
-          console.error("Failed to update triage address in Firestore", err);
-        }
-
-        // Track conversion Purchase event
-        trackEvent('Purchase', {
-          value: totalPrice,
-          planName: `${selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso'} - ${selectedFormat === 'meio' ? 'Meio Turno' : 'Turno Completo'}`,
-          bookingId: bookingRef.id
-        });
-
-        // ── Índice global para Concierge IA ──────────────────────────────────
-        try {
-          await setDoc(doc(db, 'reservas_index', bookingRef.id), {
-            uid:              currentUser.uid,
-            bookingId:        bookingRef.id,
-            nombre:           bookingName,
-            nombre_lower:     bookingName.toLowerCase().trim(),
-            email:            currentUser.email || '',
-            fecha:            bookingDateState,
-            hora:             '09:00',
-            formato:          selectedFormat,
-            frecuencia:       triageData.frequency === 'monthly' ? 'mensal' : 'avulso',
-            estado:           'Confirmado',
-            empleada_nombre:  '',
-            empleada_email:   '',
-            empleada_id:      '',
-            precio:           totalPrice,
-            notas_especiales: '',
-            createdAt:        serverTimestamp(),
-            updatedAt:        serverTimestamp()
-          });
-        } catch (indexErr) {
-          console.error('Error al escribir reservas_index (no bloquea el flujo):', indexErr);
-        }
-        // ────────────────────────────────────────────────────────────────────
-        
-        const referrerUid = localStorage.getItem('pame_referrer_uid');
-        if (referrerUid && selectedPlanMode === 'mensal') {
-          try {
-            const referrerDoc = await getDoc(doc(db, 'users', referrerUid));
-            const referrerName = referrerDoc.exists() && referrerDoc.data().name ? referrerDoc.data().name : 'Amigo (Desconhecido)';
-            
-            await addDoc(collection(db, 'referrals'), {
-              referrerId: referrerUid,
-              referrerName: referrerName,
-              referredId: currentUser.uid,
-              referredName: bookingName,
-              referredEmail: currentUser.email || '',
-              bookingId: bookingRef.id,
-              status: 'pending',
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            });
-            localStorage.removeItem('pame_referrer_uid');
-          } catch (err) {
-            console.error("Erro ao registrar indicação", err);
-          }
-        }
-        setShowBookingModal(false);
-        setModalStep('form');
-        onScreenChange('minha-area');
-      }
+      setShowBookingModal(false);
+      setModalStep('form');
+      onScreenChange('minha-area');
     } catch (error) {
-      console.error(error);
+      console.error('Google sign-in failed:', error);
     } finally {
       setIsSaving(false);
     }
   };
-
   const exitToHome = () => {
     setShowGuestExitWarning(false);
     setShowBookingModal(false);
@@ -1477,23 +1121,6 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                   />
                   
                   <div className="w-full max-w-sm mt-5 flex flex-col gap-3">
-                    <a
-                      href={generateClientCalendarUrl({
-                        clientName: bookingName,
-                        date: new Date(bookingDateState + "T12:00:00"),
-                        shift: selectedFormat === 'meio' ? 'Meio Turno (4h)' : 'Turno Completo (9h)',
-                        modality: selectedPlanMode === 'mensal' ? 'Plano Mensal' : 'Serviço Avulso',
-                        addons: PAME_ADDONS.filter(a => activeAddons.includes(a.id)).map(a => a.name),
-                        totalValue: totalPrice
-                      })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex justify-center items-center gap-2 py-3.5 bg-[#4285F4] text-white font-bold text-[11px] uppercase tracking-widest rounded-xl hover:bg-[#3367D6] transition-colors cursor-pointer shadow-md"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">calendar_month</span>
-                      Adicionar à minha agenda
-                    </a>
-                    
                     {!user && (
                       <button
                         onClick={handleGoogleLoginAndSave}
@@ -1501,7 +1128,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                         className="w-full flex justify-center items-center gap-2 py-3.5 bg-[#fff7fd] border-2 border-[#561668] text-[#561668] font-bold text-[11px] uppercase tracking-widest rounded-xl hover:bg-[#faf1fa] transition-colors cursor-pointer disabled:opacity-50"
                       >
                         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                        {isSaving ? 'Salvando...' : 'Entrar com Google e salvar tudo'}
+                        {isSaving ? 'Entrando...' : 'Entrar com Google'}
                       </button>
                     )}
 
@@ -1560,9 +1187,8 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                 Quer manter tudo sob controle?
               </h2>
               <p className="mt-4 font-sans text-sm leading-relaxed text-[#4e434e]">
-                Entrar com Google permite acompanhar sua avaliação e seu pedido sem
-                preencher os dados novamente. Também ajuda nossa equipe a oferecer
-                um atendimento mais organizado e seguro para você.
+                Entrar com Google permite acessar sua área. A reserva somente poderá
+                aparecer como confirmada depois da validação real do pagamento.
               </p>
               <p className="mt-3 rounded-xl border border-[#703081]/15 bg-[#faf1fa] px-4 py-3 font-sans text-xs font-semibold leading-relaxed text-[#561668]">
                 É apenas uma recomendação para sua comodidade. Você pode sair sem criar uma conta.
@@ -1582,7 +1208,7 @@ export default function PricingMatrix({ triageData, onTriageDataChange, onScreen
                     alt=""
                     className="h-5 w-5 rounded-full bg-white p-0.5"
                   />
-                  {isSaving ? 'Salvando...' : 'Entrar com Google e guardar tudo'}
+                  {isSaving ? 'Entrando...' : 'Entrar com Google'}
                 </button>
                 <button
                   type="button"

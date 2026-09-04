@@ -1,4 +1,5 @@
 import { TriageData } from '../types';
+import { auth } from '../lib/firebase';
 
 export interface PaymentPayload {
   format: 'meio' | 'completo';
@@ -7,16 +8,34 @@ export interface PaymentPayload {
   activeAddons: string[];
   clientName: string;
   clientEmail?: string;
+  clientPhone: string;
+  address: string;
+  localDate: string;
+  slot: 'full_day' | 'morning' | 'afternoon';
 }
 
 export const createPreference = async (payload: PaymentPayload) => {
   try {
+    const token = await auth.currentUser?.getIdToken();
     const response = await fetch('/api/create-preference', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': crypto.randomUUID(),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        ...payload,
+        triageData: {
+          rooms: payload.triageData.rooms,
+          baths: payload.triageData.baths,
+          floors: payload.triageData.floors,
+          marble: payload.triageData.marble,
+          wood: payload.triageData.wood,
+          doubleGlass: payload.triageData.doubleGlass,
+          chandeliers: payload.triageData.chandeliers,
+        },
+      }),
     });
 
     if (!response.ok) {
@@ -26,7 +45,10 @@ export const createPreference = async (payload: PaymentPayload) => {
     }
 
     const data = await response.json();
-    return data; // Returns { id, init_point, sandbox_init_point }
+    if (data.guestAccessToken && data.orderId) {
+      sessionStorage.setItem(`pame_guest_checkout_${data.orderId}`, data.guestAccessToken);
+    }
+    return data;
   } catch (error) {
     console.error("Error en el servicio de Mercado Pago:", error);
     throw error;

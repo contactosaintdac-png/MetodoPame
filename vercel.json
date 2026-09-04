@@ -11,6 +11,34 @@
   ],
   "rewrites": [
     {
+      "source": "/api/send-reminder",
+      "destination": "/api/outbox-worker"
+    },
+    {
+      "source": "/api/send-address-reveal",
+      "destination": "/api/outbox-worker"
+    },
+    {
+      "source": "/api/payment-reconciliation",
+      "destination": "/api/outbox-worker?action=payment_reconciliation"
+    },
+    {
+      "source": "/api/send-admin-notification",
+      "destination": "/api/outbox-worker?action=admin_notification"
+    },
+    {
+      "source": "/api/send-confirmation",
+      "destination": "/api/outbox-worker?action=confirmation"
+    },
+    {
+      "source": "/api/send-specialist-assignment",
+      "destination": "/api/outbox-worker?action=specialist_assignment"
+    },
+    {
+      "source": "/api/send-whatsapp",
+      "destination": "/api/outbox-worker?action=whatsapp"
+    },
+    {
       "source": "/api/generate-final-exam",
       "destination": "/api/lms?action=generate-final-exam"
     },

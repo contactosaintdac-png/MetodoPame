@@ -1,3 +1,5 @@
+import { auth } from './firebase';
+
 export interface BookingDetails {
   clientName: string;
   date: Date;
@@ -48,48 +50,37 @@ export const generateClientCalendarUrl = (details: BookingDetails) => {
 };
 
 export const createPameCalendarEvent = async (details: BookingDetails) => {
-  try {
-    const response = await fetch('/api/create-calendar-event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'booking',
-        details: {
-          clientName: details.clientName,
-          date: details.date instanceof Date ? details.date.toISOString() : new Date(details.date).toISOString(),
-          shift: details.shift,
-          modality: details.modality,
-          addons: details.addons,
-          totalValue: details.totalValue,
-        }
-      })
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Erro ao sincronizar com Google Calendar');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Erro na integração com Calendar:', error);
-    return { success: false, error };
-  }
+  void details;
+  return {
+    success: false,
+    error: 'Calendar de reserva desativado até a verificação canônica de pagamento da F0.5.',
+  };
 };
 
 export interface CafeVirtualDetails {
-  candidateName: string;
   date: string;
   time: string;
-  whatsapp: string;
+  candidateId?: string;
+  idToken?: string;
 }
 
 export const scheduleCafeVirtualEvent = async (details: CafeVirtualDetails) => {
   try {
+    const idToken = details.idToken ?? await auth.currentUser?.getIdToken();
+    if (!idToken) throw new Error('Autenticação necessária para agendar o Café Virtual.');
     const response = await fetch('/api/create-calendar-event', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
       body: JSON.stringify({
         type: 'cafe-virtual',
-        details
+        details: {
+          date: details.date,
+          time: details.time,
+          ...(details.candidateId ? { applicationId: details.candidateId } : {}),
+        },
       })
     });
     if (!response.ok) {
