@@ -5,7 +5,7 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 import { getAdminFirestore } from '../firebase-admin.js';
 import { HttpError } from '../http-errors.js';
-import { assertCheckoutActivationConfiguration, assertSandboxPreferenceCollector } from './rollout-gate.js';
+import { readDataModelFlags } from '../data/feature-flags.js';
 
 interface ProviderPreference { id?: string; init_point?: string; collector_id?: string | number }
 
@@ -21,6 +21,36 @@ function requiredAppUrl(env: Record<string, string | undefined>): string {
   const value = env.PUBLIC_APP_URL?.replace(/\/$/, '');
   if (!value) throw new HttpError(503, 'CHECKOUT_CONFIG_UNAVAILABLE', 'Checkout configuration is unavailable');
   return value;
+}
+
+/**
+ * R7 is a deliberately isolated Preview evidence flow. It must never inherit
+ * the commercial checkout gate: that gate correctly remains closed until R8.
+ */
+function assertR7PreviewTestCheckoutConfiguration(env: Record<string, string | undefined>): string {
+  if (env.VERCEL_ENV !== 'preview' || env.R7_TEST_MODE !== 'enabled') {
+    throw new HttpError(404, 'NOT_FOUND', 'Not found');
+  }
+  if (readDataModelFlags(env).paymentsMode !== 'disabled') {
+    throw new HttpError(503, 'R7_TEST_PAYMENT_MODE_REQUIRED', 'R7 test requires commercial payments to remain disabled');
+  }
+  if (env.MP_EXPECTED_LIVE_MODE !== 'false') {
+    throw new HttpError(503, 'R7_TEST_SANDBOX_REQUIRED', 'R7 Checkout Pro test requires test mode');
+  }
+  const sellerId = env.MP_TEST_SELLER_ID?.trim();
+  if (!sellerId || !/^\d+$/.test(sellerId)) {
+    throw new HttpError(503, 'PAYMENT_TEST_SELLER_REQUIRED', 'Test seller configuration is unavailable');
+  }
+  if (!env.MP_ACCESS_TOKEN?.trim() || !env.MP_WEBHOOK_SECRET?.trim()) {
+    throw new HttpError(503, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is unavailable');
+  }
+  return sellerId;
+}
+
+function assertR7TestCollector(collectorId: string | number | undefined, sellerId: string): void {
+  if (collectorId === undefined || String(collectorId) !== sellerId) {
+    throw new HttpError(502, 'PAYMENT_TEST_SELLER_MISMATCH', 'Payment provider collector does not match the configured TEST seller');
+  }
 }
 
 async function providerPreference(input: { appUrl: string; testId: string }, env: Record<string, string | undefined>): Promise<ProviderPreference> {
@@ -44,12 +74,11 @@ async function providerPreference(input: { appUrl: string; testId: string }, env
 export async function createR7TestCheckoutPreference(
   dependencies: R7TestCheckoutDependencies = { env: process.env },
 ): Promise<{ id: string; init_point: string; testId: string; collectorId: string }> {
-  const configuration = assertCheckoutActivationConfiguration(dependencies.env);
-  if (configuration.mode !== 'sandbox') throw new HttpError(503, 'R7_TEST_SANDBOX_REQUIRED', 'R7 Checkout Pro test requires sandbox mode');
+  const sellerId = assertR7PreviewTestCheckoutConfiguration(dependencies.env);
   const testId = dependencies.testId ?? `r7_test_checkout_${randomUUID()}`;
   const provider = await (dependencies.createPreference ?? ((input) => providerPreference(input, dependencies.env)))({ appUrl: requiredAppUrl(dependencies.env), testId });
   if (!provider.id || !provider.init_point) throw new HttpError(502, 'PAYMENT_PROVIDER_ERROR', 'Payment provider returned an invalid preference');
-  assertSandboxPreferenceCollector(provider.collector_id, dependencies.env);
+  assertR7TestCollector(provider.collector_id, sellerId);
   // TEST Checkout Pro deliberately returns the regular init_point only.
   return { id: provider.id, init_point: provider.init_point, testId, collectorId: String(provider.collector_id) };
 }
