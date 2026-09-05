@@ -9,6 +9,7 @@ function dependencies(overrides: Partial<R7TestCheckoutDependencies> = {}): R7Te
     env: {
       PAYMENTS_MODE: 'disabled', PUBLIC_APP_URL: 'https://preview.example', VERCEL_ENV: 'preview', R7_TEST_MODE: 'enabled',
       MP_EXPECTED_LIVE_MODE: 'false', MP_TEST_SELLER_ID: '3648917580', MP_ACCESS_TOKEN: 'test-token', MP_WEBHOOK_SECRET: 'test-webhook-secret',
+      VERCEL_AUTOMATION_BYPASS_SECRET: 'preview-bypass-secret',
     },
     createPreference: async () => ({ id: 'pref-r7', init_point: 'https://checkout.example/r7', collector_id: '3648917580' }),
     ...overrides,
@@ -33,6 +34,26 @@ test('R7 test preference accepts the fixed R$5 fixture amount with its separate 
   }));
   assert.equal(requestedAmount, 5);
   assert.equal(result.testId, 'r7_test_owner_checkout_r5_v1');
+});
+
+test('R7 test preference sends the webhook through the Preview-only Vercel bypass', async () => {
+  let notificationUrl: string | undefined;
+  await createR7TestCheckoutPreference(dependencies({
+    createPreference: async (input) => {
+      notificationUrl = input.notificationUrl;
+      return { id: 'pref-r7-webhook', init_point: 'https://checkout.example/r7-webhook', collector_id: '3648917580' };
+    },
+  }));
+  assert.equal(notificationUrl, 'https://preview.example/api/mercadopago-webhook?x-vercel-protection-bypass=preview-bypass-secret');
+});
+
+test('R7 test preference fails closed before provider access without the Preview webhook bypass', async () => {
+  let providerCalled = false;
+  await assert.rejects(() => createR7TestCheckoutPreference(dependencies({
+    env: { ...dependencies().env, VERCEL_AUTOMATION_BYPASS_SECRET: '' },
+    createPreference: async () => { providerCalled = true; return {}; },
+  })), (error: unknown) => error instanceof HttpError && error.code === 'R7_TEST_WEBHOOK_BYPASS_REQUIRED');
+  assert.equal(providerCalled, false);
 });
 
 test('R7 test preference refuses a commercial payment mode before provider access', async () => {

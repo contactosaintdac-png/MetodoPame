@@ -13,7 +13,7 @@ export interface R7TestCheckoutDependencies {
   env: Record<string, string | undefined>;
   testId?: string;
   amount?: 1 | 5;
-  createPreference?(input: { appUrl: string; testId: string; amount: 1 | 5 }): Promise<ProviderPreference>;
+  createPreference?(input: { appUrl: string; notificationUrl: string; testId: string; amount: 1 | 5 }): Promise<ProviderPreference>;
 }
 
 const OWNER_TEST_RECEIPT_ID = 'r7_test_owner_checkout_v1';
@@ -23,6 +23,19 @@ function requiredAppUrl(env: Record<string, string | undefined>): string {
   const value = env.PUBLIC_APP_URL?.replace(/\/$/, '');
   if (!value) throw new HttpError(503, 'CHECKOUT_CONFIG_UNAVAILABLE', 'Checkout configuration is unavailable');
   return value;
+}
+
+/**
+ * Preview is protected by Vercel Authentication. Mercado Pago cannot attach
+ * that browser session, so the TEST-only Preference must use Vercel's scoped
+ * automation bypass. The secret is never persisted or returned to a client.
+ */
+function requiredPreviewWebhookUrl(appUrl: string, env: Record<string, string | undefined>): string {
+  const bypass = env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+  if (!bypass) {
+    throw new HttpError(503, 'R7_TEST_WEBHOOK_BYPASS_REQUIRED', 'R7 test webhook protection is unavailable');
+  }
+  return `${appUrl}/api/mercadopago-webhook?x-vercel-protection-bypass=${encodeURIComponent(bypass)}`;
 }
 
 /**
@@ -55,7 +68,7 @@ function assertR7TestCollector(collectorId: string | number | undefined, sellerI
   }
 }
 
-async function providerPreference(input: { appUrl: string; testId: string; amount: 1 | 5 }, env: Record<string, string | undefined>): Promise<ProviderPreference> {
+async function providerPreference(input: { appUrl: string; notificationUrl: string; testId: string; amount: 1 | 5 }, env: Record<string, string | undefined>): Promise<ProviderPreference> {
   const accessToken = env.MP_ACCESS_TOKEN;
   if (!accessToken) throw new HttpError(503, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is unavailable');
   const preference = new Preference(new MercadoPagoConfig({ accessToken, options: { timeout: 5_000 } }));
@@ -63,7 +76,7 @@ async function providerPreference(input: { appUrl: string; testId: string; amoun
     body: {
       items: [{ id: input.testId, title: 'R7 TEST — Método Pame', unit_price: input.amount, quantity: 1, currency_id: 'BRL' }],
       back_urls: { success: input.appUrl, failure: input.appUrl, pending: input.appUrl },
-      notification_url: `${input.appUrl}/api/mercadopago-webhook`,
+      notification_url: input.notificationUrl,
       external_reference: input.testId,
       metadata: { r7_test: true, test_id: input.testId, amount_brl: input.amount, schema_version: 1 },
       statement_descriptor: 'METODO PAME',
@@ -79,7 +92,9 @@ export async function createR7TestCheckoutPreference(
   const sellerId = assertR7PreviewTestCheckoutConfiguration(dependencies.env);
   const testId = dependencies.testId ?? `r7_test_checkout_${randomUUID()}`;
   const amount = dependencies.amount ?? 1;
-  const provider = await (dependencies.createPreference ?? ((input) => providerPreference(input, dependencies.env)))({ appUrl: requiredAppUrl(dependencies.env), testId, amount });
+  const appUrl = requiredAppUrl(dependencies.env);
+  const notificationUrl = requiredPreviewWebhookUrl(appUrl, dependencies.env);
+  const provider = await (dependencies.createPreference ?? ((input) => providerPreference(input, dependencies.env)))({ appUrl, notificationUrl, testId, amount });
   if (!provider.id || !provider.init_point) throw new HttpError(502, 'PAYMENT_PROVIDER_ERROR', 'Payment provider returned an invalid preference');
   assertR7TestCollector(provider.collector_id, sellerId);
   // TEST Checkout Pro deliberately returns the regular init_point only.
