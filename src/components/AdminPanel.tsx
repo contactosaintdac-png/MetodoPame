@@ -116,16 +116,16 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
 
   const triggerR7OwnerTest = async () => {
     if (!user || r7OwnerTestState === 'running' || r7OwnerTestState === 'success') return;
-    setR7OwnerTestState('running'); setR7OwnerTestMessage('Criando preferência TEST de R$5…');
+    setR7OwnerTestState('running'); setR7OwnerTestMessage('Criando preferência TEST de R$5 com webhook isolado…');
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/outbox-worker?action=r7_preview_test_checkout_preference_r5', {
+      const response = await fetch('/api/outbox-worker?action=r7_preview_test_checkout_preference_r5_webhook', {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       });
       const payload = await response.json().catch(() => ({})) as { id?: string; init_point?: string; message?: string };
       if (!response.ok || !payload.id || !payload.init_point) throw new Error(payload.message ?? 'Ação TEST indisponível');
       setR7OwnerTestInitPoint(payload.init_point); setR7OwnerTestState('success');
-      setR7OwnerTestMessage(`Preferência TEST de R$5 criada: ${payload.id}`);
+      setR7OwnerTestMessage(`Preferência TEST de R$5 com webhook isolado criada: ${payload.id}`);
     } catch (error) {
       setR7OwnerTestState('error');
       setR7OwnerTestMessage(error instanceof Error ? error.message : 'Ação TEST indisponível');

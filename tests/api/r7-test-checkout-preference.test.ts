@@ -36,6 +36,14 @@ test('R7 test preference accepts the fixed R$5 fixture amount with its separate 
   assert.equal(result.testId, 'r7_test_owner_checkout_r5_v1');
 });
 
+test('R7 test webhook fixture uses its own deterministic R$5 receipt reference', async () => {
+  const result = await createR7TestCheckoutPreference(dependencies({
+    testId: 'r7_test_owner_checkout_r5_webhook_v1', amount: 5,
+    createPreference: async () => ({ id: 'pref-r7-r5-webhook', init_point: 'https://checkout.example/r7-r5-webhook', collector_id: '3648917580' }),
+  }));
+  assert.equal(result.testId, 'r7_test_owner_checkout_r5_webhook_v1');
+});
+
 test('R7 test preference sends the webhook through the Preview-only Vercel bypass', async () => {
   let notificationUrl: string | undefined;
   await createR7TestCheckoutPreference(dependencies({

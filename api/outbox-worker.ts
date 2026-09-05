@@ -79,6 +79,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await assertR7PreviewTestOwnerAccess(req);
       return res.status(200).json({ r7Test: true, temporaryOwnerAuth: true, amount: 5, currency: 'BRL', ...(await createOneShotR7OwnerTestCheckoutPreference(undefined, undefined, 'r5')) });
     }
+    if (action === 'r7_preview_test_checkout_preference_r5_webhook') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' });
+      await assertR7PreviewTestOwnerAccess(req);
+      return res.status(200).json({ r7Test: true, temporaryOwnerAuth: true, amount: 5, currency: 'BRL', ...(await createOneShotR7OwnerTestCheckoutPreference(undefined, undefined, 'r5_webhook')) });
+    }
     if (action === 'r7_preview_test_owner_diagnostic') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' });
       await assertR7PreviewCanonicalOwnerAccess(req);

@@ -105,11 +105,13 @@ export async function createR7TestCheckoutPreference(
 export async function createOneShotR7OwnerTestCheckoutPreference(
   dependencies: R7TestCheckoutDependencies = { env: process.env },
   db: Firestore = getAdminFirestore(),
-  fixture: 'r1' | 'r5' = 'r1',
+  fixture: 'r1' | 'r5' | 'r5_webhook' = 'r1',
 ): Promise<{ id: string; init_point: string; testId: string; collectorId: string }> {
-  const spec = fixture === 'r5'
-    ? { receiptId: OWNER_TEST_R5_RECEIPT_ID, amount: 5 as const }
-    : { receiptId: OWNER_TEST_RECEIPT_ID, amount: 1 as const };
+  const spec = fixture === 'r5_webhook'
+    ? { receiptId: 'r7_test_owner_checkout_r5_webhook_v1', amount: 5 as const }
+    : fixture === 'r5'
+      ? { receiptId: OWNER_TEST_R5_RECEIPT_ID, amount: 5 as const }
+      : { receiptId: OWNER_TEST_RECEIPT_ID, amount: 1 as const };
   const ref = db.collection('r7_test_checkout_receipts').doc(spec.receiptId);
   const state = await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
