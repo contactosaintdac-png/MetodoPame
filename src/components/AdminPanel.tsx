@@ -91,6 +91,8 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [r7OwnerDiagnostic, setR7OwnerDiagnostic] = useState<'unknown' | 'ready' | 'blocked'>('unknown');
   const [r7PreferenceDiagnostic, setR7PreferenceDiagnostic] = useState('');
   const [r7PreferenceDiagnosticRequested, setR7PreferenceDiagnosticRequested] = useState(false);
+  const [r7PaymentDiagnostic, setR7PaymentDiagnostic] = useState('');
+  const [r7PaymentDiagnosticRequested, setR7PaymentDiagnosticRequested] = useState(false);
 
   const readR7PreferenceDiagnostic = async () => {
     if (!user || r7PreferenceDiagnosticRequested) return;
@@ -104,6 +106,20 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
       const result = await response.json();
       setR7PreferenceDiagnostic(JSON.stringify(result, null, 2));
     } catch { setR7PreferenceDiagnostic('Não foi possível concluir a consulta. Não repita sem verificar o resultado.'); }
+  };
+
+  const readR7PaymentDiagnostic = async () => {
+    if (!user || r7PaymentDiagnosticRequested) return;
+    setR7PaymentDiagnosticRequested(true);
+    setR7PaymentDiagnostic('Consultando pagamento TEST aprovado…');
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/outbox-worker?action=r7_preview_test_payment_diagnostic', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      setR7PaymentDiagnostic(JSON.stringify(result, null, 2));
+    } catch { setR7PaymentDiagnostic('Não foi possível concluir a consulta. Não repita sem verificar o resultado.'); }
   };
 
   const showR7OwnerTestAction = Boolean(
@@ -849,6 +865,12 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
               Consultar diagnóstico da Preference R$5 · somente leitura
             </button>
             {r7PreferenceDiagnostic && <pre className="mt-3 whitespace-pre-wrap break-all text-xs">{r7PreferenceDiagnostic}</pre>}
+            <button type="button" onClick={readR7PaymentDiagnostic}
+              disabled={r7OwnerDiagnostic !== 'ready' || r7PaymentDiagnosticRequested}
+              className="mt-3 block rounded-xl bg-amber-800 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+              Consultar pagamento TEST aprovado · somente leitura
+            </button>
+            {r7PaymentDiagnostic && <pre className="mt-3 whitespace-pre-wrap break-all text-xs">{r7PaymentDiagnostic}</pre>}
           </section>
         )}
 
