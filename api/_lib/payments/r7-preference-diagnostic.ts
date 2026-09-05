@@ -9,6 +9,7 @@ type Json = Record<string, unknown>;
 const object = (value: unknown): Json => value && typeof value === 'object' && !Array.isArray(value) ? value as Json : {};
 const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 const identifier = (value: unknown) => typeof value === 'number' ? number(value) : typeof value === 'string' && /^\d{1,25}$/.test(value) ? value : null;
+const expectedIdentifier = (value: unknown, allowed: string) => String(value) === allowed ? allowed : '[REDACTED_UNEXPECTED]';
 const code = (value: unknown) => typeof value === 'string' && /^[A-Za-z_]{0,60}$/.test(value) ? value : null;
 const date = (value: unknown) => value === null || value === '' ? value : typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.+Z-]+$/.test(value) ? value : '[REDACTED]';
 const expected = (value: unknown, allowed: string) => value === allowed || value === '' || value === null ? value : '[REDACTED_UNEXPECTED]';
@@ -66,7 +67,7 @@ export function sanitizeR7Payment(input: unknown): Json {
   const put = (key: string, transform: (value: unknown) => unknown) => {
     if (Object.hasOwn(source, key)) result[key] = transform(source[key]);
   };
-  put('id', value => expected(value, PAYMENT_ID));
+  put('id', value => expectedIdentifier(value, PAYMENT_ID));
   put('status', code);
   put('status_detail', code);
   put('transaction_amount', number);

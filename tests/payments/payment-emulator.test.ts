@@ -232,7 +232,7 @@ test('R7 Preview webhook records only signed TEST evidence and is idempotent wit
   const provider = {
     getPayment: async () => ({
       id: identity.paymentId, status: 'approved', externalReference: R7_TEST_WEBHOOK_FIXTURE_ID,
-      transactionAmount: 5, currency: 'BRL', liveMode: false, collectorId: '3648917580', updatedAt: '2026-09-05T12:01:00.000Z',
+      transactionAmount: 5, currency: 'BRL', liveMode: true, collectorId: '3648917580', updatedAt: '2026-09-05T12:01:00.000Z',
     }),
   };
   const env = {

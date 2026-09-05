@@ -105,9 +105,11 @@ export async function createR7TestCheckoutPreference(
 export async function createOneShotR7OwnerTestCheckoutPreference(
   dependencies: R7TestCheckoutDependencies = { env: process.env },
   db: Firestore = getAdminFirestore(),
-  fixture: 'r1' | 'r5' | 'r5_webhook' = 'r1',
+  fixture: 'r1' | 'r5' | 'r5_webhook' | 'r5_webhook_v2' = 'r1',
 ): Promise<{ id: string; init_point: string; testId: string; collectorId: string }> {
-  const spec = fixture === 'r5_webhook'
+  const spec = fixture === 'r5_webhook_v2'
+    ? { receiptId: 'r7_test_owner_checkout_r5_webhook_v2', amount: 5 as const }
+    : fixture === 'r5_webhook'
     ? { receiptId: 'r7_test_owner_checkout_r5_webhook_v1', amount: 5 as const }
     : fixture === 'r5'
       ? { receiptId: OWNER_TEST_R5_RECEIPT_ID, amount: 5 as const }

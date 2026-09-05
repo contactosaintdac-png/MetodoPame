@@ -7,7 +7,7 @@ import { createMercadoPagoPaymentProvider, type PaymentProviderPort } from './me
 import type { MercadoPagoWebhookIdentity } from './webhook-security.js';
 
 /** This is the one isolated Checkout Pro fixture that may reach this handler. */
-export const R7_TEST_WEBHOOK_FIXTURE_ID = 'r7_test_owner_checkout_r5_webhook_v1';
+export const R7_TEST_WEBHOOK_FIXTURE_ID = 'r7_test_owner_checkout_r5_webhook_v2';
 
 function isR7TestWebhookEnvironment(env: Record<string, string | undefined>): boolean {
   return env.VERCEL_ENV === 'preview'
@@ -42,10 +42,14 @@ function assertExpectedR7TestPayment(input: {
   if (input.status !== 'approved'
     || input.transactionAmount !== 5
     || input.currency !== 'BRL'
-    || input.liveMode !== false
     || input.collectorId !== expectedSeller) {
     throw new HttpError(502, 'R7_TEST_PAYMENT_MISMATCH', 'R7 test payment verification failed');
   }
+  // Mercado Pago's Checkout Pro test accounts can report `live_mode: true`
+  // even though the payment is made with an APP_USR test credential and a
+  // test buyer/card. This is accepted only here: the surrounding gate still
+  // requires Preview + R7_TEST + payments disabled, and this path writes one
+  // isolated R7_TEST receipt without invoking settlement, bookings or outbox.
   return true;
 }
 
