@@ -100,16 +100,16 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
 
   const triggerR7OwnerTest = async () => {
     if (!user || r7OwnerTestState === 'running' || r7OwnerTestState === 'success') return;
-    setR7OwnerTestState('running'); setR7OwnerTestMessage('Criando preferência TEST…');
+    setR7OwnerTestState('running'); setR7OwnerTestMessage('Criando preferência TEST de R$5…');
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/outbox-worker?action=r7_preview_test_checkout_preference', {
+      const response = await fetch('/api/outbox-worker?action=r7_preview_test_checkout_preference_r5', {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       });
       const payload = await response.json().catch(() => ({})) as { id?: string; init_point?: string; message?: string };
       if (!response.ok || !payload.id || !payload.init_point) throw new Error(payload.message ?? 'Ação TEST indisponível');
       setR7OwnerTestInitPoint(payload.init_point); setR7OwnerTestState('success');
-      setR7OwnerTestMessage(`Preferência TEST criada: ${payload.id}`);
+      setR7OwnerTestMessage(`Preferência TEST de R$5 criada: ${payload.id}`);
     } catch (error) {
       setR7OwnerTestState('error');
       setR7OwnerTestMessage(error instanceof Error ? error.message : 'Ação TEST indisponível');
@@ -817,13 +817,13 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
         {showR7OwnerTestAction && (
           <section className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
             <p className="text-xs font-bold uppercase tracking-wider">R7 TEST temporário · Preview</p>
-            <p className="mt-1 text-sm">Cria uma única Preference sintética do Checkout Pro. Não cria reserva, pedido comercial ou pagamento.</p>
+            <p className="mt-1 text-sm">Cria uma única Preference sintética de R$5 do Checkout Pro. Não cria reserva, pedido comercial ou pagamento.</p>
             <button
               type="button" onClick={triggerR7OwnerTest}
               disabled={r7OwnerDiagnostic !== 'ready' || r7OwnerTestState === 'running' || r7OwnerTestState === 'success'}
               className="mt-3 rounded-xl bg-amber-800 px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
             >
-              {r7OwnerDiagnostic === 'unknown' ? 'Verificando acesso…' : r7OwnerDiagnostic === 'blocked' ? 'Ação TEST indisponível' : r7OwnerTestState === 'running' ? 'Criando…' : 'Criar Preference R7 TEST'}
+              {r7OwnerDiagnostic === 'unknown' ? 'Verificando acesso…' : r7OwnerDiagnostic === 'blocked' ? 'Ação TEST indisponível' : r7OwnerTestState === 'running' ? 'Criando…' : 'Criar Preference R7 TEST · R$5'}
             </button>
             {r7OwnerTestMessage && <p className="mt-3 text-sm">{r7OwnerTestMessage}</p>}
             {r7OwnerTestInitPoint && <a className="mt-2 block break-all text-sm font-bold underline" href={r7OwnerTestInitPoint}>Abrir Checkout Pro TEST</a>}

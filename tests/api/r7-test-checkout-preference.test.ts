@@ -22,6 +22,19 @@ test('R7 test preference returns only init_point and a server-generated R7_TEST 
   assert.match(result.testId, /^r7_test_checkout_/);
 });
 
+test('R7 test preference accepts the fixed R$5 fixture amount with its separate receipt reference', async () => {
+  let requestedAmount: number | undefined;
+  const result = await createR7TestCheckoutPreference(dependencies({
+    testId: 'r7_test_owner_checkout_r5_v1', amount: 5,
+    createPreference: async ({ amount }) => {
+      requestedAmount = amount;
+      return { id: 'pref-r7-r5', init_point: 'https://checkout.example/r7-r5', collector_id: '3648917580' };
+    },
+  }));
+  assert.equal(requestedAmount, 5);
+  assert.equal(result.testId, 'r7_test_owner_checkout_r5_v1');
+});
+
 test('R7 test preference refuses a commercial payment mode before provider access', async () => {
   let providerCalled = false;
   await assert.rejects(() => createR7TestCheckoutPreference(dependencies({

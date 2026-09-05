@@ -12,10 +12,12 @@ interface ProviderPreference { id?: string; init_point?: string; collector_id?: 
 export interface R7TestCheckoutDependencies {
   env: Record<string, string | undefined>;
   testId?: string;
-  createPreference?(input: { appUrl: string; testId: string }): Promise<ProviderPreference>;
+  amount?: 1 | 5;
+  createPreference?(input: { appUrl: string; testId: string; amount: 1 | 5 }): Promise<ProviderPreference>;
 }
 
 const OWNER_TEST_RECEIPT_ID = 'r7_test_owner_checkout_v1';
+const OWNER_TEST_R5_RECEIPT_ID = 'r7_test_owner_checkout_r5_v1';
 
 function requiredAppUrl(env: Record<string, string | undefined>): string {
   const value = env.PUBLIC_APP_URL?.replace(/\/$/, '');
@@ -53,17 +55,17 @@ function assertR7TestCollector(collectorId: string | number | undefined, sellerI
   }
 }
 
-async function providerPreference(input: { appUrl: string; testId: string }, env: Record<string, string | undefined>): Promise<ProviderPreference> {
+async function providerPreference(input: { appUrl: string; testId: string; amount: 1 | 5 }, env: Record<string, string | undefined>): Promise<ProviderPreference> {
   const accessToken = env.MP_ACCESS_TOKEN;
   if (!accessToken) throw new HttpError(503, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is unavailable');
   const preference = new Preference(new MercadoPagoConfig({ accessToken, options: { timeout: 5_000 } }));
   return preference.create({
     body: {
-      items: [{ id: input.testId, title: 'R7 TEST — Método Pame', unit_price: 1, quantity: 1, currency_id: 'BRL' }],
+      items: [{ id: input.testId, title: 'R7 TEST — Método Pame', unit_price: input.amount, quantity: 1, currency_id: 'BRL' }],
       back_urls: { success: input.appUrl, failure: input.appUrl, pending: input.appUrl },
       notification_url: `${input.appUrl}/api/mercadopago-webhook`,
       external_reference: input.testId,
-      metadata: { r7_test: true, test_id: input.testId, schema_version: 1 },
+      metadata: { r7_test: true, test_id: input.testId, amount_brl: input.amount, schema_version: 1 },
       statement_descriptor: 'METODO PAME',
     },
     requestOptions: { idempotencyKey: input.testId },
@@ -76,7 +78,8 @@ export async function createR7TestCheckoutPreference(
 ): Promise<{ id: string; init_point: string; testId: string; collectorId: string }> {
   const sellerId = assertR7PreviewTestCheckoutConfiguration(dependencies.env);
   const testId = dependencies.testId ?? `r7_test_checkout_${randomUUID()}`;
-  const provider = await (dependencies.createPreference ?? ((input) => providerPreference(input, dependencies.env)))({ appUrl: requiredAppUrl(dependencies.env), testId });
+  const amount = dependencies.amount ?? 1;
+  const provider = await (dependencies.createPreference ?? ((input) => providerPreference(input, dependencies.env)))({ appUrl: requiredAppUrl(dependencies.env), testId, amount });
   if (!provider.id || !provider.init_point) throw new HttpError(502, 'PAYMENT_PROVIDER_ERROR', 'Payment provider returned an invalid preference');
   assertR7TestCollector(provider.collector_id, sellerId);
   // TEST Checkout Pro deliberately returns the regular init_point only.
@@ -87,8 +90,12 @@ export async function createR7TestCheckoutPreference(
 export async function createOneShotR7OwnerTestCheckoutPreference(
   dependencies: R7TestCheckoutDependencies = { env: process.env },
   db: Firestore = getAdminFirestore(),
+  fixture: 'r1' | 'r5' = 'r1',
 ): Promise<{ id: string; init_point: string; testId: string; collectorId: string }> {
-  const ref = db.collection('r7_test_checkout_receipts').doc(OWNER_TEST_RECEIPT_ID);
+  const spec = fixture === 'r5'
+    ? { receiptId: OWNER_TEST_R5_RECEIPT_ID, amount: 5 as const }
+    : { receiptId: OWNER_TEST_RECEIPT_ID, amount: 1 as const };
+  const ref = db.collection('r7_test_checkout_receipts').doc(spec.receiptId);
   const state = await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
     const existing = snapshot.data();
@@ -96,7 +103,7 @@ export async function createOneShotR7OwnerTestCheckoutPreference(
     if (existing?.state === 'creating') return 'in_progress' as const;
     transaction.set(ref, {
       testMarker: 'R7_TEST', state: 'creating', source: 'temporary_owner_auth',
-      testId: OWNER_TEST_RECEIPT_ID, createdAt: new Date(), updatedAt: new Date(),
+      testId: spec.receiptId, amount: spec.amount, currency: 'BRL', createdAt: new Date(), updatedAt: new Date(),
     }, { merge: true });
     return 'reserved' as const;
   });
@@ -104,7 +111,7 @@ export async function createOneShotR7OwnerTestCheckoutPreference(
   if (state === 'in_progress') throw new HttpError(409, 'R7_TEST_IN_PROGRESS', 'R7 test preference is in progress');
 
   try {
-    const result = await createR7TestCheckoutPreference({ ...dependencies, testId: OWNER_TEST_RECEIPT_ID });
+    const result = await createR7TestCheckoutPreference({ ...dependencies, testId: spec.receiptId, amount: spec.amount });
     await ref.update({
       state: 'created', preferenceId: result.id, collectorId: result.collectorId,
       initPoint: result.init_point, updatedAt: new Date(),
