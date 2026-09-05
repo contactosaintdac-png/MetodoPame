@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { diagnoseR7Preference, sanitizeR7Preference } from '../../api/_lib/payments/r7-preference-diagnostic.js';
+import { diagnoseR7Payment, diagnoseR7Preference, sanitizeR7Payment, sanitizeR7Preference } from '../../api/_lib/payments/r7-preference-diagnostic.js';
 
 const id = '3648917580-0daf1f15-0de0-43bf-8d28-6b9285cd39a9';
 const env = { VERCEL_ENV: 'preview', R7_TEST_MODE: 'enabled', MP_TEST_SELLER_ID: '3648917580', MP_EXPECTED_LIVE_MODE: 'false', PAYMENTS_MODE: 'disabled', MP_ACCESS_TOKEN: 'synthetic-secret' };
@@ -82,4 +82,25 @@ test('provider errors, network failures and mismatched responses never expose ra
     assert.equal('preference' in result, false);
     assert.equal(/synthetic-secret|private@example/.test(JSON.stringify(result)), false);
   }
+});
+
+test('payment diagnostic reads only the fixed approved R7 payment and removes payer/card data', async () => {
+  let calls = 0;
+  const result = await diagnoseR7Payment(req, env, { auth, fetch: async (url, options) => {
+    calls++;
+    assert.equal(url, 'https://api.mercadopago.com/v1/payments/177478228692');
+    assert.equal(options?.method, 'GET');
+    assert.equal(options?.body, undefined);
+    return Response.json({ id: 177478228692, status: 'approved', transaction_amount: 5, currency_id: 'BRL', live_mode: false, collector_id: 3648917580, external_reference: 'r7_test_owner_checkout_r5_webhook_v1', payer: { email: 'private@example.test' }, card: { last_four_digits: '5682' } });
+  } });
+  assert.equal(calls, 1);
+  assert.equal(result.providerHttpStatus, 200);
+  assert.equal(JSON.stringify(result).includes('private@example'), false);
+});
+
+test('payment sanitizer never returns card or payer details', () => {
+  const result = sanitizeR7Payment({ id: 177478228692, status: 'approved', payer: { email: 'private@example.test' }, card: { last_four_digits: '5682' }, metadata: { secret: 'synthetic-secret' } });
+  assert.equal(result.payer_present, true);
+  assert.equal(result.card_present, true);
+  assert.equal(/private@example|5682|synthetic-secret/.test(JSON.stringify(result)), false);
 });

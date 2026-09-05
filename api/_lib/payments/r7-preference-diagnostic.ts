@@ -2,6 +2,7 @@ import { HttpError } from '../http-errors.js';
 import { assertR7PreviewTestOwnerAccess } from './r7-preview-test-service.js';
 
 const PREFERENCE_ID = '3648917580-0daf1f15-0de0-43bf-8d28-6b9285cd39a9';
+const PAYMENT_ID = '177478228692';
 const TEST_ID = 'r7_test_owner_checkout_r5_v1';
 const APP_URL = 'https://metodo-pame-r7-test-contactosaintdac.vercel.app';
 type Json = Record<string, unknown>;
@@ -58,6 +59,39 @@ export function sanitizeR7Preference(input: unknown): Json {
   return result;
 }
 
+/** Explicit allowlist for the already-approved R7 TEST payment only. */
+export function sanitizeR7Payment(input: unknown): Json {
+  const source = object(input);
+  const result: Json = {};
+  const put = (key: string, transform: (value: unknown) => unknown) => {
+    if (Object.hasOwn(source, key)) result[key] = transform(source[key]);
+  };
+  put('id', value => expected(value, PAYMENT_ID));
+  put('status', code);
+  put('status_detail', code);
+  put('transaction_amount', number);
+  put('currency_id', value => value === 'BRL' ? 'BRL' : '[UNEXPECTED_CURRENCY]');
+  put('live_mode', value => typeof value === 'boolean' ? value : null);
+  put('collector_id', identifier);
+  put('external_reference', value => expected(value, 'r7_test_owner_checkout_r5_webhook_v1'));
+  put('date_created', date);
+  put('date_last_updated', date);
+  put('payment_type_id', code);
+  put('payment_method_id', code);
+  put('installments', number);
+  // Presence only: payer, card, metadata and transaction details can contain PII.
+  for (const key of ['payer', 'card', 'metadata', 'additional_info', 'transaction_details']) {
+    if (Object.hasOwn(source, key)) result[`${key}_present`] = source[key] != null;
+  }
+  return result;
+}
+
+function assertR7DiagnosticConfiguration(env: Record<string, string | undefined>): void {
+  if (env.MP_TEST_SELLER_ID !== '3648917580' || env.MP_EXPECTED_LIVE_MODE !== 'false' || env.PAYMENTS_MODE !== 'disabled' || !env.MP_ACCESS_TOKEN) {
+    throw new HttpError(503, 'R7_TEST_CONFIG_REQUIRED', 'R7 TEST configuration is unavailable');
+  }
+}
+
 export async function diagnoseR7Preference(
   req: { headers?: Record<string, string | string[] | undefined>; body?: unknown; query?: Record<string, unknown> },
   env: Record<string, string | undefined> = process.env,
@@ -67,9 +101,7 @@ export async function diagnoseR7Preference(
   if ((req.body != null && req.body !== '' && (typeof req.body !== 'object' || Array.isArray(req.body) || Object.keys(req.body).length > 0)) || Object.keys(req.query ?? {}).some(key => key !== 'action')) {
     throw new HttpError(400, 'INVALID_REQUEST', 'Diagnostic accepts no input');
   }
-  if (env.MP_TEST_SELLER_ID !== '3648917580' || env.MP_EXPECTED_LIVE_MODE !== 'false' || env.PAYMENTS_MODE !== 'disabled' || !env.MP_ACCESS_TOKEN) {
-    throw new HttpError(503, 'R7_TEST_CONFIG_REQUIRED', 'R7 TEST configuration is unavailable');
-  }
+  assertR7DiagnosticConfiguration(env);
   let response: Response;
   try {
     response = await (dependencies.fetch ?? fetch)(`https://api.mercadopago.com/checkout/preferences/${PREFERENCE_ID}`, {
@@ -80,4 +112,31 @@ export async function diagnoseR7Preference(
   if (!response.ok) return { providerHttpStatus: response.status, providerErrorCode: code(object(body).error) ?? code(object(body).code) ?? 'provider_error', message: 'Mercado Pago rejected the read-only Preference query' };
   if (object(body).id !== PREFERENCE_ID) return { providerHttpStatus: response.status, providerErrorCode: 'unexpected_preference', message: 'Provider response did not match the allowed Preference' };
   return { providerHttpStatus: response.status, preference: sanitizeR7Preference(body) };
+}
+
+/**
+ * Read-only diagnostic for the one payment the human completed in Checkout Pro.
+ * It has no user-controlled identifier, never writes Firestore, and returns an
+ * allowlisted summary only after canonical owner authorization.
+ */
+export async function diagnoseR7Payment(
+  req: { headers?: Record<string, string | string[] | undefined>; body?: unknown; query?: Record<string, unknown> },
+  env: Record<string, string | undefined> = process.env,
+  dependencies: { auth?: Parameters<typeof assertR7PreviewTestOwnerAccess>[2]; fetch?: typeof fetch } = {},
+) {
+  await assertR7PreviewTestOwnerAccess(req, env, dependencies.auth);
+  if ((req.body != null && req.body !== '' && (typeof req.body !== 'object' || Array.isArray(req.body) || Object.keys(req.body).length > 0)) || Object.keys(req.query ?? {}).some(key => key !== 'action')) {
+    throw new HttpError(400, 'INVALID_REQUEST', 'Diagnostic accepts no input');
+  }
+  assertR7DiagnosticConfiguration(env);
+  let response: Response;
+  try {
+    response = await (dependencies.fetch ?? fetch)(`https://api.mercadopago.com/v1/payments/${PAYMENT_ID}`, {
+      method: 'GET', redirect: 'error', headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` }, signal: AbortSignal.timeout(10000),
+    });
+  } catch { return { providerHttpStatus: null, providerErrorCode: 'transport_error', message: 'Provider read could not complete' }; }
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) return { providerHttpStatus: response.status, providerErrorCode: code(object(body).error) ?? code(object(body).code) ?? 'provider_error', message: 'Mercado Pago rejected the read-only payment query' };
+  if (String(object(body).id) !== PAYMENT_ID) return { providerHttpStatus: response.status, providerErrorCode: 'unexpected_payment', message: 'Provider response did not match the allowed payment' };
+  return { providerHttpStatus: response.status, payment: sanitizeR7Payment(body) };
 }
