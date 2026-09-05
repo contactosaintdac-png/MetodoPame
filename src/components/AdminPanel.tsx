@@ -89,6 +89,22 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
   const [r7OwnerTestMessage, setR7OwnerTestMessage] = useState('');
   const [r7OwnerTestInitPoint, setR7OwnerTestInitPoint] = useState('');
   const [r7OwnerDiagnostic, setR7OwnerDiagnostic] = useState<'unknown' | 'ready' | 'blocked'>('unknown');
+  const [r7PreferenceDiagnostic, setR7PreferenceDiagnostic] = useState('');
+  const [r7PreferenceDiagnosticRequested, setR7PreferenceDiagnosticRequested] = useState(false);
+
+  const readR7PreferenceDiagnostic = async () => {
+    if (!user || r7PreferenceDiagnosticRequested) return;
+    setR7PreferenceDiagnosticRequested(true);
+    setR7PreferenceDiagnostic('Consultando Preference existente…');
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/outbox-worker?action=r7_preview_test_preference_diagnostic', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      setR7PreferenceDiagnostic(JSON.stringify(result, null, 2));
+    } catch { setR7PreferenceDiagnostic('Não foi possível concluir a consulta. Não repita sem verificar o resultado.'); }
+  };
 
   const showR7OwnerTestAction = Boolean(
     typeof window !== 'undefined' &&
@@ -827,6 +843,12 @@ export default function AdminPanel({ onScreenChange }: { onScreenChange: (screen
             </button>
             {r7OwnerTestMessage && <p className="mt-3 text-sm">{r7OwnerTestMessage}</p>}
             {r7OwnerTestInitPoint && <a className="mt-2 block break-all text-sm font-bold underline" href={r7OwnerTestInitPoint}>Abrir Checkout Pro TEST</a>}
+            <button type="button" onClick={readR7PreferenceDiagnostic}
+              disabled={r7OwnerDiagnostic !== 'ready' || r7PreferenceDiagnosticRequested}
+              className="mt-3 block rounded-xl bg-amber-800 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+              Consultar diagnóstico da Preference R$5 · somente leitura
+            </button>
+            {r7PreferenceDiagnostic && <pre className="mt-3 whitespace-pre-wrap break-all text-xs">{r7PreferenceDiagnostic}</pre>}
           </section>
         )}
 

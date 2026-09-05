@@ -11,6 +11,7 @@ import { createPaidBookingActionHandler } from './_lib/paid-action-handler.js';
 import { readDataModelFlags } from './_lib/data/feature-flags.js';
 import { assertR7PreviewCanonicalOwnerAccess, assertR7PreviewTestAccess, assertR7PreviewTestOwnerAccess, processR7PreviewTestJob } from './_lib/payments/r7-preview-test-service.js';
 import { createOneShotR7OwnerTestCheckoutPreference, createR7TestCheckoutPreference } from './_lib/payments/r7-preview-test-checkout.js';
+import { diagnoseR7Preference } from './_lib/payments/r7-preference-diagnostic.js';
 
 const communicationHandlers = {
   admin_notification: createPaidBookingActionHandler('communications.send', 'Admin booking notification'),
@@ -42,6 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   applyNoStore(res);
   try {
     const action = queryAction(req);
+    if (action === 'r7_preview_test_preference_diagnostic') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' });
+      return res.status(200).json(await diagnoseR7Preference(req));
+    }
     if (action === 'r7_preview_test_diagnostic') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' });
       assertR7PreviewTestAccess(process.env, typeof req.headers['x-r7-test-capability'] === 'string' ? req.headers['x-r7-test-capability'] : undefined);
