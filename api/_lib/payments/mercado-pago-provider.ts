@@ -10,6 +10,7 @@ export interface ProviderPaymentSnapshot {
   transactionAmount: number;
   currency: string;
   liveMode: boolean;
+  collectorId?: string;
   updatedAt: string;
 }
 
@@ -47,6 +48,9 @@ export function createMercadoPagoPaymentProvider(): PaymentProviderPort {
         transactionAmount: payment.transaction_amount,
         currency: payment.currency_id,
         liveMode: payment.live_mode,
+        ...((payment as { collector_id?: string | number }).collector_id !== undefined
+          ? { collectorId: String((payment as { collector_id?: string | number }).collector_id) }
+          : {}),
         updatedAt: payment.date_last_updated,
       };
     },
