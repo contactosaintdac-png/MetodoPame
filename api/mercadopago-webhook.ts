@@ -29,6 +29,17 @@ function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** Request-shape evidence only: never log headers, values, body data, or secrets. */
+function safeWebhookFailureShape(req: VercelRequest): Record<string, unknown> {
+  return {
+    method: req.method,
+    queryKeys: Object.keys(req.query).sort().slice(0, 20),
+    bodyKeys: req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? Object.keys(req.body as Record<string, unknown>).sort().slice(0, 20)
+      : [],
+  };
+}
+
 export function createMercadoPagoWebhookHandler(dependencies: MercadoPagoWebhookDependencies = defaultDependencies) {
   return async function mercadoPagoWebhookHandler(req: VercelRequest, res: VercelResponse) {
     applyNoStore(res);
@@ -63,6 +74,11 @@ export function createMercadoPagoWebhookHandler(dependencies: MercadoPagoWebhook
       return res.status(200).json({ received: true, duplicate: result.duplicate, ignored: result.ignored });
     } catch (error) {
       const httpError = toHttpError(error);
+      console.info('mercado_pago_webhook_rejected', {
+        code: httpError.code,
+        status: httpError.status,
+        ...safeWebhookFailureShape(req),
+      });
       return res.status(httpError.status).json({ error: httpError.code, message: httpError.message });
     }
   };
